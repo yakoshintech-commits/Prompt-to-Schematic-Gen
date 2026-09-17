@@ -1,10 +1,17 @@
 # Config Plan - v1
 
 ```yaml
-# External, read-only dependencies - not part of this project's own git history.
-# EDIT these two to your actual local checkout paths before the first sprint.
-schgen_dir: /scratch/k2983/SchGen
+# pcbschemagen_dir: external, read-only dependency, not part of this project's own git history.
 pcbschemagen_dir: /scratch/k2983/PCBSchemaGen_v2
+
+# schgen_dir: this project's own actively-developed clone of SchGen (its own git
+# history, gitignored from this project's repo - see .gitignore). Real hardening
+# and verify-and-retry work happens here.
+schgen_dir: /scratch/k2983/root-project/pcb-schematic-gen/SchGen
+
+# schgen_upstream_reference_dir: pristine, untouched upstream checkout, kept only
+# for occasional syncing against upstream SchGen. Never edited directly.
+schgen_upstream_reference_dir: /scratch/k2983/SchGen
 
 # This project's own code.
 layer1_dir: layer1/
