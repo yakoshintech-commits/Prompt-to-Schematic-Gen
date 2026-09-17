@@ -1,4 +1,4 @@
-# System Context - v1
+# System Context - v2
 
 <!-- BASELINE HASHES - verified at sprint start
 global.md             v1  sha256:db727cad07960cffd3f0e9c2499d19690729ddcad7d9d7f3af2a0d3ca7ff27eb
@@ -18,6 +18,19 @@ skills/manifest.yaml  v1  sha256:5aa7e12f041955d5701ee5d4e28b88bcdafe91671d1f67c
 - Forbidden paths: SchGen checkout, PCBSchemaGen_v2 checkout except an additive wrapper, and the baseline docs.
 - Definition of Done includes writing non-obvious findings into skills/.
 - Review cadence: portfolio default. Skip if the last two sprints were clean. Tighten on any rework or hash failure.
+
+## Model Assignment - v1 (added 2026-09-17, Sponsor decision)
+
+| Task type | Primary | Fallback |
+|---|---|---|
+| Reasoning, planning, orchestration, Sprint Workflow execution | Claude Code | none yet |
+| Code execution (generation/completion of a scoped code piece, dispatched from within a Claude Code sprint) | Ollama (deepseek-coder:33b) | none yet |
+
+Not a same-task-type Fallback pair. Ollama's model has no autonomous file/shell/git access and
+does not run the Sprint Workflow itself - Claude Code dispatches scoped code-generation work to
+it, then integrates, verifies, and commits the result itself. See
+models/wrappers/ollama-deepseek.md for the full Role Brief and models/capability.md for the
+portfolio-wide matrix. GPU is shared with SchGen - check headroom before every invocation.
 
 ## SOP Register - v1 (unchanged since setup)
 
