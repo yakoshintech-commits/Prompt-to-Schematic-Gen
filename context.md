@@ -38,10 +38,11 @@ portfolio-wide matrix. GPU is shared with SchGen - check headroom before every i
 
 Empty. No vetted SOPs yet. See skills/manifest.yaml.
 
-## Lessons - v2 (last updated: 2026-09-17)
+## Lessons - v3 (last updated: 2026-09-18)
 
 - Real, substantial prior work (SchGen debugging: 10 bug fixes, a working verify-and-retry loop) existed only as uncommitted changes on shared university infrastructure, with no version control safety net. It survived by luck. Commit real work immediately, even mid-investigation, before it's "done" - don't wait for a clean stopping point.
 - A separate, unrelated project (`prompt_schematic`, pure CI/hook scaffolding, no real content) was deleted and its GitHub history force-pushed over in the same general cleanup effort that could have touched the real SchGen work above. Near-miss: always verify what's actually real/valuable versus placeholder before any bulk cleanup or consolidation, per-item, not by directory.
+- The verify-and-retry loop's earlier proven self-correction (a syntax error, a semantic wiring error) does not generalize to exact-string near-misses: confirmed across 3 attempts, with the correct symbol name explicitly delivered as feedback every time in a proper multi-turn structure, that a greedy-decoding (do_sample=False) model can still repeat the identical wrong guess verbatim - it has a strong enough prior for a plausible-but-wrong name that textual correction alone doesn't override it. A deterministic, narrowly-scoped, loudly-logged fuzzy-match auto-correction (kicad_add_symbol.py, 0.85+ similarity, single unambiguous match only) was added as a stopgap. This is directly relevant to Layer 1's design: validate_facts.py's hard hallucination filter must catch unresolvable component/pin references before generation, not rely on the generative model to self-correct them after the fact - retry-with-feedback is not a substitute for grounding.
 
 ## Loaded this sprint
 
