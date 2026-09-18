@@ -6,12 +6,12 @@ retrieved ids per prompt for manual relevance inspection, per T001 Step 1.
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 from kg_open_schematics_store import OpenSchematicsKGStore
 from retrieval import retrieve_relevant_components
 
-BASE_DIR = "/scratch/k2983/PCBSchemaGen_v2"
+BASE_DIR = "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2"
 kg = OpenSchematicsKGStore(base_dir=BASE_DIR)
 print(f"Loaded {len(kg.kg_component_map)} components from the 241-set.\n")
 

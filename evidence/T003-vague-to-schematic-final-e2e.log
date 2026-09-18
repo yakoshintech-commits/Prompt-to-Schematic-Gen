@@ -1,0 +1,57 @@
+[2026-09-18 18:32:11] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-4o_2024-08-06[0m
+[2026-09-18 18:32:11] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-5.2_2025-12-11[0m
+
+=== Attempt 1/3 ===
+[OK] generation step passed
+[FAIL] build step:
+init_project.py failed (exit 1):
+Running command:
+"/scratch/k2983/root-project/pcb-schematic-gen/.venv/bin/python3" "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/vague_to_schematic_oled_generated.py"
+Warning: symbol_name='D_Small' not found in component_repository.json. Falling back to provided symbol_lib='Device'.
+Warning: symbol_name='R' not found in component_repository.json. Falling back to provided symbol_lib='Device'.
+Warning: Pin A not found in symbol R1 by number or name. Trying to find the best match.
+Pin match 'A' -> '~' (score 0.0)
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/vague_to_schematic_oled_generated.py", line 28, in <module>
+    connect_pins("R1", "A", "D1", "A")
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/kicad_sch_interface.py", line 1079, in connect_pins
+    start_pos = get_pin_location(sym_a, pin_a)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/kicad_sch_interface.py", line 891, in get_pin_location
+    raise ValueError(f"Pin {pin_name} not found in symbol {symbol_ref}. Available pins: {list(symbol.pin)}")
+ValueError: Pin A not found in symbol R1. Available pins: [<SymbolPin 1 "~">, <SymbolPin 2 "~">]
+
+
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/init_project.py", line 133, in <module>
+    main()
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/init_project.py", line 121, in main
+    run_py(schematic_code)
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/init_project.py", line 40, in run_py
+    raise RuntimeError(
+RuntimeError: Failed to run schematic code: /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/vague_to_schematic_oled_generated.py
+
+
+=== Attempt 2/3 ===
+Found 0 violations
+Saved ERC Report to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/vague_to_schematic_oled/vague_to_schematic_oled_erc_report.txt
+[OK] generation step passed
+[OK] build step passed - schematic at /scratch/k2983/root-project/pcb-schematic-gen/SchGen/vague_to_schematic_oled/vague_to_schematic_oled.kicad_sch
+ERC report saved to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/vague_to_schematic_oled/vague_to_schematic_oled_erc_report.txt
+[PASS] Attempt 2 succeeded, zero ERC errors.
+ERC report:
+ERC report (2026-09-18T18:50:57, Encoding UTF8)
+Report includes: Errors, Warnings
+
+***** Sheet /
+
+ ** ERC messages: 0  Errors 0  Warnings 0
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters
+
+
+Final schematic: /scratch/k2983/root-project/pcb-schematic-gen/SchGen/vague_to_schematic_oled/vague_to_schematic_oled.kicad_sch

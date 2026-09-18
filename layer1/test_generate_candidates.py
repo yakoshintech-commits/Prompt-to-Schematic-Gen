@@ -7,11 +7,11 @@ real parsed candidates. Prints full output for inspection, per T001's
 import json
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 from generate_candidates import generate_candidates
 
-kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 vague_prompt = "I need something to blink an LED"
 candidates = generate_candidates(vague_prompt, kg, n=2)
