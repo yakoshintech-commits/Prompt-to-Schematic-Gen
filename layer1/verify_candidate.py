@@ -16,7 +16,7 @@ fabricated part/pin never reaches the real verifier, per the task spec.
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from framework.topo import validate_complex_task
 from framework.topo.build_topology import augment_snapshot
 

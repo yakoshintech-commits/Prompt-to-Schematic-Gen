@@ -6,11 +6,11 @@ a hallucinated pin. Prints real output for both failure modes.
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 from validate_facts import validate_parts_exist
 
-kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 # Real pins on R: [{"num":1,"name":"~"}, {"num":2,"name":"~"}]
 # Real pins on LED: confirmed earlier as A (anode)/K (cathode)

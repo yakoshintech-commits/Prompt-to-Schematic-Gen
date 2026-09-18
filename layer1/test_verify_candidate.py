@@ -8,12 +8,12 @@ a paraphrase.
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 import verify_candidate as vc_module
 from verify_candidate import verify_candidate
 
-kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 # --- Candidate 1: hallucinated part - should be rejected, verifier never called ---
 hallucinated_candidate = {

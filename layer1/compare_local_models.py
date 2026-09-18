@@ -13,11 +13,11 @@ import time
 
 import requests
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 from prompts import build_system_prompt, build_user_prompt
 
-kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 allowed = [kg.get_component("R"), kg.get_component("LED")]
 allowed_json = json.dumps(allowed, indent=2)
 

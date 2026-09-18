@@ -12,12 +12,12 @@ Proves:
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 from framework.topo import KGStore
 from kg_open_schematics_store import OpenSchematicsKGStore
 
-BASE_DIR = "/scratch/k2983/PCBSchemaGen_v2"
+BASE_DIR = "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2"
 
 kg_default = KGStore(base_dir=BASE_DIR)
 kg_open = OpenSchematicsKGStore(base_dir=BASE_DIR)

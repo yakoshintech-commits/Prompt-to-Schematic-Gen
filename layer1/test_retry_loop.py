@@ -7,11 +7,11 @@ session failed?
 import json
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 from pipeline import run_layer1
 
-kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
 result = run_layer1("I need something to blink an LED", kg, n=1, max_attempts=3)
 

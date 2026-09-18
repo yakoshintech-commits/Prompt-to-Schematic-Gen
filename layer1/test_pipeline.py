@@ -26,7 +26,7 @@ caught by the deterministic filter, not by generation quality itself).
 
 import sys
 
-sys.path.insert(0, "/scratch/k2983/PCBSchemaGen_v2")
+sys.path.insert(0, "/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 from kg_open_schematics_store import OpenSchematicsKGStore
 from pipeline import run_layer1
 from generate_candidates import check_headroom_or_raise
@@ -44,7 +44,7 @@ MAX_ATTEMPTS = 3
 
 def main():
     check_headroom_or_raise()
-    kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/PCBSchemaGen_v2")
+    kg = OpenSchematicsKGStore(base_dir="/scratch/k2983/root-project/pcb-schematic-gen/PCBSchemaGen_v2")
 
     any_rejected = False
     summary = []  # (prompt, [ (candidate_id, status) ])
