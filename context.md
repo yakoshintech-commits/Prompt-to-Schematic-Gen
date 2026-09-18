@@ -1,21 +1,23 @@
-# System Context - v2
+# System Context - v3
 
 <!-- BASELINE HASHES - verified at sprint start
 global.md             v1  sha256:db727cad07960cffd3f0e9c2499d19690729ddcad7d9d7f3af2a0d3ca7ff27eb
-instructions.md       v1  sha256:4c5e54099e98b9baa11a97dde62616feb47442f3af142fc79952868bf0a8b654
-conventions.md        v1  sha256:9029ae389d10dccb9efbbf7e48f55db36ebc92da40be50ced3b1f9bc2c398b91
+instructions.md       v2  sha256:0f353bc905e21d0682a6841a10108e22424a2ac14c2178050b15c26620ab49fb
+conventions.md        v2  sha256:f35a8cb17e17e9d34d2363d866fcb465d132bd8565df93c7164cf13ad1868b30
 skills/manifest.yaml  v1  sha256:5aa7e12f041955d5701ee5d4e28b88bcdafe91671d1f67ca1d4098526b382d64
 -->
 
-## Charter - v1 (unchanged since setup)
+## Charter - v2 (Sponsor decision, 2026-09-17)
 
-- Build Layer 1: vague prompt to verified, KG-grounded architecture candidates, feeding into existing SchGen for final schematic generation.
-- Success criteria: end-to-end run on three or more varied prompts, zero unflagged hallucinations, no interference with concurrently running SchGen, findings captured as skills.
-- Constraints: no new paid API for generation, SchGen and PCBSchemaGen_v2 are read-only, GPU is shared with SchGen, university compute is time-limited.
+- Build Layer 1: vague prompt to verified, KG-grounded architecture candidates, feeding into a hardened SchGen for final schematic generation.
+- SchGen hardening is now in scope: this project's own clone (schgen_dir) already has 10 real bugs fixed and a working verify-and-retry loop (build + ERC check + feed real error back on failure), proven to self-correct across 2 error types on one case. Generalizing across more prompts is in progress.
+- Success criteria: Layer 1 end-to-end run on three or more varied prompts, zero unflagged hallucinations, verify-and-retry generalizes beyond its first proven case, no interference with other concurrently running GPU processes, findings captured as skills.
+- Constraints: no new paid API for generation, PCBSchemaGen_v2 is read-only, GPU is shared, university compute is time-limited.
 
-## Standards - v1 (unchanged since setup)
+## Standards - v2 (Sponsor decision, 2026-09-17)
 
-- Forbidden paths: SchGen checkout, PCBSchemaGen_v2 checkout except an additive wrapper, and the baseline docs.
+- Forbidden paths: the pristine schgen_upstream_reference_dir checkout (read-only, sync-only), PCBSchemaGen_v2 checkout except an additive wrapper, and the baseline docs.
+- Git: every commit gets its own task branch first; merge to main/master only at a clear completion point or on Sponsor say.
 - Definition of Done includes writing non-obvious findings into skills/.
 - Review cadence: portfolio default. Skip if the last two sprints were clean. Tighten on any rework or hash failure.
 
@@ -36,9 +38,11 @@ portfolio-wide matrix. GPU is shared with SchGen - check headroom before every i
 
 Empty. No vetted SOPs yet. See skills/manifest.yaml.
 
-## Lessons - v1 (last updated: setup)
+## Lessons - v3 (last updated: 2026-09-18)
 
-Empty. No sprints have run yet.
+- Real, substantial prior work (SchGen debugging: 10 bug fixes, a working verify-and-retry loop) existed only as uncommitted changes on shared university infrastructure, with no version control safety net. It survived by luck. Commit real work immediately, even mid-investigation, before it's "done" - don't wait for a clean stopping point.
+- A separate, unrelated project (`prompt_schematic`, pure CI/hook scaffolding, no real content) was deleted and its GitHub history force-pushed over in the same general cleanup effort that could have touched the real SchGen work above. Near-miss: always verify what's actually real/valuable versus placeholder before any bulk cleanup or consolidation, per-item, not by directory.
+- The verify-and-retry loop's earlier proven self-correction (a syntax error, a semantic wiring error) does not generalize to exact-string near-misses: confirmed across 3 attempts, with the correct symbol name explicitly delivered as feedback every time in a proper multi-turn structure, that a greedy-decoding (do_sample=False) model can still repeat the identical wrong guess verbatim - it has a strong enough prior for a plausible-but-wrong name that textual correction alone doesn't override it. A deterministic, narrowly-scoped, loudly-logged fuzzy-match auto-correction (kicad_add_symbol.py, 0.85+ similarity, single unambiguous match only) was built and confirmed working, then reverted same day: once two more hallucination classes turned up alongside it (pin-count mismatch, dropped symbol placement), keeping a stopgap for only the first-discovered one would have been inconsistent - all three get the same systemic fix instead. This is directly relevant to Layer 1's design: validate_facts.py's hard hallucination filter must catch unresolvable component/pin references before generation, not rely on the generative model to self-correct them after the fact, and not on ad hoc per-symptom patches either - retry-with-feedback is not a substitute for grounding.
 
 ## Loaded this sprint
 

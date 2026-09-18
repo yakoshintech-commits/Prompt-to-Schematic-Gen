@@ -1,4 +1,4 @@
-# Engineering Standards - v1
+# Engineering Standards - v2
 
 Cross-project rules, such as commit message format, the development-cost bias correction, and the tool-interface preference, live in global.md at the portfolio root and are not duplicated here.
 
@@ -12,9 +12,13 @@ Cross-project rules, such as commit message format, the development-cost bias co
 
 ## Forbidden paths
 
-- Any file inside the external SchGen repository checkout. Read-only dependency, never run or modified by this project's own Work Items.
+- Any file inside the pristine upstream SchGen reference checkout, at `schgen_upstream_reference_dir` (config/paths.md). Read-only, kept only for occasional syncing. All real SchGen development happens on this project's own clone at `schgen_dir` instead.
 - Any file inside the external PCBSchemaGen_v2 repository checkout, except adding a new, clearly named wrapper module under this project's own layer1/ directory that imports from it read-only.
 - global.md, instructions.md, conventions.md, and skills/manifest.yaml. These require an explicit Sponsor-directed Change Control entry, per PIPELINE.md section 16, not an in-sprint edit by the Developer.
+
+## Git branching (Sponsor-directed, 2026-09-17)
+
+Any new commit gets its own task branch first, merged to `main`/`master` only at a clear completion point or on the Sponsor's say. Do not commit directly onto `main`/`master`.
 
 ## Rollback
 
