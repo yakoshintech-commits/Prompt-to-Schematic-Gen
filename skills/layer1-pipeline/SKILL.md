@@ -6,6 +6,25 @@ Layer 1's own architecture end to end - retrieval -> generation -> hallucination
 
 ## Key facts (confirmed empirically, not assumed)
 
+**Pipeline shape** (`layer1/pipeline.py`'s `run_layer1`, built Step 5):
+```
+vague_prompt
+  -> retrieve_relevant_components (Step 1: keyword-overlap over kg_store)
+  -> generate_candidates (Step 2: local LLM, constrained to that vocabulary, n candidates)
+  -> for each candidate: verify_candidate (Step 3 validate_parts_exist first,
+     early-exit to "rejected" on failure; Step 4 real PCBSchemaGen_v2 verifier
+     otherwise -> "passed" or "failed_checks")
+  -> for each candidate: weighted score (cost placeholder + simplicity +
+     part_availability, see _score_candidate)
+  -> ranked = sorted by (verification_status passed-first, then -score)
+  -> {"candidates": [...all, unranked order...], "ranked": [...]}
+```
+Does not auto-pick a winner - returns the full ranked list for a human (or a future UI) to choose from.
+
+**The explicit status-priority ranking rule does real, non-redundant work** - confirmed by deliberately choosing weights (`simplicity=0.8`, others low) where a simple `failed_checks` candidate's raw weighted score (0.45) exceeds a complex `passed` candidate's (0.19). Sorting by raw score alone would have ranked the failed one first; the actual `rank_key`'s `(status_priority, -score)` tuple correctly puts the passed candidate first regardless. With the *default* weights specifically, `part_availability`'s 0.3 weight alone is large enough that a passed candidate always outscores a failed one on raw score too (0.3 exceeds simplicity's entire possible range under those weights) - so this override only becomes essential once weights are tuned away from the defaults, which is exactly why it exists as an explicit rule rather than relying on score alone.
+
+**A real end-to-end `run_layer1` run on "I need something to blink an LED" (n=3) rejected all 3 candidates** - each invented a part_id that sounds like a real, common component (`NE555`, a genuinely real 555 timer IC; `74HC74`, a genuinely real flip-flop; `R_1k`, a plausible-looking resistor-with-value naming convention) but none exist in this specific 241-component KG. This is a different hallucination pattern than Step 2's earlier finding (fabricated-looking IDs like `0402RES`) - here the model reached for real-world component knowledge from its training data instead of the provided vocabulary, which is arguably a harder case to prompt away entirely. The pipeline's mechanics (scoring, ranking, rejection) all worked correctly regardless - this is a generation-quality observation, not a Step 5 bug. Worth revisiting if this pattern turns out to be common once Step 6's varied-prompt testing runs.
+
 **Step 2 generation still hallucinates even with a carefully constrained prompt - this is why Step 3 exists, not a Step 2 bug to fix.** Confirmed on a real `generate_candidates()` run for "I need something to blink an LED": one candidate invented `"0402RES"` and `"0402CAP"` as part_ids - neither exists anywhere in the 241-component KG (confirmed via `kg.has_component()`). The same candidate also got `SK6812`'s real pin 2 wrong (claimed `"VSS"`, the real pin 2 is `"DIN"` - `VSS` is actually pin 1), and internally contradicted itself, using pin_id `"2"` for two different roles (`VSS` in one net, `DIN` in another) in the same candidate. The system prompt's explicit "CRITICAL RULES" reduced but did not eliminate hallucination, even for a real, correctly-retrieved component the model had full data for. Confirms the whole-pipeline design is right: generation is not the trust boundary, Step 3's deterministic check against real component data is.
 
 **Step 3 hallucination filter (`layer1/validate_facts.py`) catches exactly the failure modes Step 2 actually produces**, confirmed with 3 hand-built synthetic candidates (grounded / hallucinated part_id / hallucinated pin) - see `layer1/test_validate_facts.py` for real output. Deliberately checks the exact `(pin_id, pin_name)` *pair* against each real pin, not either field alone - a candidate can get `pin_id` right and `pin_name` wrong (or vice versa) and still be wrong, which is precisely what happened in the real Step 2 hallucination above (`SK6812` pin 2's real name is `"DIN"`, not the claimed `"VSS"` - checking `pin_id` alone would have missed this). Fails fast on the first mismatch found (not a full report) - full multi-error reporting is the real verifier's (Step 4) job, not this filter's.
