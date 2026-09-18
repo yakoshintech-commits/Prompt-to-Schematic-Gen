@@ -1,0 +1,47 @@
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# Define center position for the main component (NE555D)
+center_x_1, center_y_1 = 150.0, 110.0
+
+# Place the NE555D (U1) at the center
+add_schematic_symbol(
+    symbol_lib="Timer",
+    symbol_name="NE555D",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="NE555D",
+    rotation=0,
+    mirror=None
+)
+
+# Place the LED (D1) to the right of the NE555D
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="LED",
+    pos_x=center_x_1 + 30.0,   # 30 mm to the right
+    pos_y=center_y_1,
+    reference="D1",
+    value="LED",
+    rotation=0,
+    mirror=None
+)
+
+# Connect U1 VCC (pin 8) to D1 anode (pin A)
+connect_pins("U1", "VCC", "D1", "A")
+
+# Connect U1 GND (pin 1) to D1 cathode (pin K)
+connect_pins("U1", "GND", "D1", "K")
+
+# Connect U1 OUT (pin 3, named Q) to D1 anode (pin A)
+connect_pins("U1", "Q", "D1", "A")
+
+# Write out all wires
+write_out_all_wires()

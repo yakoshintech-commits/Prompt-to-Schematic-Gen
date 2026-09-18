@@ -1,0 +1,62 @@
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# ------------------------------
+# Placing center symbol 1 : LM358 (U1)
+# ------------------------------
+center_x_1, center_y_1 = 150.0, 150.0
+
+add_schematic_symbol(
+    symbol_lib="Amplifier_Operational",
+    symbol_name="LM358",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="LM358",
+    rotation=0,
+    mirror="None"
+)
+
+# ------------------------------
+# Placing other symbols in the Schematic with respect to the center symbol 1
+# ------------------------------
+# R1 : 1N4148 diode
+add_schematic_symbol(
+    symbol_lib="Diode",
+    symbol_name="1N4148",
+    pos_x=center_x_1 + (-30),
+    pos_y=center_y_1 + (0),
+    reference="R1",
+    value="1N4148",
+    rotation=0,
+    mirror="None"
+)
+
+# R2 : 1N4148 diode
+add_schematic_symbol(
+    symbol_lib="Diode",
+    symbol_name="1N4148",
+    pos_x=center_x_1 + (-60),
+    pos_y=center_y_1 + (0),
+    reference="R2",
+    value="1N4148",
+    rotation=0,
+    mirror="None"
+)
+
+# ------------------------------
+# Connecting all wires in the Schematic
+# ------------------------------
+# Connect U1 pin V- (pin 4) to R1 pin K (pin 1)
+connect_pins("U1", "V-", "R1", "K")
+
+# Connect R1 pin K (pin 1) to R2 pin K (pin 1)
+connect_pins("R1", "K", "R2", "K")
+
+write_out_all_wires()

@@ -1,0 +1,44 @@
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# Define center position for the resistor (R1)
+center_x_1, center_y_1 = 150.0, 110.0
+
+# Place R1 (generic SMD resistor from 74xx_IEEE library)
+add_schematic_symbol(
+    symbol_lib="74xx_IEEE",
+    symbol_name="R",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="R1",
+    value="R",
+    rotation=0,
+    mirror=None
+)
+
+# Place SW1 (generic momentary push‑button from Switch library) to the right of R1
+add_schematic_symbol(
+    symbol_lib="Switch",
+    symbol_name="SW_Push",
+    pos_x=center_x_1 + 30.0,   # 30 mm to the right
+    pos_y=center_y_1,
+    reference="SW1",
+    value="SW_Push",
+    rotation=0,
+    mirror=None
+)
+
+# Connect R1 pin 1 to SW1 pin 2
+connect_pins("R1", "1", "SW1", "2")
+
+# Connect R1 pin 2 to SW1 pin 1
+connect_pins("R1", "2", "SW1", "1")
+
+# Write out all wires
+write_out_all_wires()
