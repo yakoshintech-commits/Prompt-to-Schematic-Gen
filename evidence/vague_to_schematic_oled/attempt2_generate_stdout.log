@@ -1,0 +1,51 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=1889)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit to drive a small OLED display for status information. Use exactly these real components: D1, and C1 as 2 separate instances of a D_Small (Generic small-footprint diode), R1 as a 1N4148 (Small-signal fast-switching diode, 100 V 200 mA, through-hole), U1 as a LCD-016N002L (16x2 character LCD module with HD44780 controller. 16-pin interface.). Do not substitute or invent a different part for any of them. Wire it up as follows: connect U1's VDD pin (pin 2) to R1's A pin (pin 2); connect U1's VSS pin (pin 1) to R1's K pin (pin 1) to D1's A pin (pin 2); connect U1's RS pin (pin 4) to D1's A pin (pin 2); connect U1's E pin (pin 6) to D1's K pin (pin 1); connect U1's RW pin (pin 5) to D1's K pin (pin 1); connect U1's LED+ pin (pin 15) to D1's A pin (pin 2).
+[SEQLEN] input_ids shape: torch.Size([1, 2087])
+[SEQLEN] input_ids shape: torch.Size([1, 5082])
+[SEQLEN] input_ids shape: torch.Size([1, 5303])
+[SEQLEN] input_ids shape: torch.Size([1, 3501])
+[SEQLEN] input_ids shape: torch.Size([1, 3501])
+[SEQLEN] input_ids shape: torch.Size([1, 3501])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.93GB gpu_peak=29.28GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.93GB gpu_peak=29.28GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=29.28GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=29.28GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=29.28GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D_Small###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D_Small", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="D_Small", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+# Symbol D_Small at (150.0, 110.0) (center)
+# Add net labels: D1_K = D1 pins K
+x_D1_1, y_D1_1 = get_pin_location(symbol_ref="D1", pin_name="K")
+add_label(label_pos=[x_D1_1+(-10), y_D1_1+(0)], label_text="D1_K", label_ref="D1_K_0", label_type="input", text_orient="left")
+# Connecting label D1_K label_id:0 to D1 pin K (Pin ID 1 -- Name K)
+connect_pins("D1_K_0", "1", "D1", "K")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/vague_to_schematic_oled_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/vague_to_schematic_oled_generated.response.txt
