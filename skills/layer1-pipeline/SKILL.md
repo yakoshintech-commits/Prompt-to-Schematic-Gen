@@ -62,6 +62,18 @@ Three real things had to be confirmed/fixed empirically before this worked, not 
 
 **What this does NOT fix**: a model can still pick a real-but-wrong pin/component for the task (e.g. address pin instead of the actual sense pin) - enum constraints only guarantee the value exists, not that it's the semantically correct choice. That remains Step 3/4's job, unchanged.
 
+## Why Layer 1 fails ~50% of the time on varied real prompts (2026-09-18, T005/T011 investigation)
+
+T005's comprehensive 6-domain test found only 3/6 reached a `passed` candidate. Investigated *why*, not just *that* - re-ran the 3 failures with per-attempt logging to watch the actual retry progression, not just the final result. Found two distinct failure modes, not one root cause:
+
+**Mode A - complete stagnation on structural over-generation.** "I need to measure temperature digitally with a 1-Wire sensor" produced 8 separate `DS18B20` instances, each missing 2 of its 3 required connections - and regenerated an almost byte-identical broken design across all 3 retry attempts, no meaningful change. Telling clue: the candidate schema's `maxItems=8` cap (set earlier to prevent runaway generation, see "Schema-constrained decoding" above) was hit exactly - the model wanted to keep duplicating the same part further and got capped, rather than stopping because 8 identical sensors made design sense. A flat list of pin-level "X is unconnected" errors gives no signal to fix a mistake at this scale (why 8 near-duplicates at all), so the retry loop just regenerates the same structural mistake.
+
+**Mode B - real progress, then permanently stuck on specific pins.** The RTC candidate ("I need to keep accurate time with a real-time clock chip") fixed 3 of 4 unconnected pins in a single retry (`EN`, `~{RST}`, `GPIO0` all got wired correctly) - genuine, real self-correction - but `GPIO15` stayed unconnected across all 3 attempts with zero progress. Same shape for the motor driver: `VCC` and `PGND1` got fixed across retries, but the motor supply (`VM1`) and motor output pins (`AO1`/`AO2`/`BO2`) never did.
+
+**The common thread**: retry feedback works when a pin has an obvious, convention-based answer (VCC to a power rail, GND to ground). It fails when the correct connection requires real domain knowledge the retrieved component data doesn't spell out - a motor driver's output pins need to go to the actual motor terminals (a design decision, not a lookup), and `GPIO15` on an ESP module is a boot-strap pin with non-obvious wiring requirements. Unlike the exact-string near-misses fixed elsewhere this session (where the retry loop hands the model the literal correct string to copy), there's no equivalent "correct answer" to hand it here - `llama3.1:8b` doesn't have the embedded domain expertise to derive one on its own.
+
+**This is a bigger lever on real-world reliability than any single bug found so far** - it's not a bug to patch, it's a real capability ceiling of the current retrieval+generation+retry design for harder, multi-pin, convention-poor components.
+
 ## Last known test results (Step 6, 2026-09-18, schema-constrained decoding)
 
 Re-run of the same 4 prompts/domains after the schema-constraint fixes above (raw log: `evidence/T001-step6-pipeline-test-v2-schema-constrained.log`): **8/8 candidates, 5 passed, 3 failed_checks, 0 rejected.** LED and OLED-display prompts passed cleanly (2/2 each, one at attempts=1 both times). Current-sensing: 1 passed (attempts=3), 1 failed_checks (one unconnected pin). USB-charging: 2/2 failed_checks (consistent unconnected I/O pins across both candidates, `maxItems=8` capping the candidate to 8 components - a real topology-completeness gap in what the model wires up, not a hallucination).

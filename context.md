@@ -21,17 +21,20 @@ skills/manifest.yaml  v1  sha256:5aa7e12f041955d5701ee5d4e28b88bcdafe91671d1f67c
 - Definition of Done includes writing non-obvious findings into skills/.
 - Review cadence: portfolio default. Skip if the last two sprints were clean. Tighten on any rework or hash failure.
 
-## Model Assignment - v1 (added 2026-09-17, Sponsor decision)
+## Model Assignment - v2 (revised 2026-09-18 - corrects a real drift between this table and actual practice, not a new decision)
 
 | Task type | Primary | Fallback |
 |---|---|---|
 | Reasoning, planning, orchestration, Sprint Workflow execution | Claude Code | none yet |
-| Code execution (generation/completion of a scoped code piece, dispatched from within a Claude Code sprint) | Ollama (deepseek-coder:33b) | none yet |
+| Code execution (generation/completion of a scoped code piece, dispatched from within a Claude Code sprint) | Ollama (llama3.1:8b) | none yet |
+
+**v1 said `deepseek-coder:33b` (the portfolio's original reference default, see `models/wrappers/ollama-deepseek.md`) - this project actually settled on `llama3.1:8b` on 2026-09-17/18, for Layer 1's constrained candidate generation, and this table was never updated to match. Real reason for the deviation, not a preference: a head-to-head test on this exact task (strict-JSON generation constrained to a small allowed-component vocabulary) showed `deepseek-coder:33b` inventing a fabricated part_id (`"IC1"`) not present in the allowed vocabulary, despite an explicit rule forbidding it; `llama3.1:8b` did not. Full comparison evidence in `skills/local-llm-setup/SKILL.md`. `deepseek-coder:33b` remains installed and available - this is a project-specific, evidence-based choice, not a portfolio-wide replacement of the default.**
 
 Not a same-task-type Fallback pair. Ollama's model has no autonomous file/shell/git access and
 does not run the Sprint Workflow itself - Claude Code dispatches scoped code-generation work to
 it, then integrates, verifies, and commits the result itself. See
-models/wrappers/ollama-deepseek.md for the full Role Brief and models/capability.md for the
+models/wrappers/ollama-deepseek.md for the full Role Brief (portfolio-wide, describes the *role*
+- still accurate regardless of which specific model fills it) and models/capability.md for the
 portfolio-wide matrix. GPU is shared with SchGen - check headroom before every invocation.
 
 ## SOP Register - v1 (unchanged since setup)
