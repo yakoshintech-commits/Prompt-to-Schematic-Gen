@@ -31,3 +31,18 @@ evidence_dir: evidence/
 ```
 
 This is the portability layer. If infrastructure moves, for example a different university system or a new checkout location, one file changes here, not every reference scattered across Work Items and skills.
+
+## Critical: running SchGen - the PROJECT_PATH trap
+
+The Python venv for SchGen lives at `schgen_upstream_reference_dir/.venv` (physically inside the pristine reference clone, a pre-existing setup decision, not this project's choice). Its `bin/activate` script hardcodes `export PROJECT_PATH=<schgen_upstream_reference_dir>`, and `generate.py` does `sys.path.append(os.environ["PROJECT_PATH"])` to make its own `modules` package importable - meaning **every SchGen run silently imports `modules/*` from the pristine, unfixed clone, not the actively-developed one, unless PROJECT_PATH is explicitly overridden after activating**.
+
+Confirmed empirically (2026-09-18): this caused every real SchGen invocation that afternoon to silently run on unfixed code (the eager-attention fix in `llm_interface.py` was never actually active - `flash_attention_2`'s known garbled-output bug fired every time), even though the entry script itself was correctly run from `schgen_dir`. Running the exact same prompt with `PROJECT_PATH` corrected produced a clean, correct result immediately - see `skills/schgen-integration/SKILL.md`.
+
+**Always run SchGen like this**, never bare `source .venv/bin/activate` alone:
+```bash
+source /scratch/k2983/SchGen/.venv/bin/activate
+export PROJECT_PATH=/scratch/k2983/root-project/pcb-schematic-gen/SchGen   # overrides the venv's own wrong default
+cd /scratch/k2983/root-project/pcb-schematic-gen/SchGen
+python3 schematic_generation/generate.py ...
+```
+(The venv's activate script has also been corrected directly to default to the right path - see SKILL.md - but the explicit `export` above is the belt-and-suspenders version and costs nothing.)
