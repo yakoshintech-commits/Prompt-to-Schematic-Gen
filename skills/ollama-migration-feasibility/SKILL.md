@@ -29,9 +29,31 @@ Findings from investigating whether SchGen's fine-tuned model (gpt-oss-20b + LoR
 
 **Practical implication**: some level of non-bit-identical output should be *expected* whenever this model's inference path changes at all (different merge, different kernel, different inference engine like llama.cpp/Ollama) - MoE routing sensitivity means this isn't unique to PEFT's merge and can't be fully eliminated by fixing the merge alone. The real open question for feasibility isn't "is the merge broken" (evidence says no) but "is this level of occasional routing drift acceptable for SchGen's use case" - worth testing with real SchGen prompts (not just one probe prompt) and comparing actual generated schematic code, not just raw logits, before deciding.
 
+## Full end-to-end success (2026-09-18) - real, working prototype built and verified
+
+Went all the way: merged the real adapter, converted to GGUF, served via Ollama, ran a real SchGen request through the exact same prompt-construction path `generate.py` uses (real symbol selection + `prepare_context()`), and built + ERC-checked the result. **0 ERC errors, real `.kicad_sch` file, entirely through Ollama.** Evidence: `evidence/T002-ollama-comparison.log`, `evidence/T002-ollama-gguf-response.txt`, `SchGen/t002_ollama_test/`.
+
+Key technical points, in order, each one a real thing that had to be figured out empirically, not assumed:
+
+1. **The important realization that reframed the whole investigation**: `generate.py` already calls `PeftModel.from_pretrained(...).merge_and_unload()` before every real generation (line 254). There is no "live, unmerged" code path in actual use - every verified-working SchGen result all session already ran on the merged model. The earlier live-vs-merged numeric comparisons were still useful (they explained *why* small divergences happen, via MoE routing sensitivity), but the real relevant comparison for feasibility was always "does GGUF/Ollama reproduce this already-trusted merged model's behavior," not "is merging itself safe."
+2. **`save_pretrained()` can't be trusted for a partially-quantized model** - an untouched (still-MXFP4) expert layer doesn't even register `gate_up_proj`/`down_proj` as a normal PyTorch parameter or buffer (only the bias terms are registered), so the standard HF save path has no reliable way to round-trip it. Fixed by writing the checkpoint directly at the safetensors level: copy the original shards through untouched, surgically replace only the 6 tensors (3 layers x 2 projections) that actually changed.
+3. **`llama.cpp`'s gpt-oss converter (`conversion/gpt_oss.py`) has a real, documented fallback for exactly this mixed situation** - tensors named with `_blocks`/`_scales` get read as native MXFP4-packed; any expert tensor without those suffixes gets treated as a plain dense weight (with a "not in MXFP4, performance may be degraded" warning, not an error). This is precisely the shape a partially-merged model has - not a workaround, a supported path.
+4. **Got the tensor orientation wrong on the first attempt, caught immediately by a real error, not silently** - guessed that the converter wanted the "raw," pre-generate.py-transpose orientation and undid the in-memory `.transpose(1, 2)` before saving. Ollama's own error (`expected 2880,2880,32 got 5760,1440,32,1`) proved that guess backwards - the converter actually wants the tensor in generate.py's own *consumption* orientation (the transpose already applied), not the raw dequant orientation. Fixed by removing the undo step; conversion succeeded immediately after.
+5. **Ollama correctly recognized the mixed-precision result** - `ollama ps` reports `"quantization_level":"MXFP4_MOE"` for the loaded model, confirming the untouched 21 layers stayed in their compact native format rather than the whole model silently ballooning to all-dense bf16.
+
+**Verdict: T002 is feasible, and a real working prototype now exists.** Not yet a finished Work Item - this was one prompt, one comparison, and the GGUF/Ollama model was tested with `--outtype bf16` for the merged layers specifically (not yet quantized down further, e.g. Q4_K_M, which would need its own correctness check before being trusted). But the hard technical risk (can SchGen's specific adapter shape actually make it through merge -> GGUF -> Ollama and still work) is resolved: yes, confirmed by a real, ERC-clean, generated schematic.
+
+## Code references (end-to-end prototype)
+
+- `models/SchGen-merged-hf/` - the surgically-assembled merged HF checkpoint (21 layers untouched MXFP4, 3 layers merged dense)
+- `models/SchGen-merged.gguf` - the converted GGUF (17.3GB, bf16 for merged layers + native MXFP4 for the rest)
+- `llama.cpp/` (gitignored, cloned fresh) - upstream conversion tooling, specifically `conversion/gpt_oss.py`
+- `.venv-gguf-convert/` (gitignored, isolated venv) - kept separate from the main venv specifically to avoid the conversion script's CPU-only `torch==2.11.0` pin clobbering the main venv's working GPU torch
+- Ollama model `schgen-merged-test` - the served result
+
 ## Common mistakes to avoid
 
-- Don't trust "the merge ran without crashing" or "the top predicted token still looks right" as evidence of correctness - both were true here, and the merge is still measurably wrong. Always compare raw output numbers against the live, unmerged baseline before trusting a merged model.
+- Don't trust "the merge ran without crashing" or "the top predicted token still looks right" as evidence of correctness on its own - localize any observed difference (e.g. via routing/weight-level checks) before concluding a merge is broken; the first pass here overcalled a real MoE-routing-sensitivity effect as a bug.
 - Don't assume dequantizing a module's *weights* also changes how PEFT (or any tool) treats its *class* - the warning fired because the class was still `Mxfp4GptOssExperts` even after its parameters were replaced with plain dequantized values.
 
 ## Code references

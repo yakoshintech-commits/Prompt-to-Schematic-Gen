@@ -1,0 +1,80 @@
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# Define center of the schematic (A4 sheet 210x297 mm)
+center_x_1, center_y_1 = 105.0, 148.5
+
+# Place USB_B connector (reference J1) at the center
+add_schematic_symbol(
+    symbol_lib="Connector",
+    symbol_name="USB_B",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="J1",
+    value="USB_B",
+    rotation=0,
+    mirror=None
+)
+
+# Place VBUS power symbol near the connector (to the left‑up)
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="VBUS",
+    pos_x=center_x_1 - 20,
+    pos_y=center_y_1 + 20,
+    reference="#PWR_VBUS",
+    value="VBUS",
+    rotation=0,
+    mirror=None
+)
+
+# Place GND power symbol near the connector (to the right‑down)
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="GND",
+    pos_x=center_x_1 + 20,
+    pos_y=center_y_1 - 20,
+    reference="#PWR_GND",
+    value="GND",
+    rotation=0,
+    mirror=None
+)
+
+# Add label D+ next to the D+ pin of the USB_B connector
+x_J1_Dp, y_J1_Dp = get_pin_location(symbol_ref="J1", pin_name="D+")
+add_label(
+    label_pos=[x_J1_Dp + 5, y_J1_Dp],
+    label_text="D+",
+    label_ref="D+_0",
+    label_type="bidirectional",
+    text_orient="right"
+)
+# Connect label D+ to the connector pin
+connect_pins("D+_0", "1", "J1", "D+")
+
+# Add label D- next to the D- pin of the USB_B connector
+x_J1_Dm, y_J1_Dm = get_pin_location(symbol_ref="J1", pin_name="D-")
+add_label(
+    label_pos=[x_J1_Dm + 5, y_J1_Dm],
+    label_text="D-",
+    label_ref="D-_0",
+    label_type="bidirectional",
+    text_orient="right"
+)
+# Connect label D- to the connector pin
+connect_pins("D-_0", "1", "J1", "D-")
+
+# Connect VBUS pin of the connector to the VBUS power symbol
+connect_pins("#PWR_VBUS", "VBUS", "J1", "VBUS")
+
+# Connect GND pin of the connector to the GND power symbol
+connect_pins("#PWR_GND", "GND", "J1", "GND")
+
+# Write out all wires
+write_out_all_wires()
