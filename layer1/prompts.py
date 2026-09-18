@@ -33,3 +33,20 @@ CRITICAL RULES:
 
 def build_user_prompt(vague_prompt: str) -> str:
     return f"Design a circuit candidate for this request: {vague_prompt}"
+
+
+def build_feedback_prompt(error_text: str) -> str:
+    """
+    Fed as a genuine user turn AFTER the previous attempt is replayed as an
+    assistant turn (see generate_candidates.py's retry loop) - not appended
+    as a second user message. Confirmed elsewhere this session (SchGen's own
+    retry loop) that a bare user->user pair is not reliably followed even
+    when it contains the exact correct answer; a real multi-turn correction
+    (assistant's prior attempt, then a user reply pointing at the specific
+    real error) is the structure these models actually respond to.
+    """
+    return f"""That candidate failed verification. Here is the real error, verbatim:
+###
+{error_text}
+###
+Fix the specific issue above. Every part_id and pin must still come EXACTLY from the allowed vocabulary in the system prompt - do not invent a replacement that isn't in it. Output a corrected candidate as a single JSON object (not an array)."""

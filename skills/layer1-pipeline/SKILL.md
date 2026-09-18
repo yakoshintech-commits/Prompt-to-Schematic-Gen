@@ -6,6 +6,10 @@ Layer 1's own architecture end to end - retrieval -> generation -> hallucination
 
 ## Key facts (confirmed empirically, not assumed)
 
+**Verify-and-retry per candidate slot (`generate_one_verified_candidate` / `generate_verified_candidates` in `layer1/generate_candidates.py`) - built after confronting a real problem, not a nice-to-have.** Every candidate generated live this session before this existed - 5 out of 5, across two separate one-shot test runs - failed verification. That mirrors exactly what SchGen needed before its own verify-and-retry loop existed. Fix: generate one candidate, verify it, and on failure replay the previous attempt as a real assistant turn plus the actual verification error as a genuine user reply (same multi-turn structure SchGen's retry loop needed - see `build_feedback_prompt`'s docstring), retrying up to `max_attempts` before giving up on that slot.
+
+**First genuine, independently-verified PASS from the live pipeline**, on "I need something to blink an LED" (`max_attempts=3`, took 2 attempts): the model settled on `SK6812` (an addressable LED driver IC) plus `0402LED`, with every `pin_id`/`pin_name` in the final candidate checked directly against `kg_store` after the fact and confirmed to match exactly (`SK6812`: pin 1=VSS, 2=DIN, 3=VDD, 4=DOUT; `0402LED`: pin 1=A, 2=K - all correct in the candidate). Attempt 1 evidently failed (attempt count was 2, not 1) and the real error feedback got it to a genuinely correct result on retry - not a first-try fluke.
+
 **Pipeline shape** (`layer1/pipeline.py`'s `run_layer1`, built Step 5):
 ```
 vague_prompt

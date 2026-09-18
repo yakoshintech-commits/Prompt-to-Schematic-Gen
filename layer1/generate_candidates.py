@@ -15,7 +15,7 @@ import subprocess
 
 import requests
 
-from prompts import build_system_prompt, build_user_prompt
+from prompts import build_system_prompt, build_user_prompt, build_feedback_prompt
 from retrieval import retrieve_relevant_components
 
 MODEL_NAME = "llama3.1:8b"
@@ -62,16 +62,13 @@ def _parse_candidate_json(raw: str) -> dict:
         ) from e
 
 
-def _call_model(system_prompt: str, user_prompt: str) -> str:
+def _call_model(messages: list[dict]) -> str:
     check_headroom_or_raise()
     resp = requests.post(
         OLLAMA_URL,
         json={
             "model": MODEL_NAME,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            "messages": messages,
             "stream": False,
             "options": {"temperature": 0},
         },
@@ -84,10 +81,14 @@ def _call_model(system_prompt: str, user_prompt: str) -> str:
 def generate_candidates(vague_prompt: str, kg_store, n: int = 4) -> list[dict]:
     """
     Retrieve relevant real components, then ask the local model for up to n
-    circuit candidates grounded ONLY in that vocabulary. Each returned dict
-    matches the candidate schema (id, name, summary, tradeoffs, assumptions,
-    components, nets) - not yet fact-checked (that's Step 3) or verified
-    (Step 4), just what the model produced.
+    circuit candidates grounded ONLY in that vocabulary in a single call.
+    Each returned dict matches the candidate schema - not yet fact-checked
+    or verified. Kept for the original Step 2 one-shot use case; see
+    generate_verified_candidates for the retry-loop version that actually
+    checks each candidate and tries again on failure - confirmed necessary,
+    not optional, after every candidate from this one-shot version failed
+    verification across every real test run this session (documented in
+    skills/layer1-pipeline/SKILL.md).
     """
     allowed_components = retrieve_relevant_components(vague_prompt, kg_store, top_k=15)
     allowed_json = json.dumps(allowed_components, indent=2)
@@ -95,7 +96,11 @@ def generate_candidates(vague_prompt: str, kg_store, n: int = 4) -> list[dict]:
     system_prompt = build_system_prompt(allowed_json)
     user_prompt = build_user_prompt(vague_prompt) + f"\n\nPropose {n} architecturally distinct candidates as a JSON array of {n} candidate objects, not a single object."
 
-    raw = _call_model(system_prompt, user_prompt)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    raw = _call_model(messages)
     parsed = _parse_candidate_json(raw)
 
     if isinstance(parsed, dict):
@@ -104,3 +109,72 @@ def generate_candidates(vague_prompt: str, kg_store, n: int = 4) -> list[dict]:
         raise ValueError(f"Expected a JSON array of candidates, got {type(parsed).__name__}: {raw[:300]!r}")
 
     return parsed
+
+
+def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, prev_response: str | None) -> tuple[dict, str]:
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    if feedback and prev_response:
+        # Real multi-turn correction (assistant's own prior attempt, then a
+        # genuine user reply), not a second back-to-back user message - see
+        # build_feedback_prompt's docstring for why this structure matters.
+        messages.append({"role": "assistant", "content": prev_response})
+        messages.append({"role": "user", "content": build_feedback_prompt(feedback)})
+
+    raw = _call_model(messages)
+    parsed = _parse_candidate_json(raw)
+    if isinstance(parsed, list):
+        parsed = parsed[0] if parsed else {}
+    return parsed, raw
+
+
+def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: str, max_attempts: int = 3) -> dict:
+    """
+    Generate ONE candidate, verify it, and on failure feed the real error
+    back for another attempt (up to max_attempts) before giving up and
+    returning the last attempt's result as-is (still carrying its real
+    verification_status/errors). Mirrors the verify-and-retry pattern
+    already proven for SchGen this session - Layer 1's own generation step
+    needed the same thing, not just Step 3/4's ability to detect failure.
+    """
+    from verify_candidate import verify_candidate  # local import: avoids a cycle at module load time
+
+    system_prompt = build_system_prompt(allowed_json)
+    user_prompt = build_user_prompt(vague_prompt)
+
+    feedback = None
+    prev_response = None
+    candidate = {}
+
+    for attempt in range(1, max_attempts + 1):
+        candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response)
+        verify_candidate(candidate, kg_store)
+        candidate["_attempts"] = attempt
+
+        if candidate.get("verification_status") == "passed":
+            return candidate
+
+        feedback = "\n".join(candidate.get("verification_errors") or ["Unknown verification failure."])
+        prev_response = raw
+
+    return candidate
+
+
+def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 4, max_attempts: int = 3) -> list[dict]:
+    """
+    Generate n architecturally-distinct candidate SLOTS, each with its own
+    verify-and-retry budget (up to max_attempts). Retrieval is computed once
+    and shared across all slots/attempts, since it only depends on
+    vague_prompt. Unlike generate_candidates (one shot, N candidates in one
+    call), this actually tries to get each slot to a real pass, not just to
+    a plausible-looking first draft.
+    """
+    allowed_components = retrieve_relevant_components(vague_prompt, kg_store, top_k=15)
+    allowed_json = json.dumps(allowed_components, indent=2)
+
+    return [
+        generate_one_verified_candidate(vague_prompt, kg_store, allowed_json, max_attempts=max_attempts)
+        for _ in range(n)
+    ]

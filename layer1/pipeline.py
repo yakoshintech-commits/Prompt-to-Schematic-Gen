@@ -1,12 +1,16 @@
 """
-Orchestration + scoring: calls generate_candidates, runs verify_candidate on
-every result, computes a deterministic weighted score, and returns both the
-full candidate list and a ranked list. Does NOT auto-pick a winner. Per
-T001 Step 5.
+Orchestration + scoring: calls the retry-verified generator, computes a
+deterministic weighted score, and returns both the full candidate list and
+a ranked list. Does NOT auto-pick a winner. Per T001 Step 5.
+
+Uses generate_verified_candidates (generate -> verify -> retry-with-real-
+feedback per candidate slot), not the older one-shot generate_candidates -
+every candidate from the one-shot version failed verification across every
+real test run this session (see skills/layer1-pipeline/SKILL.md), the same
+shape of problem SchGen had before its own verify-and-retry loop existed.
 """
 
-from generate_candidates import generate_candidates
-from verify_candidate import verify_candidate
+from generate_candidates import generate_verified_candidates
 
 DEFAULT_WEIGHTS = {"cost": 0.4, "simplicity": 0.3, "part_availability": 0.3}
 
@@ -28,9 +32,9 @@ def _score_candidate(candidate: dict, weights: dict) -> float:
     )
 
 
-def run_layer1(vague_prompt: str, kg_store, n: int = 4, weights: dict | None = None) -> dict:
+def run_layer1(vague_prompt: str, kg_store, n: int = 4, weights: dict | None = None, max_attempts: int = 3) -> dict:
     """
-    Runs the full Layer 1 pipeline: generate -> verify -> score -> rank.
+    Runs the full Layer 1 pipeline: generate-with-retry -> score -> rank.
     Returns {"candidates": [...], "ranked": [...]} - the ranked list always
     puts verification-passed candidates above failed_checks/rejected ones,
     regardless of score; within each group, higher score ranks first. Does
@@ -39,9 +43,8 @@ def run_layer1(vague_prompt: str, kg_store, n: int = 4, weights: dict | None = N
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
-    candidates = generate_candidates(vague_prompt, kg_store, n=n)
+    candidates = generate_verified_candidates(vague_prompt, kg_store, n=n, max_attempts=max_attempts)
     for candidate in candidates:
-        verify_candidate(candidate, kg_store)
         candidate["score"] = _score_candidate(candidate, weights)
 
     def rank_key(c):
