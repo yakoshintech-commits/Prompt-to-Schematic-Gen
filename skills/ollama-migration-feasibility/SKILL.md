@@ -41,7 +41,20 @@ Key technical points, in order, each one a real thing that had to be figured out
 4. **Got the tensor orientation wrong on the first attempt, caught immediately by a real error, not silently** - guessed that the converter wanted the "raw," pre-generate.py-transpose orientation and undid the in-memory `.transpose(1, 2)` before saving. Ollama's own error (`expected 2880,2880,32 got 5760,1440,32,1`) proved that guess backwards - the converter actually wants the tensor in generate.py's own *consumption* orientation (the transpose already applied), not the raw dequant orientation. Fixed by removing the undo step; conversion succeeded immediately after.
 5. **Ollama correctly recognized the mixed-precision result** - `ollama ps` reports `"quantization_level":"MXFP4_MOE"` for the loaded model, confirming the untouched 21 layers stayed in their compact native format rather than the whole model silently ballooning to all-dense bf16.
 
-**Verdict: T002 is feasible, and a real working prototype now exists.** Not yet a finished Work Item - this was one prompt, one comparison, and the GGUF/Ollama model was tested with `--outtype bf16` for the merged layers specifically (not yet quantized down further, e.g. Q4_K_M, which would need its own correctness check before being trusted). But the hard technical risk (can SchGen's specific adapter shape actually make it through merge -> GGUF -> Ollama and still work) is resolved: yes, confirmed by a real, ERC-clean, generated schematic.
+**Verdict: T002 is feasible, and a real working prototype now exists.** The GGUF/Ollama model was tested with `--outtype bf16` for the merged layers specifically (not yet quantized down further, e.g. Q4_K_M, which would need its own correctness check before being trusted). But the hard technical risk (can SchGen's specific adapter shape actually make it through merge -> GGUF -> Ollama and still work) is resolved: yes, confirmed by real, ERC-clean, generated schematics across multiple varied prompts (see below), not a single lucky result.
+
+## Broader validation + a real retry loop for the Ollama path (2026-09-18, same day)
+
+Ran 2 more varied prompts (a 3.3V AP2112K linear regulator, a simple LED indicator) through the exact same rigorous method - real symbol selection, real `prepare_context()`, real KiCad build, real ERC check:
+
+- **LED indicator**: passed cleanly, 0 ERC errors, first try.
+- **AP2112K regulator**: failed the build step - the model asked for symbol `AP2112K`, but the real KiCad library only has voltage-suffixed variants (`AP2112K-3.3`, `AP2112K-2.6`, `AP2112K-2.5`). This is the exact same symbol-name near-miss hallucination class already documented in `backlog.md`'s T001 findings row - a pre-existing SchGen limitation, not something introduced by the merge/GGUF/Ollama pipeline.
+
+Built `SchGen/schematic_generation/verify_and_retry_ollama.py` - a direct port of `verify_and_retry.py`'s proven generate -> build -> ERC -> feed real error back -> retry loop, but generating via Ollama's `/api/chat` instead of shelling out to `generate.py`'s local PyTorch model (symbol selection still runs locally - it's a generic task unrelated to which backend serves the merged model). Confirmed Ollama's chat API already returns clean, harmony-channel-stripped content directly (no `<|channel|>final<|message|>` wrapper to extract, unlike the raw HF `tokenizer.batch_decode` output `generate.py` has to parse).
+
+Ran the retry loop on the exact regulator prompt that had just failed: **attempt 1 failed identically** (same `AP2112K` vs `AP2112K-3.3` mismatch), the real error (including the "Did you mean: [...]" hint) got fed back using the same proven multi-turn structure (previous response replayed as an assistant turn, error as a genuine user reply), and **attempt 2 corrected itself and passed with 0 ERC errors**. Full log: `evidence/T002-retry-loop-regulator.log`.
+
+**Result across all real testing this session: 3/3 prompts reach a clean ERC pass** (USB_B connector and LED indicator directly; the regulator via one retry) - the same reliability shape already proven for the PyTorch-based pipeline, now demonstrated for the Ollama-served merged model too.
 
 ## Code references (end-to-end prototype)
 
@@ -50,6 +63,13 @@ Key technical points, in order, each one a real thing that had to be figured out
 - `llama.cpp/` (gitignored, cloned fresh) - upstream conversion tooling, specifically `conversion/gpt_oss.py`
 - `.venv-gguf-convert/` (gitignored, isolated venv) - kept separate from the main venv specifically to avoid the conversion script's CPU-only `torch==2.11.0` pin clobbering the main venv's working GPU torch
 - Ollama model `schgen-merged-test` - the served result
+- `SchGen/schematic_generation/verify_and_retry_ollama.py` - the retry loop for the Ollama-served path, proven on the regulator prompt above
+
+## Still open before this is a finished Work Item
+
+- Only 3 prompts tested total. Broader domain coverage (matching the variety Layer 1's own testing used) would build more confidence.
+- Merged layers are bf16, not requantized down to match the rest of the model's compactness (e.g. Q4_K_M) - that would need its own correctness check, same rigor as the orientation bug caught here.
+- No decision yet on whether this should replace `generate.py`'s PyTorch path in normal use, or coexist as an alternative - that's a Sponsor call, not a technical blocker.
 
 ## Common mistakes to avoid
 
