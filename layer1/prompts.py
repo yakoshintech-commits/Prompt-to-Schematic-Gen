@@ -12,8 +12,9 @@ Output STRICT JSON only, no markdown code fences, no commentary before or after.
   "tradeoffs": "<1-2 sentences on what this design trades off>",
   "assumptions": "<1-2 sentences on assumptions made>",
   "components": [{"ref": "<reference designator, e.g. R1>", "part_id": "<EXACT part_id from the allowed vocabulary below>"}],
-  "nets": [{"name": "<net name>", "endpoints": [{"ref": "<matches a components[].ref>", "pin_id": "<EXACT pin id from that component's real pin list>", "pin_name": "<EXACT pin name from that component's real pin list>"}]}]
-}"""
+  "nets": [{"name": "<net name>", "endpoints": [{"ref": "<matches a components[].ref>", "pin_choice": "<EXACT one of the allowed '<part_id>::<pin_id>::<pin_name>' choices for the component that ref actually uses>"}]}]
+}
+Note: when a candidate schema is enforced (format-constrained generation), "pin_choice" is a closed enum of every real (part_id, pin_id, pin_name) triple in the allowed vocabulary above - you cannot type a value outside this list. Pick the ref's OWN component's pin, not a different component's."""
 
 
 def build_system_prompt(allowed_components_json: str) -> str:
