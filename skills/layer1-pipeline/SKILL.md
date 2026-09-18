@@ -46,10 +46,24 @@ Does not auto-pick a winner - returns the full ranked list for a human (or a fut
 - Don't substring-match against free-text `note` fields - use whole-word matching there specifically, or short real keywords (like "led") will false-positive inside unrelated English words.
 - Don't assume a retrieval gap is a bug in the matching logic before checking whether the KG actually has good coverage for that query's domain - see limitation 5 above.
 
+## Last known test results (Step 6, 2026-09-18)
+
+`layer1/test_pipeline.py` ran the full retry-loop-enabled pipeline (`run_layer1`, n=2, max_attempts=3) end to end on 4 vague prompts spanning different circuit domains confirmed to have real coverage in the 241-component KG (LED/indicator, current sensing, OLED display, USB charging - board-to-board-cable style prompts deliberately excluded, see limitation 5 above). Raw output: `evidence/T001-step6-pipeline-test.log` (first 3 prompts) + `evidence/T001-step6-usb-charging-retry.log` (4th prompt, re-run standalone after one real Ollama read-timeout on the first pass - GPU headroom and `ollama ps` both confirmed healthy immediately after, so the timeout was a one-off slow response, not resource contention; the standalone re-run of the same prompt completed in 19.5s).
+
+**Totals across all 4 prompts, 8 candidates generated:** 4 `passed`, 1 `failed_checks`, 3 `rejected`.
+
+- "I need something to blink an LED" - 2/2 **passed** (SK6812 + 0402LED, attempts=2 each - consistent with the earlier single-candidate retry-loop test).
+- "I want a small OLED display for status info" - 2/2 **passed**, first try (attempts=1 each, SSD1306-based).
+- "add a way to measure current" - 1 **rejected**, 1 **failed_checks**. The rejected one hallucinated pin `(pin_id='8', pin_name='+')` on `INA226`; INA226's real pin 8 is `VIN+`, not `+` - a plausible-looking but fabricated pin name. The `failed_checks` one passed the fact-check (real parts/pins) but the real verifier found several pins genuinely unconnected in the candidate's own net list - a different, later-stage failure than a hallucination.
+- "something for charging a phone over USB" - **2/2 rejected**. One hallucinated pin `(pin_id='16', pin_name='V_BAT')` on `TP4056_5V_1A`, which only has 6 real pins (`OUT+`, `B+`, `B-`, `OUT-`, `OUT+`, `OUT-` - no pin 16, no `V_BAT`). The other is a new failure mode not seen before this test: the model emitted its own internal reasoning text as the `part_id` value itself - `"100nF Ceramic Capacitor is not in the vocabulary, so we'll use a 100nF cap from the CH340C's decoupling cap requirement"` - instead of a real part_id or an honest admission in `assumptions` (which the system prompt explicitly asks for in this exact situation, rule 3). Confirms `validate_facts.py`'s existence-check on `part_id` is doing real work beyond just catching plausible-looking-but-wrong IDs - it also catches outright malformed output.
+
+**This is real evidence the pipeline is doing its job, not evidence it's broken**: every rejected candidate was correctly caught by Step 3's deterministic filter before reaching the real verifier, and the retry loop exhausted its 3 attempts on each without the model correcting itself for the current-sensing and USB-charging domains specifically - the "invent a real-sounding pin/value under vocabulary pressure" failure mode from Step 2's original findings is confirmed to persist even with retry feedback, at least for llama3.1:8b on harder/less-common domains (current sensing, charging) versus the two domains with cleaner passes (LED, OLED display). Worth revisiting if this becomes a blocker rather than staying a documented, correctly-caught limitation.
+
 ## Code references
 
 - `layer1/retrieval.py` - `retrieve_relevant_components`, `_STOPWORDS`
 - `layer1/test_retrieval.py` - the 4-vague-prompt test that surfaced limitations 1-5 above
 - `layer1/kg_open_schematics_store.py` - `OpenSchematicsKGStore`, the kg_store retrieval runs against
+- `layer1/test_pipeline.py` - Step 6's end-to-end test across 4 prompts/domains, see "Last known test results" above
 
 TODO.

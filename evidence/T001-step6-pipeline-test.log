@@ -1,0 +1,119 @@
+======================================================================
+PROMPT: 'I need something to blink an LED'
+======================================================================
+- id='led_blinker' name='Simple LED Blinker'
+  summary: A basic circuit that blinks an LED using a microcontroller.
+  verification_status: passed  (attempts=2, score=0.600)
+
+- id='led_blinker' name='Simple LED Blinker'
+  summary: A basic circuit to blink an LED using a microcontroller.
+  verification_status: passed  (attempts=2, score=0.600)
+
+======================================================================
+PROMPT: 'add a way to measure current'
+======================================================================
+- id='current-measurement' name='Current Measurement Circuit'
+  summary: A simple circuit to measure current using a Hall effect sensor.
+  verification_status: rejected  (attempts=3, score=0.260)
+  errors: ["Net 'SENSE+' references pin (pin_id='8', pin_name='+') on component 'U2' (part_id='INA226'), but that part's real pins are [('1', 'A1'), ('2', 'A0'), ('3', 'SDA'), ('4', 'SCL'), ('5', 'VS'), ('6', 'GND'), ('7', 'VIN-'), ('8', 'VIN+')]. This pin_id/pin_name pair does not exist on this specific component."]
+  *** FLAGGED: rejected - a hallucination slipped past prompt-level constraints and was only caught by the deterministic filter. ***
+
+- id='current-measurement' name='Current Measurement Circuit'
+  summary: A simple circuit to measure current using a Hall effect sensor.
+  verification_status: failed_checks  (attempts=3, score=0.260)
+  errors: ['R1: supply pin VS missing net', 'R1: ground pin GND missing net', 'R1: pin VIN+ is unconnected', 'R1: pin VIN- is unconnected', 'R1: pin SDA is unconnected', 'R1: pin SCL is unconnected', 'R2: supply pin VS missing net', 'R2: ground pin GND missing net', 'R2: pin VIN+ is unconnected', 'R2: pin VIN- is unconnected', 'R2: pin SDA is unconnected', 'R2: pin SCL is unconnected', 'U1: pin VOUT is unconnected']
+
+======================================================================
+PROMPT: 'I want a small OLED display for status info'
+======================================================================
+- id='oled_status' name='Small OLED Display for Status Info'
+  summary: A simple circuit for displaying status information on a small OLED display.
+  verification_status: passed  (attempts=1, score=0.650)
+
+- id='oled_status' name='Small OLED Display for Status Info'
+  summary: A simple circuit for displaying status information on a small OLED display.
+  verification_status: passed  (attempts=1, score=0.650)
+
+======================================================================
+PROMPT: 'something for charging a phone over USB'
+======================================================================
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 537, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 1457, in getresponse
+    response.begin()
+  File "/usr/lib/python3.12/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 707, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 845, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/retry.py", line 472, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 791, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 539, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 371, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=180)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/test_pipeline.py", line 106, in <module>
+    main()
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/test_pipeline.py", line 57, in main
+    result = run_layer1(prompt, kg, n=N_CANDIDATES, max_attempts=MAX_ATTEMPTS)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/pipeline.py", line 46, in run_layer1
+    candidates = generate_verified_candidates(vague_prompt, kg_store, n=n, max_attempts=max_attempts)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/generate_candidates.py", line 178, in generate_verified_candidates
+    generate_one_verified_candidate(vague_prompt, kg_store, allowed_json, max_attempts=max_attempts)
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/generate_candidates.py", line 152, in generate_one_verified_candidate
+    candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/generate_candidates.py", line 126, in _generate_one
+    raw = _call_model(messages)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/layer1/generate_candidates.py", line 67, in _call_model
+    resp = requests.post(
+           ^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=180)
