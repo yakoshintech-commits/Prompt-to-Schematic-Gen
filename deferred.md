@@ -18,7 +18,7 @@
 | Adversarial review in a fresh context window | The Scanner and QA Lead both exist and are reliable, and single-pass QA review is missing issues | armed | setup | 0 |
 | Auto-PR / babysit-to-merge automation | Adversarial review exists and is trusted, and you want to remove the Sponsor from the loop on low-risk changes specifically | armed | setup | 0 |
 | Unattended long-running sessions | Adversarial review and auto-PR above both exist and are trusted | armed | setup | 0 |
-| Remove kicad_add_symbol.py fuzzy-match auto-correction stopgap | Layer 1's validate_facts.py hard hallucination filter is built and catches unresolvable component names before generation reaches SchGen | built | 2026-09-18 | Stopgap added 2026-09-18 after verify-and-retry failed 3/3 attempts to self-correct an exact-string near-miss even with correct feedback delivered in proper multi-turn structure. See context.md Lessons v3. |
+| Remove kicad_add_symbol.py fuzzy-match auto-correction stopgap | Layer 1's validate_facts.py hard hallucination filter is built and catches unresolvable component names before generation reaches SchGen | shelved | 2026-09-18 | Built 2026-09-18 after verify-and-retry failed 3/3 attempts to self-correct an exact-string near-miss even with correct feedback delivered in proper multi-turn structure - then reverted same day (Sponsor decision) so this hallucination class gets the same systemic Layer 1 fix as the others found alongside it, instead of a special case for whichever one got fixed first. See context.md Lessons v3 and backlog.md T001 findings row. |
 
 Statuses: armed, fired, building, built, shelved.
 
