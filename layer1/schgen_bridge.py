@@ -49,7 +49,16 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
     for part_id in order:
         refs = by_part[part_id]
         note = (kg_store.get_component(part_id) or {}).get("note", "")
-        desc = f"a {part_id} ({note})" if note else f"a {part_id}"
+        # Include the real stock KiCad library name explicitly - confirmed
+        # necessary (2026-09-18): without it, SchGen has to guess symbol_lib
+        # on its own and can guess a real-sounding but wrong one (e.g.
+        # "LCD" instead of the actual "Display_Character" for
+        # LCD-016N002L), causing a real FileNotFoundError at build time.
+        # schgen_compatible_kg_store.py already computes this exact mapping
+        # for exactly this purpose - use it instead of leaving it unsaid.
+        symbol_lib = kg_store.symbol_lib_for(part_id) if hasattr(kg_store, "symbol_lib_for") else None
+        lib_hint = f", in the KiCad library \"{symbol_lib}\"" if symbol_lib else ""
+        desc = f"a {part_id}{lib_hint} ({note})" if note else f"a {part_id}{lib_hint}"
         if len(refs) == 1:
             comp_phrases.append(f"{refs[0]} as {desc}")
         else:

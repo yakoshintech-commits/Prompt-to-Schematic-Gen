@@ -1,0 +1,91 @@
+```python
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# Define the center of the schematic (roughly the middle of an A4 sheet)
+center_x_1, center_y_1 = 150.0, 150.0
+
+# Place the LCD module (U1) at the center
+add_schematic_symbol(
+    symbol_lib="LCD",
+    symbol_name="LCD-016N002L",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="LCD-016N002L",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the 1N4148 diode (R1) to the left of the LCD
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Small",
+    pos_x=center_x_1 - 30,   # 30 mm left
+    pos_y=center_y_1,
+    reference="R1",
+    value="1N4148",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the first generic small‑footprint diode (D1) to the right of the LCD
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Small",
+    pos_x=center_x_1 + 30,   # 30 mm right
+    pos_y=center_y_1,
+    reference="D1",
+    value="D_Small",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the second generic small‑footprint diode (C1) further right (unused in this schematic)
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Small",
+    pos_x=center_x_1 + 60,   # 60 mm right
+    pos_y=center_y_1,
+    reference="C1",
+    value="D_Small",
+    rotation=0,
+    mirror="None"
+)
+
+# ------------------------------------------------------------------
+# Connect the pins according to the user specification
+# ------------------------------------------------------------------
+
+# 1. U1 VDD (pin 2)  ->  R1 A (pin 2)
+connect_pins("U1", "VDD", "R1", "A")
+
+# 2. U1 VSS (pin 1)  ->  R1 K (pin 1)
+connect_pins("U1", "VSS", "R1", "K")
+
+# 3. R1 K (pin 1)    ->  D1 A (pin 2)
+connect_pins("R1", "K", "D1", "A")
+
+# 4. U1 RS (pin 4)   ->  D1 A (pin 2)
+connect_pins("U1", "RS", "D1", "A")
+
+# 5. U1 E (pin 6)    ->  D1 K (pin 1)
+connect_pins("U1", "E", "D1", "K")
+
+# 6. U1 RW (pin 5)   ->  D1 K (pin 1)
+connect_pins("U1", "RW", "D1", "K")
+
+# 7. U1 LED+ (pin 15) -> D1 A (pin 2)
+connect_pins("U1", "LED+", "D1", "A")
+
+# ------------------------------------------------------------------
+# Write out all wires
+# ------------------------------------------------------------------
+write_out_all_wires()
+```

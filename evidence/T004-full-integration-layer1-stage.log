@@ -1,0 +1,139 @@
+======================================================================
+STAGE 1: Layer 1 - vague prompt -> verified candidate
+Prompt: 'I want a small OLED display for status info'
+======================================================================
+status='passed' attempts=1
+{
+  "id": "oled_status",
+  "name": "Small OLED Display for Status Info",
+  "summary": "A simple circuit to drive a small OLED display for status information.",
+  "components": [
+    {
+      "ref": "D1",
+      "part_id": "D_Small"
+    },
+    {
+      "ref": "R1",
+      "part_id": "1N4148"
+    },
+    {
+      "ref": "C1",
+      "part_id": "D_Small"
+    },
+    {
+      "ref": "U1",
+      "part_id": "LCD-016N002L"
+    }
+  ],
+  "nets": [
+    {
+      "name": "VCC",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "2",
+          "pin_name": "VDD"
+        },
+        {
+          "ref": "R1",
+          "pin_id": "2",
+          "pin_name": "A"
+        }
+      ]
+    },
+    {
+      "name": "GND",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "1",
+          "pin_name": "VSS"
+        },
+        {
+          "ref": "R1",
+          "pin_id": "1",
+          "pin_name": "K"
+        },
+        {
+          "ref": "D1",
+          "pin_id": "2",
+          "pin_name": "A"
+        }
+      ]
+    },
+    {
+      "name": "DATA",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "4",
+          "pin_name": "RS"
+        },
+        {
+          "ref": "D1",
+          "pin_id": "2",
+          "pin_name": "A"
+        }
+      ]
+    },
+    {
+      "name": "CLK",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "6",
+          "pin_name": "E"
+        },
+        {
+          "ref": "D1",
+          "pin_id": "1",
+          "pin_name": "K"
+        }
+      ]
+    },
+    {
+      "name": "CS",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "5",
+          "pin_name": "RW"
+        },
+        {
+          "ref": "D1",
+          "pin_id": "1",
+          "pin_name": "K"
+        }
+      ]
+    },
+    {
+      "name": "LED",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pin_id": "15",
+          "pin_name": "LED+"
+        },
+        {
+          "ref": "D1",
+          "pin_id": "2",
+          "pin_name": "A"
+        }
+      ]
+    }
+  ],
+  "verification_status": "passed",
+  "verification_errors": [],
+  "verification_warnings": [],
+  "_attempts": 1,
+  "score": 0.56
+}
+
+======================================================================
+STAGE 2: candidate -> detailed prompt (T003 bridge)
+======================================================================
+Design a schematic for A simple circuit to drive a small OLED display for status information. Use exactly these real components: D1, and C1 as 2 separate instances of a D_Small (Generic small-footprint diode), R1 as a 1N4148 (Small-signal fast-switching diode, 100 V 200 mA, through-hole), U1 as a LCD-016N002L (16x2 character LCD module with HD44780 controller. 16-pin interface.). Do not substitute or invent a different part for any of them. Wire it up as follows: connect U1's VDD pin (pin 2) to R1's A pin (pin 2); connect U1's VSS pin (pin 1) to R1's K pin (pin 1) to D1's A pin (pin 2); connect U1's RS pin (pin 4) to D1's A pin (pin 2); connect U1's E pin (pin 6) to D1's K pin (pin 1); connect U1's RW pin (pin 5) to D1's K pin (pin 1); connect U1's LED+ pin (pin 15) to D1's A pin (pin 2).
+
+======================================================================
+STAGE 3: detailed prompt -> Ollama-served merged SchGen (T002), with retry
+======================================================================

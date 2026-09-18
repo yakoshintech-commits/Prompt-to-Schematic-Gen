@@ -1,0 +1,83 @@
+# Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# Define center position for the main component (U1)
+center_x_1, center_y_1 = 150.0, 150.0
+
+# Place the LCD module (U1)
+add_schematic_symbol(
+    symbol_lib="Display_Character",
+    symbol_name="LCD-016N002L",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="LCD-016N002L",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the 1N4148 diode (R1) to the left of U1
+add_schematic_symbol(
+    symbol_lib="Diode",
+    symbol_name="1N4148",
+    pos_x=center_x_1 - 50,
+    pos_y=center_y_1,
+    reference="R1",
+    value="1N4148",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the first small diode (D1) below R1
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Small",
+    pos_x=center_x_1 - 50,
+    pos_y=center_y_1 - 30,
+    reference="D1",
+    value="D_Small",
+    rotation=0,
+    mirror="None"
+)
+
+# Place the second small diode (C1) to the right of U1 (unused in connections)
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Small",
+    pos_x=center_x_1 + 30,
+    pos_y=center_y_1,
+    reference="C1",
+    value="D_Small",
+    rotation=0,
+    mirror="None"
+)
+
+# Connect U1 VDD (pin 2) to R1 A (pin 2)
+connect_pins("U1", "2", "R1", "2")
+
+# Connect U1 VSS (pin 1) to R1 K (pin 1)
+connect_pins("U1", "1", "R1", "1")
+
+# Connect R1 K (pin 1) to D1 A (pin 2)
+connect_pins("R1", "1", "D1", "2")
+
+# Connect U1 RS (pin 4) to D1 A (pin 2)
+connect_pins("U1", "4", "D1", "2")
+
+# Connect U1 E (pin 6) to D1 K (pin 1)
+connect_pins("U1", "6", "D1", "1")
+
+# Connect U1 RW (pin 5) to D1 K (pin 1)
+connect_pins("U1", "5", "D1", "1")
+
+# Connect U1 LED+ (pin 15) to D1 A (pin 2)
+connect_pins("U1", "15", "D1", "2")
+
+# Write out all wires
+write_out_all_wires()

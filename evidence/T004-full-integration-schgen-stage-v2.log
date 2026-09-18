@@ -1,0 +1,1066 @@
+[2026-09-18 21:34:59] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-4o_2024-08-06[0m
+[2026-09-18 21:34:59] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-5.2_2025-12-11[0m
+Fetching 41 files:   0%|          | 0/41 [00:00<?, ?it/s]Fetching 41 files: 100%|██████████| 41/41 [00:00<00:00, 34032.55it/s]
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.82it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.88it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.03it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  1.98it/s]
+[2026-09-18 21:35:18] [92mINFO[0m - llm_interface.py:938 - [92mNow using Local LLM of model gpt-oss-20b.[0m
+[SEQLEN] input_ids shape: torch.Size([1, 2117])
+[2026-09-18 21:35:54] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic libraries for the user request. The user wants a schematic for a simple circuit to drive a OLED display? Wait they mention OLED but then components: D1, C1 as 2 instances of D_Small from KiCad library "Device". R1 as a  1N4148 from library "Diode". U1 as LCD-016N002 L from library "Display_Character". They want wiring connections.
+
+We need to identify which libraries are relevant. The libraries list includes many names. We need to check which libraries contain the components used: D_Small in "Device" library; 1N4148 in "Diode" library; LCD-016N002 in "Display_Character" library. So relevant libraries: Device, Diode, Display_Character. Also maybe "Diode" library contains 1N4148. Yes.
+
+Also "Device" library contains D_Small. "Display_Character" contains LCD-016N002. So we should list these libraries.
+
+The question: "Find the related schematic libraries for ...". So answer: Device, Diode (maybe also "Diode" library). And Display_Character. Possibly also "Diode" is part of the list. Yes.
+
+We must not include any other components not in the library. So just list these three.
+
+We need to produce JSON summary with key 'symbols'? Wait the schema: 'description', 'properties': {'symbols'...}. But we need to output JSON with keys? The instruction: "Summarize the output at end of your response using following Json format. ( format the summary as json { <key>: < value> ... } , do not include defs, descriptions, required, only the actual content. ..."
+
+So we need to output something like:
+
+json {
+  "symbols": ["Device", "Diode", "Display_Character"]
+}
+
+But the schema says 'symbols' array of strings. So we output that.
+
+Thus final answer: Provide explanation then JSON.
+
+Let's craft answer.<|end|><|start|>assistant<|channel|>final<|message|>The schematic requires three specific KiCad libraries that contain the exact parts requested:
+
+| Component | Library |
+|-----------|---------|
+| D_Small (two instances) | **Device** |
+| 1N4148 (R1) | **Diode** |
+| LCD‑016N002L (U1) | **Display_Character** |
+
+These are the only libraries needed to source the specified parts. No other libraries are referenced in the design.
+
+```json
+{
+  "symbols": [
+    "Device",
+    "Diode",
+    "Display_Character"
+  ]
+}
+```
+<|return|>
+[2026-09-18 21:35:54] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:36:14] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 2 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:36:54] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 1 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:36:54] [91mERROR[0m - llm_interface.py:1030 - [91mFailed to get completion for gpt-oss-20b[0m
+[2026-09-18 21:36:54] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ None
+[2026-09-18 21:36:54] [91mERROR[0m - llm_interface.py:457 - [91mException occurred: expected string or bytes-like object, got 'NoneType', retrying...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:37:15] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 2 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:37:55] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 1 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:37:55] [91mERROR[0m - llm_interface.py:1030 - [91mFailed to get completion for gpt-oss-20b[0m
+[2026-09-18 21:37:55] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ None
+[2026-09-18 21:37:55] [91mERROR[0m - llm_interface.py:457 - [91mException occurred: expected string or bytes-like object, got 'NoneType', retrying...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:38:16] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 2 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:38:56] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 1 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5112])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.12 GiB. GPU 0 has a total capacity of 31.40 GiB of which 1.44 GiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 20.77 GiB memory in use. Of the allocated memory 19.35 GiB is allocated by PyTorch, and 355.73 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:38:56] [91mERROR[0m - llm_interface.py:1030 - [91mFailed to get completion for gpt-oss-20b[0m
+[2026-09-18 21:38:56] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ None
+[2026-09-18 21:38:56] [91mERROR[0m - llm_interface.py:457 - [91mException occurred: expected string or bytes-like object, got 'NoneType', retrying...[0m
+[2026-09-18 21:38:57] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5333])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.39 GiB. GPU 0 has a total capacity of 31.40 GiB of which 915.50 MiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 21.32 GiB memory in use. Of the allocated memory 19.92 GiB is allocated by PyTorch, and 337.02 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:39:17] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 2 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5333])
+Traceback (most recent call last):
+  File "/scratch/k2983/root-project/pcb-schematic-gen/SchGen/modules/utils/llm_interface.py", line 1005, in get_string_response
+    generated = self.model.generate(**inputs,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 2617, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/generation/utils.py", line 3598, in _sample
+    outputs = self(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 959, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 658, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/utils/generic.py", line 1083, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 491, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 355, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 313, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/transformers/models/gpt_oss/modeling_gpt_oss.py", line 250, in eager_attention_forward
+    combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.39 GiB. GPU 0 has a total capacity of 31.40 GiB of which 915.50 MiB is free. Process 2460693 has 9.15 GiB memory in use. Including non-PyTorch memory, this process has 21.32 GiB memory in use. Of the allocated memory 19.92 GiB is allocated by PyTorch, and 337.02 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2026-09-18 21:39:57] [93mWARNING[0m - llm_interface.py:1035 - [93mRetrying completion for gpt-oss-20b, 1 time left...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5333])
+[2026-09-18 21:40:37] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request. The user wants a schematic for a simple circuit to drive a OLED display? Actually they mention LCD-016N002 L? Wait they say U1 as LCD-016N002. But earlier they said OLED display. But we must use exactly these real components: "D1, and C1" as 2 separate instances "D_Small" in KiCad library "Device". R1 as a  1N4148 in library "Diode". U1 as LCD-... in library "Display_Character". They want wiring connections.
+
+We need to list all related symbols used: D_Small from Device, 1N4148 from Diode, LCD-016N002 from Display_Character. Also we need to include all related symbols even for simple components like resistor, capacitor, etc. But we only have one resistor R1, no capacitor. But they mention C1 as D_Small? Wait they said D1, and C01 as 2 separate instances D_Small. So C1 is also D_Small? That seems odd but per instruction. So we need two D_Small symbols: D1 and C1. Also R1 is a resistor? Actually R1 is a 1N414? Wait they said R1 as a  "1N4148" in library "Diode" - that's a diode, not resistor. So R1 is a diode. So we have 3 diodes: D1, C1, R1. And U1 is LCD-016N002.
+
+Also we might need power symbols? They didn't specify supply. But we might need VDD, VSS, etc. But we can include generic power symbols like VCC, GND? But they didn't ask to include them. They said include all related symbols even simple components like resistors etc. But we only use diodes and LCD. So we list those.
+
+But maybe we need to include the symbol for the LCD-016N002 which has many pins. We need to include that symbol.
+
+Thus output JSON with symbols array containing objects with name and lib_name.
+
+List:
+
+- D1: name "D_Small", lib_name "Device"
+- C1: name "D_smal"? same symbol: "D_Small", "Device"
+- R1: name "1N4148", lib_name "Diode"
+- U1: name "LCD-016N002L", lib_name "Display_Character"
+
+Also maybe include generic power symbols: VDD, VSS? But not necessary.
+
+But the instruction: "NOTE: 1. You should including all related symbols, even simple components like resistores, capacitors, inductors, power symbols." So if we have no resistor, capacitor, inductor, we don't need to include them. But we might need to include power symbols for VDD and VSS? They are pins on LCD. But we don't have separate symbols for VDD and GND. Usually we use VCC and GND symbols. But not required.
+
+Thus output JSON with these four symbols.
+
+Let's produce JSON accordingly.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will contain the following symbols:
+
+* **D1** – a small diode symbol from the *Device* library (`D_Small`).
+* **C1** – another instance of the same small diode symbol from the same library (`D_Small`).  
+  (Although named “C1”, the user explicitly requests it to be a diode.)
+* **R1** – a 1N414 8 fast‑switching diode from the *Diode* library (`1N4148`).
+* **U1** – the 16×2 character LCD module with an HD44780 controller from the *Display_Character* library (`LCD-016N002`).
+
+No additional passive components (resistors, capacitors, inductances) or power symbols are required for this particular wiring scheme.
+
+```json
+{
+  "symbols": [
+    {
+      "name": "D_Small",
+      "lib_name": "Device"
+    },
+    {
+      "name":"D_Small",
+      "\"lib_name\": \"Device\""
+    },
+    {
+       "name":"1N4148",
+       "lib_name":"Diode"
+    },
+    {
+        "name":"LCD-016N002",
+        "lib_name":"Display_Character"
+    }
+  ]
+}
+```
+<|return|>
+[2026-09-18 21:40:37] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 10 column 5 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:40:37] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 9 column 11 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:40:37] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5333])
+[2026-09-18 21:41:11] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request. The user wants a schematic for a simple circuit to drive a OLED display? Actually they mention LCD-016N002 L? Wait they say U1 as LCD-016N002. But earlier they said OLED display. But we must use exactly these real components: "D1, and C1" as 2 separate instances "D_Small" in KiCad library "Device". R1 as a  1N4148 in library "Diode". U1 as LCD-... in library "Display_Character". They want wiring connections.
+
+We need to list all related symbols used: D_Small from Device, 1N4148 from Diode, LCD-016N002 from Display_Character. Also we need to include all related symbols even for simple components like resistor, capacitor, etc. But we only have one resistor R1, no capacitor. But they mention C1 as D_Small? Wait they said D1, and C01 as 2 separate instances D_Small. So C1 is also D_Small? That seems odd but per instruction. So we need two D_Small symbols: D1 and C1. Also R1 is a resistor? Actually R1 is a 1N414? Wait they said R1 as a  "1N4148" in library "Diode" - that's a diode, not resistor. So R1 is a diode. So we have 3 diodes: D1, C1, R1. And U1 is LCD-016N002.
+
+Also we might need power symbols? They didn't specify supply. But we might need VDD, VSS, etc. But we can include generic power symbols like VCC, GND? But they didn't ask to include them. They said include all related symbols even simple components like resistors etc. But we only use diodes and LCD. So we list those.
+
+But maybe we need to include the symbol for the LCD-016N002 which has many pins. We need to include that symbol.
+
+Thus output JSON with symbols array containing objects with name and lib_name.
+
+List:
+
+- D1: name "D_Small", lib_name "Device"
+- C1: name "D_smal"? same symbol: "D_Small", "Device"
+- R1: name "1N4148", lib_name "Diode"
+- U1: name "LCD-016N002L", lib_name "Display_Character"
+
+Also maybe include generic power symbols: VDD, VSS? But not necessary.
+
+But the instruction: "NOTE: 1. You should including all related symbols, even simple components like resistores, capacitors, inductors, power symbols." So if we have no resistor, capacitor, inductor, we don't need to include them. But we might need to include power symbols for VDD and VSS? They are pins on LCD. But we don't have separate symbols for VDD and GND. Usually we use VCC and GND symbols. But not required.
+
+Thus output JSON with these four symbols.
+
+Let's produce JSON accordingly.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will contain the following symbols:
+
+* **D1** – a small diode symbol from the *Device* library (`D_Small`).
+* **C1** – another instance of the same small diode symbol from the same library (`D_Small`).  
+  (Although named “C1”, the user explicitly requests it to be a diode.)
+* **R1** – a 1N414 8 fast‑switching diode from the *Diode* library (`1N4148`).
+* **U1** – the 16×2 character LCD module with an HD44780 controller from the *Display_Character* library (`LCD-016N002`).
+
+No additional passive components (resistors, capacitors, inductances) or power symbols are required for this particular wiring scheme.
+
+```json
+{
+  "symbols": [
+    {
+      "name": "D_Small",
+      "lib_name": "Device"
+    },
+    {
+      "name":"D_Small",
+      "\"lib_name\": \"Device\""
+    },
+    {
+       "name":"1N4148",
+       "lib_name":"Diode"
+    },
+    {
+        "name":"LCD-016N002",
+        "lib_name":"Display_Character"
+    }
+  ]
+}
+```
+<|return|>
+[2026-09-18 21:41:11] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 10 column 5 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:41:11] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 9 column 11 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:41:11] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[SEQLEN] input_ids shape: torch.Size([1, 5333])
+[2026-09-18 21:41:45] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request. The user wants a schematic for a simple circuit to drive a OLED display? Actually they mention LCD-016N002 L? Wait they say U1 as LCD-016N002. But earlier they said OLED display. But we must use exactly these real components: "D1, and C1" as 2 separate instances "D_Small" in KiCad library "Device". R1 as a  1N4148 in library "Diode". U1 as LCD-... in library "Display_Character". They want wiring connections.
+
+We need to list all related symbols used: D_Small from Device, 1N4148 from Diode, LCD-016N002 from Display_Character. Also we need to include all related symbols even for simple components like resistor, capacitor, etc. But we only have one resistor R1, no capacitor. But they mention C1 as D_Small? Wait they said D1, and C01 as 2 separate instances D_Small. So C1 is also D_Small? That seems odd but per instruction. So we need two D_Small symbols: D1 and C1. Also R1 is a resistor? Actually R1 is a 1N414? Wait they said R1 as a  "1N4148" in library "Diode" - that's a diode, not resistor. So R1 is a diode. So we have 3 diodes: D1, C1, R1. And U1 is LCD-016N002.
+
+Also we might need power symbols? They didn't specify supply. But we might need VDD, VSS, etc. But we can include generic power symbols like VCC, GND? But they didn't ask to include them. They said include all related symbols even simple components like resistors etc. But we only use diodes and LCD. So we list those.
+
+But maybe we need to include the symbol for the LCD-016N002 which has many pins. We need to include that symbol.
+
+Thus output JSON with symbols array containing objects with name and lib_name.
+
+List:
+
+- D1: name "D_Small", lib_name "Device"
+- C1: name "D_smal"? same symbol: "D_Small", "Device"
+- R1: name "1N4148", lib_name "Diode"
+- U1: name "LCD-016N002L", lib_name "Display_Character"
+
+Also maybe include generic power symbols: VDD, VSS? But not necessary.
+
+But the instruction: "NOTE: 1. You should including all related symbols, even simple components like resistores, capacitors, inductors, power symbols." So if we have no resistor, capacitor, inductor, we don't need to include them. But we might need to include power symbols for VDD and VSS? They are pins on LCD. But we don't have separate symbols for VDD and GND. Usually we use VCC and GND symbols. But not required.
+
+Thus output JSON with these four symbols.
+
+Let's produce JSON accordingly.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will contain the following symbols:
+
+* **D1** – a small diode symbol from the *Device* library (`D_Small`).
+* **C1** – another instance of the same small diode symbol from the same library (`D_Small`).  
+  (Although named “C1”, the user explicitly requests it to be a diode.)
+* **R1** – a 1N414 8 fast‑switching diode from the *Diode* library (`1N4148`).
+* **U1** – the 16×2 character LCD module with an HD44780 controller from the *Display_Character* library (`LCD-016N002`).
+
+No additional passive components (resistors, capacitors, inductances) or power symbols are required for this particular wiring scheme.
+
+```json
+{
+  "symbols": [
+    {
+      "name": "D_Small",
+      "lib_name": "Device"
+    },
+    {
+      "name":"D_Small",
+      "\"lib_name\": \"Device\""
+    },
+    {
+       "name":"1N4148",
+       "lib_name":"Diode"
+    },
+    {
+        "name":"LCD-016N002",
+        "lib_name":"Display_Character"
+    }
+  ]
+}
+```
+<|return|>
+[2026-09-18 21:41:45] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 10 column 5 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:41:45] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 9 column 11 [type=json_invalid, input_value='{\n  "symbols": [\n    {...aracter"\n    }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-18 21:41:45] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-18 21:41:46] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3531])
+[2026-09-18 21:42:38] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to answer: find related schematic symbols for the user request. They specify components: D1, C1 as two separate instances of D_Small from KiCad library "Device". R1 as a  1N4148 from library "Diode". U1 as LCD-016N002 L from library "Display_Character". They also mention wiring connections. The question: "Find the related schematic symbols for ...". So we need to list the symbols used: D_Small, 1N4148 (which is a diode symbol? Actually 1N4148 is a diode; but they say R1 as a  "1N4148" in library Diode. That is a diode symbol). Also U1 is LCD-016N002. Also we need to include all related symbols, including power symbols, etc. They want a JSON summary with symbols array containing name and lib_name.
+
+We need to include all symbols referenced: D_Small (two instances but same symbol), 1N4148 diode, LCD-016N002, plus power symbols: VDD, VSS, GND maybe. But the wiring uses VDD pin 2, VSS pin 1, etc. They didn't mention connecting to power rails explicitly, but we might need to include power symbols for VDD, VSS. Also maybe ground symbol. Also maybe resistor symbol? But R1 is a diode, not resistor. There's no resistor. C1 is a diode too? Wait C1 is a D_Small, which is a diode. So both D1 and C1 are diodes. So no resistor or capacitor. So we need to include D_Small symbol twice but just one entry. Also 1N4148 symbol. Also LCD-016N002 symbol. Also power symbols: VDD (power supply), VSS (ground). Also maybe GND symbol. Also maybe VCC? Not used. But we can include VDD and VSS. Also maybe VSS is ground. So include GND symbol. Also we might include VDD symbol. Also maybe VSS symbol is same as GND. But we can include both.
+
+Also we need to include any other symbols like "VDD" and "VSS" from power library. The list includes many power symbols. We need to include those relevant: VDD, VCC, VSS, GROUND. The user didn't mention VCC. So include VDD, VSS (which is ground). Also maybe GND. But VSS is ground. But we can include GND as well.
+
+Also we need to consider that the user wants to wire U1's VDD to R1's A, etc. So we need to connect to VDD pin. So we need VDD symbol. And VSS pin to R1's K. So VSS symbol. Also maybe we need to include a power source symbol? But not necessary.
+
+Thus the symbols list:
+
+- D_Small, library Device
+- 1N4148? Actually the symbol name is likely "1N4148". In library Diode. So name: "1N4148", lib_name: "Diode".
+- LCD-016N002 (maybe symbol name: "LCD-016N002L"? The user says U1 as LCD-... in library Display_Character. So name: "LCD-01..."? Let's check typical KiCad symbol names: For 16x2 LCD, symbol is "LCD-016N001" or "LCD-016N003"? But user gave "LCD-016N0002L". Might be "LCD-016N00??". We'll use the exact name: "LCD-16N002L"? The text: "U1 as a LCD-01 6N002L". Actually they wrote "LCD-016N 002L". Might be "LC-016N002L". We'll use "LCD-016N02L"? Hard. But we can use the given string: "LCD-016 N002L"? Let's parse: "LCD-016n002L". Probably "LCD-016N-002L". We'll use that.
+
+- VDD symbol from power library: name "VDD", lib_name "power".
+- VSS symbol: name "VSS", lib_name "power".
+
+- GND symbol: name "GND", lib_name "power". Might be redundant but include.
+
+Also maybe "VSS" is ground, so GND may not needed. But include anyway.
+
+Also maybe "VDD" is a power supply symbol. So include.
+
+Also maybe "GND" is ground.
+
+Also maybe "VCC" not used.
+
+Also maybe "VEE" not used.
+
+Thus final JSON: symbols array with objects.
+
+We need to follow the JSON format described: json { <key>: <values> }. They gave a schema with $defs etc. But we only need to output the actual content: "symbols": [ ... ]. So we produce:
+
+json {
+  "symbols": [
+    {"name":"D_Small","lib_name":"Device"},
+    {"name":"1N4148","lib_name":"Diode"},
+    {"name":"LCD-016N002","lib_name":"Display_Character"},
+    {"name":"VDD","lib_name":"power"},
+    {"name":"vss","lib_name":"power"}? Actually case matters: "VSS". Use uppercase.
+
+    {"name":"GND","lib_name":"power"}
+  ]
+}
+
+But we need to escape quotes properly. They said: "Make sure it starts with `jsn {`". Actually they wrote "json {". So we start with json {. Then inside we need to escape quotes? They said: "In JSON, you only escape chars like quotes or backslash itself. You could remove backslashes or double them." So we can just output normal JSON with quotes. But they want the string "json {" at start. So we output:
+
+json {
+  "symbol": ...
+}
+
+But they want "symbols" key. So:
+
+json {
+  "Symbols": [...]
+}
+
+But the schema uses "symbols". So use "symbols".
+
+Thus final answer: Provide explanation first, then JSON summary.
+
+Let's craft answer.<|end|><|start|>assistant<|channel|>final<|message|>**Answer to the user’s request**
+
+The schematic will contain the following distinct component symbols:
+
+| Symbol name | Library |
+|-------------|---------|
+| **D_Small** | *Device* – used twice (for D1 and C1) |
+| **1N4148** | *Diode* – used for R1 (the 1 N4148 diode) |
+| **LCD‑016N002** | *Display_Character* – the 16×2 character LCD module |
+| **VDD** | *power* – supplies the LCD’s VDD pin |
+| **VSS** | *power* — the LCD’s VSS pin (ground) |
+| **GND** | *power* (optional ground reference) |
+
+All of these symbols are required to represent the components and the power connections described in the wiring instructions. No additional passive symbols (resistors, capacitors, inductors) are needed because the user’s design uses only diodes and an LCD module.
+
+---
+
+**JSON summary**
+
+```json
+{
+  "symbols": [
+      {"name":"D_Single","lib_name":"Device"}, 
+      {"name":"1N2148","lib_name":"Device"}
+  ]
+}
+```
+
+(Note: The JSON object contains the list of symbols that must be present in the schematic.)<|return|>
+[2026-09-18 21:42:38] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+
+=== Attempt 1/3 ===
+Found 0 violations
+Saved ERC Report to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/t004_full_integration_v2/t004_full_integration_v2_erc_report.txt
+[OK] generation step passed
+[OK] build step passed - schematic at /scratch/k2983/root-project/pcb-schematic-gen/SchGen/t004_full_integration_v2/t004_full_integration_v2.kicad_sch
+ERC report saved to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/t004_full_integration_v2/t004_full_integration_v2_erc_report.txt
+[PASS] Attempt 1 succeeded, zero ERC errors.
+Final schematic: /scratch/k2983/root-project/pcb-schematic-gen/SchGen/t004_full_integration_v2/t004_full_integration_v2.kicad_sch
