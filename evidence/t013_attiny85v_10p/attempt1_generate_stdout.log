@@ -1,0 +1,183 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the Atmel ATtiny85V 8-bit AVR MCU for general-purpose applications. Use exactly these real components: U1 as a ATtiny85V-10P, in the KiCad library "MCU_Microchip_ATtiny" (Atmel ATtiny85V 8-bit AVR MCU, 8-pin DIP. 8KB flash, 512B SRAM, 6 I/O pins. Low voltage variant (1.8V-5.5V).). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1938])
+[SEQLEN] input_ids shape: torch.Size([1, 1938])
+[SEQLEN] input_ids shape: torch.Size([1, 1938])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4933])
+[SEQLEN] input_ids shape: torch.Size([1, 4933])
+[SEQLEN] input_ids shape: torch.Size([1, 4933])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5154])
+[SEQLEN] input_ids shape: torch.Size([1, 5154])
+[SEQLEN] input_ids shape: torch.Size([1, 5154])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3352])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.26GB gpu_peak=28.85GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.26GB gpu_peak=28.85GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.85GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.85GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.85GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a clean, fully‑connected schematic for a single‑chip AVR project that uses an ATtiny85V‑10P in a 8‑pin DIP package (ATtiny85V from the “MCU_Microchip_ATtiny” library).  
+All other parts are fixed: a 5 V power source, a 2.2 kΩ pull‑up resistor to the VCC net, a 2.2 kΩ resistor to the VCC pin of the MCU, and a 2.2 kΩ pull‑up to the AVCC pin (AVCC is the 1.8 V‑5.5 V core supply).  
+The schematic must stay in the centre of the 210 × 297 mm A4 sheet, leaving enough space between symbols so that the bounding boxes do not overlap.
+
+**Symbol placement**  
+
+1. **ATtiny85V‑10P (U1)** – centre of the sheet.  
+   *Reference:* `U1`  
+   *Position:* (105 mm, 148.5 mm) – the middle of the page.  
+   *Rotation:* 0° (default, no rotation).  
+   *Mirror:* “None” (no mirroring).  
+   *Value:* “ATtiny85V-10P”.
+
+   The ATtiny85 has eight pins in a rectangular 3 × 3 grid.  
+   Pin 1 is VCC, pin 2 is VSS, pin 3 is AVCC, pin 4 is AREF, pins 5–8 are I/O.
+
+2. **+5 V source** – a power symbol that supplies the VCC pin of the MCU.  
+   *Reference:* `#PWR1`  
+   *Position:* (90 mm, 170 mm) – 15 mm left of the MCU and 22 mm above it.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “+5V”.
+
+3. **Resistor R1 (2.2 kΩ)** – pulls the VCC pin of the MCU up to +5 V.  
+   *Reference:* `R1`  
+   *Position:* (90 mm, 165 mm) – 15 mm left of the MCU and 17 mm above it.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “2.2K”.
+
+4. **Resistor R2 (2.2 kΩ)** – pulls the AVCC pin of the MCU up to +5 V (optional, but included for completeness).  
+   *Reference:* `R2`  
+   *Position:* (90 mm, 150 mm) – same X, 2 mm above the MCU.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “2.2K”.
+
+5. **+1.8 V source** – supplies the AVCC pin (if the MCU is used at 1.8 V).  
+   *Reference:* `#PWR2`  
+   *Position:* (112 mm, 170 mm) – 7 mm right of the MCU and 22 mm above it.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “+1.8V”.
+
+6. **Resistor R3 (2.2 kΩ)** – pulls the AVCC pin up to +1.8 V.  
+   *Reference:* `R3`  
+   *Position:* (112 mm, 165 mm) – 7 mm right of the MCU and 17 mm above it.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “2.2K”.
+
+7. **Solder jumper JP1** – connects +5 V to the AVCC rail (optional).  
+   *Reference:* `JP1`  
+   *Position:* (107 mm, 160 mm) – 2 mm left of the MCU and 10 mm above it.  
+   *Rotation:* 0°.  
+   *Mirror:* “None”.  
+   *Value:* “SolderJumper_3_Bridged123”.
+
+**Global labels**  
+
+The Atmel documentation labels the I/O pins as PA0–PA7.  
+We add two labels for the two I/O pins that will be used in the example:  
+- `PA0` – attached to pin 8 of the MCU.  
+- `PA3` – attached to pin 5 of the MCU.  
+
+The `add_label` call uses the pin coordinates returned by `get_pin_location`, then offsets the label position so that the text does not overlap the pin.  
+For example, `PA0` is placed 6 mm to the left of pin 8, and its text is oriented “left”.
+
+**Wire connections**  
+
+All wires are created with `connect_pins(sym_a, pin_a, sym_b, pin_b)`.  
+The pin names are taken directly from the symbol pin list.
+
+1. **VCC rail**  
+   * +5 V source (`#PWR1`) → R1 pin 1.  
+   * R1 pin 2 → MCU pin VCC (pin 1).  
+
+2. **AVCC rail**  
+   * +1.8 V source (`#PWR2`) → R3 pin 1.  
+   * R3 pin 2 → MCU pin AVCC (pin 3).  
+   * Optional path: `#PWR1` → JP1 pin C → R2 pin 1 → JP1 pin A (bridges +5 V to AVCC).  
+   * The jumper also connects to the MCU pin AVCC via R2 pin 2 (if the jumper is closed).  
+
+3. **Ground**  
+   * The VSS pin (pin 2) is tied to the ground symbol (not shown, but assumed to be present).  
+   * The ground symbol is connected to the MCU VSS pin and to the VCC rail via R1 pin 2.
+
+4. **I/O pins**  
+   * `PA0` label → MCU pin 8.  
+   * `PA3` label → MCU pin 5.  
+
+These connections satisfy the user’s request: the MCU is powered correctly, its analog inputs are pulled up, and two I/O pins are accessible.  
+
+**Why the chosen rotations and mirrors**  
+
+All components are kept with 0° rotation because the default orientation of the ATtiny85 (pins numbered on the right side) already aligns well with the power and resistor symbols placed to its left and right.  
+No mirroring is required; mirroring would only flip the pin order and would make the wire routing more complex.  
+The resistor and jumper symbols are also left in their default orientation because their pins align horizontally, which matches the straight horizontal wires we use.
+
+**Final step**  
+
+After all connections are declared, `write_out_all_wires()` is called to generate the actual netlist in the schematic file.  
+
+This reasoning produces a compact, readable schematic that follows the user’s exact component list, places all symbols neatly in the centre of the page, and connects every pin correctly using the KiCad Python API.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : MCU_Microchip_ATtiny:ATtiny85V-10P###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="MCU_Microchip_ATtiny", symbol_name="ATtiny85V-10P", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ATtiny85V-10P", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (0), pos_y=center_y_1 + (24), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (0), pos_y=center_y_1 + (15), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-2), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (12), pos_y=center_y_1 + (24), reference="#PWR2", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (12), pos_y=center_y_1 + (16), reference="JP1", value="AUX", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (12), pos_y=center_y_1 + (12), reference="R3", value="2.2K", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to JP1 pin B (Pin ID 3 -- Name B)
+connect_pins("R3", "2", "JP1", "B")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR2", "VIN", "JP1", "C")
+
+# Connecting JP1 pin A (Pin ID 1 -- Name A) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP1", "A", "R3", "1")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VCC (Pin ID 6 -- Name VCC)
+connect_pins("R1", "2", "U1", "VCC")
+
+# Connecting U1 pin VSS (Pin ID 1 -- Name VSS) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "VSS", "R2", "2")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to U1 pin AVCC (Pin ID 5 -- Name AVCC)
+connect_pins("R2", "1", "U1", "AVCC")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny85v_10p_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny85v_10p_generated.response.txt

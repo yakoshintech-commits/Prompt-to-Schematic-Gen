@@ -1,0 +1,95 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=3570)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using the BMP280 digital barometric pressure and temperature sensor. Use exactly these real components: U1 as a BMP280, in the KiCad library "Sensor_Pressure" (Digital barometric pressure and temperature sensor, I2C/SPI, LGA-8. CSB selects interface: high=I2C, low=SPI. SDO sets I2C address (GND=0x76, VDDIO=0x77). VDDIO is I/O level reference. NOTE: pin 6 is shared by SDO and VDDIO in the KiCad symbol.), R1 as a L78L05_TO92, in the KiCad library "Regulator_Linear" (5V fixed positive voltage regulator, 100mA, TO-92. Note pin order: pin1=VO, pin2=GND, pin3=VI.), C1 as a Crystal_GND24, in the KiCad library "Device" (4-pin crystal oscillator with two ground pads. Pins 1 and 3 are the crystal terminals, pins 2 and 4 are ground pads (case ground). Connect load capacitors from pins 1 and 3 to GND.). Do not substitute or invent a different part for any of them. Wire it up as follows: connect U1's VDD pin (pin 1) to R1's VI pin (pin 3); connect U1's GND pin (pin 2) to R1's GND pin (pin 2) to C1's 2 pin (pin 2) to C1's 3 pin (pin 3); connect U1's CSB pin (pin 5) to U1's SDO pin (pin 6).
+[SEQLEN] input_ids shape: torch.Size([1, 2187])
+[SEQLEN] input_ids shape: torch.Size([1, 5182])
+[SEQLEN] input_ids shape: torch.Size([1, 5182])
+[SEQLEN] input_ids shape: torch.Size([1, 5182])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5403])
+[SEQLEN] input_ids shape: torch.Size([1, 3601])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.36GB gpu_peak=29.58GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.36GB gpu_peak=29.58GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=29.58GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=29.58GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=29.58GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 :  Sensor_Pressure :BMP280###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Sensor_Pressure", symbol_name="BMP280", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="BMP280", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VDD", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (22), reference="#PWR1", value="VDDIO", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="L78L05_TO92", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (15), reference="R1", value="L78L05_TO92", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (-15), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="Crystal_GND24", pos_x=center_x_1 + (-10), pos_y=center_y_1 + (-2), reference="C1", value="Crystal_GND24", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-10), pos_y=center_y_1 + (-16), reference="#PWR3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label AUX_DA next to U1 pin CSB 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="CSB")
+add_label(label_pos=[x_U1_5+(-13), y_U1_5+(0)], label_text="AUX_DA", label_ref="AUX_DA_0", label_type="input", text_orient="left")
+# Connecting Label AUX_DA label_id:0 to U1 pin CSB (Pin ID 5 -- Name CSB)
+connect_pins("AUX_DA_0", "1", "U1", "CSB")
+
+# Add label AUX_CL next to U1 pin SCK 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="SCK")
+add_label(label_pos=[x_U1_2+(-13), y_U1_2+(0)], label_text="AUX_CL", label_ref="AUX_CL_0", label_type="input", text_orient="left")
+# Connecting Label AUX_CL label_id:0 to U1 pin SCK (Pin ID 2 -- Name SCK)
+connect_pins("AUX_CL_0", "1", "U1", "SCK")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "#PWR3", "1")
+
+# Connecting #PWR1 pin VDDIO (Pin ID 1 -- Name VDDIO) to R1 pin VO (Pin ID 3 -- Name VO)
+connect_pins("#PWR1", "VDDIO", "R1", "VO")
+
+# Connecting R1 pin GND (Pin ID 2 -- Name GND) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "GND", "#PWR2", "1")
+
+# Connecting U1 pin VDD (Pin ID 1 -- Name VDD) to R1 pin VO (Pin ID 3 -- Name VO)
+connect_pins("U1", "VDD", "R1", "VO")
+
+# Connecting U1 pin SDO (Pin ID 6 -- Name SDO) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "SDO", "C1", "1")
+
+# Connecting U1 pin VDD (Pin ID 1 -- Name VDD) to U1 pin SDI (Pin ID 3 -- Name SDI)
+connect_pins("U1", "VDD", "U1", "SDI")
+
+# Connecting #PWR2 pin 1 (Pin ID 1 -- Name None) to C1 pin 3 (Pin ID 3 -- Name None)
+connect_pins("#PWR2", "1", "C1", "3")
+
+# Connecting C1 pin 3 (Pin ID 3 -- Name None) to C1 pin 4 (Pin ID 4 -- Name None)
+connect_pins("C1", "3", "C1", "4")
+
+# Connecting R1 pin GND (Pin ID 2 -- Name GND) to C1 pin 3 (Pin ID 3 -- Name None)
+connect_pins("R1", "GND", "C1", "3")
+
+# Connecting R1 pin VO (Pin ID 3 -- Name VO) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "VO", "C1", "1")
+
+# Connecting U1 pin CSB (Pin ID 5 -- Name CSB) to U1 pin SDO (Pin ID 6 -- Name SDO)
+connect_pins("U1", "CSB", "U1", "SDO")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_bmp280_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_bmp280_generated.response.txt

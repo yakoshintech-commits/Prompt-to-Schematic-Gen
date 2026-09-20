@@ -1,0 +1,66 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=1633)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V fixed positive voltage regulator circuit using the L78L05_TO92. Use exactly these real components: R1 as a L78L05_TO92, in the KiCad library "Regulator_Linear" (5V fixed positive voltage regulator, 100mA, TO-92. Note pin order: pin1=VO, pin2=GND, pin3=VI.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1920])
+[SEQLEN] input_ids shape: torch.Size([1, 4915])
+[SEQLEN] input_ids shape: torch.Size([1, 5136])
+[SEQLEN] input_ids shape: torch.Size([1, 3334])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.80GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.80GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.80GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:L78L05_TO92###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="L78L05_TO92", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="L78L05_TO92", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (6), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (0), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-8), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VIN next to U1 pin VI 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="VI")
+add_label(label_pos=[x_U1_3+(-10), y_U1_3+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+# Connecting Label VIN label_id:0 to U1 pin VI (Pin ID 3 -- Name VI)
+connect_pins("VIN_0", "1", "U1", "VI")
+
+# Add label VOUT next to U1 pin VO 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="VO")
+add_label(label_pos=[x_U1_2+(10), y_U1_2+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="output", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VO (Pin ID 2 -- Name VO)
+connect_pins("VOUT_0", "1", "U1", "VO")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin GND (Pin ID 1 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR2", "1")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VI (Pin ID 3 -- Name VI)
+connect_pins("R1", "2", "U1", "VI")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l78l05_to92_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l78l05_to92_generated.response.txt

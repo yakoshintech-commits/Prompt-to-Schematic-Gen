@@ -1,0 +1,72 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=1630)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using a quad 2-input OR gate to perform logical OR operations on four inputs. Use exactly these real components: U1 as a 74LS32, in the KiCad library "74xx" (Quad 2-input OR gate. Pin names are '~' in KiCad; use pin numbers. Gate1: A=1,B=2,Y=3. Gate2: A=4,B=5,Y=6. Gate3: A=9,B=10,Y=8. Gate4: A=12,B=13,Y=11.). Do not substitute or invent a different part for any of them. The inputs A1, B1, A2, and B2 are assumed to be connected to the corresponding inputs of the quad OR gate.
+[SEQLEN] input_ids shape: torch.Size([1, 1981])
+[SEQLEN] input_ids shape: torch.Size([1, 4976])
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.44GB gpu_peak=28.98GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.44GB gpu_peak=28.98GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.98GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.98GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.98GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : 74xx:74LS32###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="74xx", symbol_name="74LS32", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="74LS32", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label A1 next to U1 pin 5 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="5")
+add_label(label_pos=[x_U1_5+(-13), y_U1_5+(0)], label_text="A1", label_ref="A1_0", label_type="input", text_orient="left")
+# Connecting Label A1 label_id:0 to U1 pin 5 (Pin ID 5 -- Name 5)
+connect_pins("A1_0", "1", "U1", "5")
+
+# Add label B1 next to U1 pin 1 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="1")
+add_label(label_pos=[x_U1_1+(6), y_U1_1+(0)], label_text="B1", label_ref="B1_0", label_type="input", text_orient="right")
+# Connecting Label B1 label_id:0 to U1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("B1_0", "1", "U1", "1")
+
+# Add label A2 next to U1 pin 10 
+x_U1_10, y_U1_10 = get_pin_location(symbol_ref="U1", pin_name="10")
+add_label(label_pos=[x_U1_10+(-10), y_U1_10+(0)], label_text="A2", label_ref="A2_0", label_type="input", text_orient="left")
+# Connecting Label A2 label_id:0 to U1 pin 10 (Pin ID 10 -- Name 10)
+connect_pins("A2_0", "1", "U1", "10")
+
+# Add label B2 next to U1 pin 3 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="3")
+add_label(label_pos=[x_U1_3+(12), y_U1_3+(0)], label_text="B2", label_ref="B2_0", label_type="input", text_orient="right")
+# Connecting Label B2 label_id:0 to U1 pin 3 (Pin ID 3 -- Name 3)
+connect_pins("B2_0", "1", "U1", "3")
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_74ls32_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_74ls32_generated.response.txt

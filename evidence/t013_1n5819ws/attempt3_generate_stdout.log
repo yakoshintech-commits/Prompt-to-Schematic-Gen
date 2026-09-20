@@ -1,0 +1,59 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=1602)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a Schottky barrier rectifier to rectify AC voltage. Use exactly these real components: D1 as a 1N5819WS, in the KiCad library "Diode" (Schottky barrier rectifier, 40 V 1 A, SOD-323 SMD). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1900])
+[SEQLEN] input_ids shape: torch.Size([1, 1900])
+[SEQLEN] input_ids shape: torch.Size([1, 1900])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4895])
+[SEQLEN] input_ids shape: torch.Size([1, 4895])
+[SEQLEN] input_ids shape: torch.Size([1, 4895])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5116])
+[SEQLEN] input_ids shape: torch.Size([1, 3314])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.74GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.74GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.74GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.74GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.74GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Diode:D1###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="1N5819WS", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+# Add power supply pin (AC) to the left of the diode
+add_schematic_symbol(symbol_lib="power", symbol_name="power", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (15), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+
+# Add ground symbol below the diode
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-10), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to D1 pin A (Pin ID 2 -- Name A)
+connect_pins("#PWR1", "VIN", "D1", "A")
+
+# Connecting D1 pin K (Pin ID 1 -- Name K) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("D1", "K", "#PWR2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n5819ws_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n5819ws_generated.response.txt

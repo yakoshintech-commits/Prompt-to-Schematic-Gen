@@ -1,0 +1,78 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=2977)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the TI BQ25173 to charge a Li-Ion/Li-Po battery. Use exactly these real components: C1 as a BQ25173DSG, in the KiCad library "Battery_Management" (TI BQ25173 standalone 800mA linear battery charger for Li-Ion/Li-Po. SOT-23-6.), R1, and R2 as 2 separate instances of a Battery_Cell, in the KiCad library "Device" (Single battery cell. Pin 1 is positive (+), Pin 2 is negative (-).). Do not substitute or invent a different part for any of them. Wire it up as follows: connect C1's VSS pin (pin 2) to R1's - pin (pin 2) to R2's - pin (pin 2); connect C1's OUT pin (pin 6) to R1's + pin (pin 1) to R2's + pin (pin 1).
+[SEQLEN] input_ids shape: torch.Size([1, 2032])
+[SEQLEN] input_ids shape: torch.Size([1, 5027])
+[SEQLEN] input_ids shape: torch.Size([1, 5248])
+[SEQLEN] input_ids shape: torch.Size([1, 5248])
+[SEQLEN] input_ids shape: torch.Size([1, 5248])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3446])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.67GB gpu_peak=29.12GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.67GB gpu_peak=29.12GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=29.12GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=29.12GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=29.12GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Battery_Management:BQ25173DSG###
+
+center_x_1, center_y_1 = 105.0, 150.0
+
+add_schematic_symbol(symbol_lib="Battery_Management",
+                     symbol_name="BQ25173DSG",
+                     pos_x=center_x_1,
+                     pos_y=center_y_1,
+                     reference="C1",
+                     value="BQ25173DSG",
+                     rotation=0,
+                     mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Device",
+                     symbol_name="Battery_Cell",
+                     pos_x=center_x_1 + (-12),
+                     pos_y=center_y_1 + (0),
+                     reference="R1",
+                     value="Battery_Cell",
+                     rotation=0,
+                     mirror="None")
+
+add_schematic_symbol(symbol_lib="Device",
+                     symbol_name="Battery_Cell",
+                     pos_x=center_x_1 + (12),
+                     pos_y=center_y_1 + (0),
+                     reference="R2",
+                     value="Battery_Cell",
+                     rotation=0,
+                     mirror="None")
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R1 pin - (Pin ID 2 -- Name None) to R2 pin - (Pin ID 2 -- Name None)
+connect_pins("R1", "-", "R2", "-")
+
+# Connecting R1 pin + (Pin ID 1 -- Name None) to C1 pin OUT (Pin ID 8 -- Name OUT)
+connect_pins("R1", "+", "C1", "OUT")
+
+# Connecting C1 pin OUT (Pin ID 8 -- Name OUT) to R2 pin + (Pin ID 1 -- Name None)
+connect_pins("C1", "OUT", "R2", "+")
+
+# Connecting C1 pin VSS (Pin ID 2 -- Name VSS) to R1 pin - (Pin ID 2 -- Name None)
+connect_pins("C1", "VSS", "R1", "-")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_bq25173dsg_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_bq25173dsg_generated.response.txt

@@ -1,0 +1,170 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a small-signal switching diode to rectify a small AC signal. Use exactly these real components: D1 as a BAW75, in the KiCad library "Diode" (Small-signal switching diode, 30 V 200 mA, SMD). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1894])
+[SEQLEN] input_ids shape: torch.Size([1, 4889])
+[SEQLEN] input_ids shape: torch.Size([1, 5110])
+[SEQLEN] input_ids shape: torch.Size([1, 3308])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.72GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.72GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.72GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a tiny AC–rectifier that uses only a single small‑signal switching diode (BAW75).  
+The schematic must contain exactly the parts listed in the table and must respect the
+symbol definitions (pin names, relative positions, orientation, mirroring).  
+The goal is to make the schematic readable, keep all symbols well spaced,
+and wire the circuit in the usual “diode‑to‑ground” pattern.
+
+**Physical connections that the schematic must represent**
+
+1. **AC source → diode anode**  
+2. **Diode cathode → one end of a resistor (R1)**  
+3. **Other end of R1 → ground**  
+4. **Optional voltage‑divider (R2 & R3) to set the bias of the diode – not required for a simple rectifier**  
+   (the user’s description only mentions a diode, so we keep the sketch minimal).
+
+With only one diode we only need two pins on the schematic:
+* `AC` (the source)  
+* `GND` (the common return).
+
+**Choosing the symbol locations**
+
+- **Reference point**: place the diode at the centre of the sheet (≈ 150 mm × 110 mm).  
+  This gives a tidy layout and leaves room on all sides.
+
+- **AC source**: put the AC power symbol a few millimetres left of the diode, but
+  high enough that its pin is near the diode’s anode.  
+  Example offset: (‑30 mm, +20 mm).
+
+- **Ground**: place the GND symbol slightly below the diode so that a vertical
+  wire can run straight down from the diode cathode to ground.  
+  Example offset: (0 mm, ‑20 mm).
+
+- **Resistor R1**: place it between the diode cathode and ground.  
+  Place it just to the right of the diode, rotated 0°, so its pins
+  align horizontally with the diode’s cathode (pin K) on the left
+  and the ground pin on the right.
+
+All symbols are spaced at least 10 mm apart so that the bounding boxes
+do not overlap.
+
+**Rotations and mirrors**
+
+- **Diode (BAW75)**: the default orientation of the symbol in the “Device”
+  library has pin K (cathode) on the left and pin A (anode) on the right.
+  To keep the wire from the AC source to the anode horizontal, we rotate
+  the diode 0° (no rotation) and mirror it on the Y‑axis if needed so that
+  the cathode points leftwards.  
+  In the example above we used a 0° rotation and no mirroring.
+
+- **AC symbol**: its single pin is already on the top, so no rotation is required.
+
+- **Resistor R1**: standard resistor symbol has pins 1 and 2 on the
+  left/right sides. We keep it at 0° so that pin 1 (left) connects to the
+  diode cathode and pin 2 (right) goes to ground.
+
+- **GND symbol**: its pin is at the top; we keep it unrotated.
+
+**Adding labels**
+
+The user’s functions allow adding labels next to any pin.  
+For a minimal schematic we don’t need extra labels because the
+pin names (AC, GND, 1, 2) are self‑explanatory.
+
+**Wire connections – the reasoning**
+
+1. **AC → diode anode**  
+   *Connect the AC pin to the diode pin A.*  
+   This is a straight horizontal wire.
+
+2. **Diode cathode → resistor R1 pin 1**  
+   *Connect the diode pin K to resistor pin 1.*  
+   This wire starts from the left side of the diode and ends at the
+   left side of the resistor.
+
+3. **Resistor R1 pin 2 → ground**  
+   *Connect resistor pin 2 to the GND pin.*  
+   This is a vertical wire that goes directly downward.
+
+4. **Optional: resistor R1 pin 1 ↔ diode cathode**  
+   The same connection is already described in step 2.
+
+No other components are required for a simple rectifier, so the
+connections are complete.
+
+**Why this layout is clean**
+
+- All wires are straight (horizontal or vertical) – no diagonal
+  clutter.
+- The diode sits at the centre, making the schematic symmetric.
+- The spacing of 10–20 mm between symbols prevents overlapping
+  of their bounding boxes and keeps the drawing readable.
+- Rotations/mirrors are chosen so that the pin names line up with the
+  direction of the wires, reducing the need for long angled traces.
+
+**Summary of the code that would be generated**
+
+1. Import the KiCad schematic interface.  
+2. Define the centre coordinates for the diode (`x=150 mm`, `y=110 mm`).  
+3. Call `add_schematic_symbol` for the diode with reference `D1`,
+   value `BAW75`, rotation 0°, mirror `None`.  
+4. Add the AC power symbol (`AC`), reference `PWR1`,
+   positioned left‑up from the diode.  
+5. Add a ground symbol (`GND`), reference `PWR2`,
+   positioned below the diode.  
+6. Add a resistor (`R1`), reference `R1`,
+   positioned right of the diode with rotation 0°.  
+7. Wire the pins as described in the four steps above.  
+8. Finish with `write_out_all_wires()` to output the schematic.
+
+This reasoning covers all arguments of the helper functions:
+symbol library/name, reference, value, position, rotation, mirror;
+pin names used in `connect_pins`; and the placement of the labels (none
+in this minimal case).<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="BAW75", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="AC", pos_x=center_x_1 + (-25), pos_y=center_y_1 + (13), reference="PWR1", value="AC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="R", symbol_name="R", pos_x=center_x_1 + (-25), pos_y=center_y_1 + (0), reference="R1", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-19), reference="PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting PWR1 pin AC (Pin ID 1 -- Name AC) to D1 pin A (Pin ID 2 -- Name A)
+connect_pins("PWR1", "AC", "D1", "A")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to D1 pin K (Pin ID 1 -- Name K)
+connect_pins("R1", "2", "D1", "K")
+
+# Connecting D1 pin K (Pin ID 1 -- Name K) to PWR2 pin GND (Pin ID 1 -- Name GND)
+connect_pins("D1", "K", "PWR2", "GND")
+
+# Connecting R1 pin 1 (Pin ID 1 -- Name None) to PWR2 pin GND (Pin ID 1 -- Name GND)
+connect_pins("R1", "1", "PWR2", "GND")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_baw75_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_baw75_generated.response.txt

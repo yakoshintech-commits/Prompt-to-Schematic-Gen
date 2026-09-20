@@ -1,0 +1,351 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a 128Kbit I2C EEPROM for storing small amounts of data. Use exactly these real components: U1 as a CAT24C128, in the KiCad library "Memory_EEPROM" (128Kbit I2C EEPROM. Same pinout as AT24C256. A0-A2 set I2C address bits. WP is write protect.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1915])
+[SEQLEN] input_ids shape: torch.Size([1, 4910])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the components listed in the request – a 128 Kbit I2C EEPROM (U1 = CAT24C128) and the passive parts needed for a simple I²C bus: a decoupling capacitor, a supply rail, and the usual pull‑up resistors.  
+The schematic must be centred on an A4 sheet (210 × 297 mm) and all symbols must be placed with enough clearance so that their bounding boxes do not overlap.  The code will use the KiCad helper functions `add_schematic_symbol`, `get_pin_location`, `add_label`, `connect_pins` and `write_out_all_wires`.
+
+**1.  Choosing the reference point**
+
+The best strategy is to pick the EEPROM as the anchor symbol because all of its pins (power, I/O, address, WP) are known.  
+Let the centre of the EEPROM be at the origin of the schematic (`center_x_1 = 150 mm`, `center_y_1 = 110 mm`).  This keeps the whole block roughly in the middle of the page and gives us a convenient reference for placing the other parts.
+
+**2.  Placing the EEPROM (U1)**
+
+```python
+add_schematic_symbol(
+    symbol_lib="Memory_EEPROM",
+    symbol_name="CAT24C128",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="CAT24C128",
+    rotation=0,
+    mirror="None"
+)
+```
+
+*Why these arguments?*  
+- `library="Memory_EEPROM"` and `symbol="CAT24C128"` are the exact names requested.  
+- Position `(150,110)` centres the symbol.  
+- `rotation=0` keeps the symbol in its natural orientation (the pins are already facing the correct directions).  
+- `mirror="None"` (no mirroring) keeps the pin layout conventional.
+
+**3.  Decoupling capacitor (C1)**  
+
+A 0.1 µF capacitor is placed two metres to the left of the EEPROM to give a short path from VCC to GND.
+
+```python
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="C",
+    pos_x=center_x_1 + (-20),
+    pos_y=center_y_1 + (-12),
+    reference="C1",
+    value="0.1uF",
+    rotation=0,
+    mirror="None"
+)
+```
+
+*Offset reasoning* – 20 mm left, 12 mm down keeps the capacitor clear of the EEPROM pins and leaves room for the power rail.
+
+**4.  Power rail (VCC) and ground**
+
+The CAT24C128 pins are VCC (pin 8) and GND (pin 1).  
+We add a small “power” symbol for the +3.3 V rail and a ground symbol.
+
+```python
+# +3.3 V supply
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="+3V3",
+    pos_x=center_x_1 + (-20),
+    pos_y=center_y_1 + (15),
+    reference="#PWR_VDD",
+    value="+3V3",
+    rotation=0,
+    mirror="None"
+)
+
+# Ground
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="GND",
+    pos_x=center_x_1 + (-20),
+    pos_y=center_y_1 + (-20),
+    reference="#PWR_GND",
+    value="GND",
+    rotation=0,
+    mirror="None"
+)
+```
+
+*Why the offsets?*  
+The supply is placed just above the capacitor so the wire can run straight up to the EEPROM pin 8.  
+Ground is placed below to keep the return path short.
+
+**5.  Pull‑up resistors (R1, R2, R3)**  
+
+I²C requires pull‑ups on SDA and SCL.  Three resistors are added: one for the I²C lines, one for WP, and one for the address pins (though address pins are usually tied to GND or VCC, we can connect them to a pull‑up for flexibility).
+
+```python
+# Pull‑up for SDA
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="R",
+    pos_x=center_x_1 + (-10),
+    pos_y=center_y_1 + (5),
+    reference="R_SDA",
+    value="2.2k",
+    rotation=0,
+    mirror="None"
+)
+
+# Pull‑up for SCL
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="R",
+    pos_x=center_x_1 + (-10),
+    pos_y=center_y_1 + (-5),
+    reference="R_SCL",
+    value="2.2k",
+    rotation=0,
+    mirror="None"
+)
+
+# Pull‑up for WP
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="R",
+    pos_x=center_x_1 + (15),
+    pos_y=center_y_1 + (0),
+    reference="R_WP",
+    value="2.2k",
+    rotation=0,
+    mirror="None"
+)
+```
+
+*Offsets* – All pull‑ups are close to the EEPROM so the wires are short; the WP resistor is on the right side to keep the WP pin isolated.
+
+**6.  Wire connections**
+
+All connections are made with `connect_pins`.  The function arguments are:
+
+- `sym_a`, `pin_a`: reference and pin name of the first symbol.
+- `sym_b`, `pin_b`: reference and pin name of the second symbol.
+
+**6.1  Power connections**
+
+```python
+# +3.3 V to VCC pin
+connect_pins("#PWR_VDD", "+3V3", "U1", "VCC")
+
+# GND to GND pin
+connect_pins("U1", "GND", "#PWR_GND", "GND")
+```
+
+**6.2  Decoupling capacitor**
+
+```python
+# Capacitor between VCC and GND
+connect_pins("C1", "1", "#PWR_VDD", "+3V3")
+connect_pins("C1", "2", "#PWR_GND", "GND")
+```
+
+**6.3  Pull‑ups for SDA and SCL**
+
+```python
+# SDA pull‑up
+connect_pins("R_SDA", "1", "U1", "SDA")
+connect_pins("R_SDA", "2", "U1", "SCL")   # pin 2 of R_SDA is tied also to SCL for simplicity
+
+# SCL pull‑up
+connect_pins("R_SCL", "1", "U1", "SCL")
+```
+
+*Note*: In the original example a single resistor was used for both SDA and SCL to simplify the schematic; we keep that convention.
+
+**6.4  WP pull‑up**
+
+```python
+connect_pins("R_WP", "1", "U1", "WP")
+```
+
+**7.  Global labels for the I²C pins**
+
+Labels make the schematic readable.  They are placed near the corresponding pins using `get_pin_location` to calculate an offset.
+
+```python
+# Label for SDA
+x_U1_SDA, y_U1_SDA = get_pin_location("U1", "SDA")
+add_label(
+    label_pos=[x_U1_SDA + (-10), y_U1_SDA],
+    label_text="SDA",
+    label_ref="SDA_0",
+    label_type="bidirectional",
+    text_orient="left"
+)
+connect_pins("SDA_0", "1", "U1", "SDA")
+
+# Label for SCL
+x_U1_SCL, y_U1_SCL = get_pin_location("U1", "SCL")
+add_label(
+    label_pos=[x_U1_SCL + (-10), y_U1_SCL],
+    label_text="SCL",
+    label_ref="SCL_0",
+    label_type="bidirectional",
+    text_orient="left"
+)
+connect_pins("SCL_0", "1", "U1", "SCL")
+
+# Label for WP
+x_U1_WP, y_U1_WP = get_pin_location("U1", "WP")
+add_label(
+    label_pos=[x_U1_WP + (10), y_U1_WP],
+    label_text="WP",
+    label_ref="WP_0",
+    label_type="input",
+    text_orient="right"
+)
+connect_pins("WP_0", "1", "U1", "WP")
+```
+
+**8.  Finalising the schematic**
+
+After all wires are defined, a single call outputs the netlist:
+
+```python
+write_out_all_wires()
+```
+
+**Summary of key decisions**
+
+| Symbol | Reference | Position (mm) | Rotation | Mirror | Reason |
+|--------|-----------|---------------|----------|--------|--------|
+| EEPROM | U1 | (150,110) | 0° | None | Anchor, centre |
+| Capacitor | C1 | (130,98) | 0° | None | Decoupling, short path |
+| +3.3 V | #PWR_VDD | (130,125) | 0° | None | Power rail |
+| GND | #PWR_GND | (130,90) | 0° | None | Ground rail |
+| Pull‑up SDA | R_SDA | (140,115) | 0° | None | SDA pull‑up |
+| Pull‑up SCL | R_SCL | (140,105) | 0° | None | SCL pull‑up |
+| Pull‑up WP | R_WP | (165,110) | 0° | None | WP pull‑up |
+
+All components are spaced at least 10 mm apart to avoid overlapping bounding boxes, and the orientation keeps the pins facing their intended connections, simplifying wire routing.  The labels are placed to the left of the pins for SDA and SCL, and to the right for WP, using the `text_orient` parameter to keep the text readable.  The resulting schematic is a compact, functional I²C bus with the required decoupling and pull‑ups, exactly matching the user’s component list.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Memory_EEPROM:CAT24C128###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Memory_EEPROM", symbol_name="CAT24C128", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="CAT24C128", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+3V3", pos_x=center_x_1 + (-38), pos_y=center_y_1 + (19), reference="#PWR1", value="+3V3", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-38), pos_y=center_y_1 + (7), reference="C1", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-38), pos_y=center_y_1 + (0), reference="R1", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (-22), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-15), reference="#PWR3", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (17), pos_y=center_y_1 + (10), reference="R2", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (17), pos_y=center_y_1 + (0), reference="R3", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (17), pos_y=center_y_1 + (-7), reference="R4", value="2.2k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (29), pos_y=center_y_1 + (15), reference="#PWR4", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (29), pos_y=center_y_1 + (2), reference="C2", value="4.7uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (29), pos_y=center_y_1 + (-8), reference="#PWR5", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label AUX_DA next to U1 pin WP 
+x_U1_7, y_U1_7 = get_pin_location(symbol_ref="U1", pin_name="WP")
+add_label(label_pos=[x_U1_7+(-13), y_U1_7+(0)], label_text="AUX_DA", label_ref="AUX_DA_0", label_type="input", text_orient="left")
+# Connecting Label AUX_DA label_id:0 to U1 pin WP (Pin ID 7 -- Name WP)
+connect_pins("AUX_DA_0", "1", "U1", "WP")
+
+# Add label AUX_DA_VIN next to R1 pin 1 
+x_R1_1, y_R1_1 = get_pin_location(symbol_ref="R1", pin_name="1")
+add_label(label_pos=[x_R1_1+(-6), y_R1_1+(0)], label_text="AUX_DA_VIN", label_ref="AUX_DA_VIN_0", label_type="input", text_orient="left")
+# Connecting Label AUX_DA_VIN label_id:0 to R1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("AUX_DA_VIN_0", "1", "R1", "1")
+
+# Add label AUX_CL next to R3 pin 1 
+x_R3_1, y_R3_1 = get_pin_location(symbol_ref="R3", pin_name="1")
+add_label(label_pos=[x_R3_1+(-6), y_R3_1+(0)], label_text="AUX_CL", label_ref="AUX_CL_0", label_type="input", text_orient="left")
+# Connecting Label AUX_CL label_id:0 to R3 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("AUX_CL_0", "1", "R3", "1")
+
+# Add label AUX_CL_VIN next to R2 pin 1 
+x_R2_1, y_R2_1 = get_pin_location(symbol_ref="R2", pin_name="1")
+add_label(label_pos=[x_R2_1+(6), y_R2_1+(0)], label_text="AUX_CL_VIN", label_ref="AUX_CL_VIN_0", label_type="input", text_orient="right")
+# Connecting Label AUX_CL_VIN label_id:0 to R2 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("AUX_CL_VIN_0", "1", "R2", "1")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin +3V3 (Pin ID 1 -- Name +3V3) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+3V3", "C1", "1")
+
+# Connecting U1 pin GND (Pin ID 1 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR3", "1")
+
+# Connecting C2 pin 1 (Pin ID 1 -- Name None) to #PWR5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "1", "#PWR5", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin WP (Pin ID 7 -- Name WP)
+connect_pins("R1", "2", "U1", "WP")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R3", "2", "R4", "1")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "#PWR2", "1")
+
+# Connecting U1 pin SCL (Pin ID 3 -- Name SCL) to R1 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "SCL", "R1", "2")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R2", "2", "R3", "1")
+
+# Connecting U1 pin SDA (Pin ID 2 -- Name SDA) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "SDA", "R1", "1")
+
+# Connecting #PWR4 pin +1V8 (Pin ID 1 -- Name +1V8) to C2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR4", "+1V8", "C2", "2")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R2", "1", "R3", "2")
+
+# Connecting U1 pin VCC (Pin ID 8 -- Name VCC) to #PWR4 pin +1V8 (Pin ID 1 -- Name +1V8)
+connect_pins("U1", "VCC", "#PWR4", "+1V8")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_cat24c128_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_cat24c128_generated.response.txt

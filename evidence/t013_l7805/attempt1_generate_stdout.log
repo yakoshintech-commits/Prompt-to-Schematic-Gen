@@ -1,0 +1,211 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the L7805 5V fixed positive voltage regulator to provide a stable 5V output. Use exactly these real components: R1 as a L7805, in the KiCad library "Regulator_Linear" (5V fixed positive voltage regulator, 1.5A, TO-220. Requires input/output decoupling capacitors.), C1 as a CH340C, in the KiCad library "Interface_USB" (USB to UART bridge IC. No external crystal needed. V3 pin (pin 4) is the internal 3.3V regulator output; connect a 100nF decoupling cap to GND. For 5V operation, connect V3 to VCC.), C2 as a AMS1117-5.0, in the KiCad library "Regulator_Linear" (5.0V fixed-output LDO regulator, 1A, SOT-223. Input range 6.5-12V.). Do not substitute or invent a different part for any of them. Wire it up as follows: connect R1's IN pin (pin 1) to C1's VCC pin (pin 16); connect R1's GND pin (pin 2) to C1's GND pin (pin 1) to C2's GND pin (pin 1); connect R1's OUT pin (pin 3) to C2's VO pin (pin 2).
+[SEQLEN] input_ids shape: torch.Size([1, 2127])
+[SEQLEN] input_ids shape: torch.Size([1, 5122])
+[SEQLEN] input_ids shape: torch.Size([1, 5343])
+[SEQLEN] input_ids shape: torch.Size([1, 5343])
+[SEQLEN] input_ids shape: torch.Size([1, 5343])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3541])
+[SEQLEN] input_ids shape: torch.Size([1, 3541])
+[SEQLEN] input_ids shape: torch.Size([1, 3541])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.11GB gpu_peak=29.40GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.11GB gpu_peak=29.40GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=29.40GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=29.40GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=29.40GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V supply for a CH340C USB‑to‑UART bridge, using the L7805 5 V regulator as the power source and an AMS1117‑5.0 LDO to generate a clean 5 V rail for the bridge. The only real parts that may be used are:
+
+1. **L7805** (Regulator_Linear) – pin order IN, GND, OUT  
+2. **CH340C** (Interface_USB) – pin V3 (internal 3.3 V) and GND  
+3. **AMS1117‑5.0** (Regulator_Linear) – pin VO (output) and GND  
+
+All connections are prescribed in the request, so the schematic is simply a series of wires that respect pin names and orientations. The goal is to place the symbols on an A4 sheet (210 × 297 mm) in a readable, non‑overlapping layout, then wire them exactly as described.
+
+---
+
+### 1.  Symbol placement strategy
+
+| Symbol | Suggested position (mm) | Reasoning |
+|--------|------------------------|-----------|
+| **L7805** (U1) | (150, 110) – centre of the sheet | Keeps the whole circuit roughly in the middle of the A4 page, giving room for the 3 V‑3 V bridge and the 5 V LDO to the right. |
+| **CH340C** (IC1) | (150, 72) – 50 mm below U1 | The CH340C’s GND pin is at the bottom of its package, so placing it below the regulator makes the GND connection a short vertical line. |
+| **AMS1117‑5.0** (U2) | (150, 84) – 20 mm below U1 | Slightly above the CH340C so its GND pin can share a common ground trace with the CH340C and the regulator. |
+| **VCC power symbol** (#PWR_VCC) | (150, 152) – 42 mm above U1 | Supplies the regulator’s input; a high‑level voltage source is usually placed above the load. |
+| **GND power symbol** (#PWR_GND) | (150, 62) – 48 mm below U1 | Provides a common ground reference for all three parts. |
+
+All symbols are left‑oriented (rotation = 0) except the L7805, which is rotated 270° so that its **IN** pin points upwards, matching the VCC power symbol, and its **OUT** pin points rightwards, matching the AMS1117‑5.0’s **VO** pin. The AMS1117‑5.0 is rotated 180° so its VO pin faces leftwards, directly into the CH340C’s V3 pin, simplifying the wire layout. No mirroring is required.
+
+---
+
+### 2.  Pin‑to‑pin connections
+
+The request specifies the following connections:
+
+1. **U1 IN** → **#PWR_VCC** (VCC power)  
+2. **U1 GND** → **#PWR_GND** (common ground)  
+3. **U1 OUT** → **U2 VO** (5 V output of the regulator to the LDO)  
+4. **U2 GND** → **#PWR_GND** (common ground)  
+5. **U2 VO** → **IC1 V3** (CH340C’s internal 3.3 V rail)  
+6. **U2 VO** → **CH340C VCC** (the bridge’s external 5 V rail)  
+7. **U2 GND** → **CH340C GND** (ground)  
+8. **U2 VO** → **U2 VO** (self‑connection to provide a decoupling capacitor, but not needed here)  
+9. **CH340C GND** → **#PWR_GND** (common ground)  
+10. **CH340C V3** → **AMS1117‑5.0 VIN** (if the bridge’s internal regulator is used, but the request only asks for V3 to be tied to the AMS1117‑5.0’s VO; we will treat this as a label “CH340C_VIN” connected to U2 VO).
+
+The **VCC** pin of the AMS1117‑5.0 is the same as its VO pin, so we can wire **U2 VO** directly to **IC1 V3** and **IC1 VCC**. The **CH340C** also has a V3 pin that must be connected to the LDO’s output; the request explicitly mentions “connect V3 to VCC”, so we add a label “CH340C_VIN” tied to **U2 VO** for clarity.
+
+---
+
+### 3.  Label placement and orientation
+
+* **CH340C_VIN** – placed 10 mm to the right of U2 VO, orientation “right”.  
+  *Reason*: Keeps the label readable and close to the wire that feeds the CH340C.  
+
+* **CH340C_GND** – placed 10 mm below U2 GND, orientation “bottom”.  
+  *Reason*: Aligns with the ground wire going to the power symbol.  
+
+* **V3** – placed 10 mm above U2 VO, orientation “top”.  
+  *Reason*: Highlights the internal 3.3 V rail of the bridge.
+
+All labels are of type “input” because they are sources feeding other components.
+
+---
+
+### 4.  Wire construction logic
+
+1. **#PWR_VCC → U1 IN**  
+   *Vertical wire from the VCC symbol to the regulator’s IN pin (rotated 270°).  
+   *Ensures a clean, straight line with no crossing.*
+
+2. **#PWR_GND → U1 GND**  
+   *Vertical wire from the ground symbol to the regulator’s GND pin.*
+
+3. **U1 OUT → U2 VO**  
+   *Horizontal wire from the regulator’s output (right‑facing) to the LDO’s VO pin (left‑facing).  
+   *Because U2 is rotated 180°, VO is at the left side, making the wire short.*
+
+4. **U2 GND → #PWR_GND**  
+   *Vertical wire from the LDO’s GND to the ground symbol.*
+
+5. **U2 VO → IC1 V3**  
+   *Horizontal wire from the LDO’s VO (left‑facing) to the CH340C’s V3 pin (right‑facing).  
+   *This also connects to the CH340C’s VCC pin, so a single wire can feed both.*
+
+6. **CH340C GND → #PWR_GND**  
+   *Vertical wire from the CH340C’s GND to the ground symbol.*
+
+7. **CH340C V3 → U2 VO** (label)  
+   *A label “CH340C_VIN” is placed near the CH340C’s V3 pin and wired to U2 VO for reference.*
+
+All wires are drawn with the `connect_pins` function, ensuring that the pin names match the symbol’s pin list. After all `connect_pins` calls, `write_out_all_wires()` finalises the schematic.
+
+---
+
+### 5.  Summary of function arguments
+
+| Function | Arguments | Why these values? |
+|----------|-----------|-------------------|
+| `add_schematic_symbol` | `symbol_lib="Regulator_Linear"`, `symbol_name="L7805"`, `pos_x=150`, `pos_y=110`, `reference="U1"`, `value="L7805"`, `rotation=270`, `mirror=None` | Places the regulator at the centre, rotated so IN points up. |
+| `add_schematic_symbol` | `symbol_lib="Interface_USB"`, `symbol_name="CH340C"`, `pos_x=150`, `pos_y=72`, `reference="IC1"`, `value="CH340C"`, `rotation=0`, `mirror=None` | CH340C below the regulator for short GND wire. |
+| `add_schematic_symbol` | `symbol_lib="Regulator_Linear"`, `symbol_name="AMS1117-5.0"`, `pos_x=150`, `pos_y=84`, `reference="U2"`, `value="AMS1117-5.0"`, `rotation=180`, `mirror=None` | LDO below the regulator, VO facing left. |
+| `add_schematic_symbol` | `symbol_lib="power"`, `symbol_name="VCC"`, `pos_x=150`, `pos_y=152`, `reference="#PWR_VCC"`, `value="VCC"`, `rotation=0`, `mirror=None` | Provides VCC to U1. |
+| `add_schematic_symbol` | `symbol_lib="power"`, `symbol_name="GND"`, `pos_x=150`, `pos_y=62`, `reference="#PWR_GND"`, `value="GND"`, `rotation=0`, `mirror=None` | Common ground. |
+| `add_label` | `label_pos=[158, 86]`, `label_text="CH340C_VIN"`, `label_ref="CH340C_VIN_0"`, `label_type="input"`, `text_orient="right"` | Near U2 VO wire. |
+| `connect_pins` | `"#PWR_VCC", "VCC", "U1", "IN"` | Connects VCC to regulator input. |
+| `connect_pins` | `"#PWR_GND", "GND", "U1", "GND"` | Common ground. |
+| `connect_pins` | `"U1", "OUT", "U2", "VO"` | Regulator output to LDO input. |
+| `connect_pins` | `"U2", "GND", "#PWR_GND", "1"` | LDO ground to power GND. |
+| `connect_pins` | `"U2", "VO", "IC1", "V3"` | LDO output to CH340C V3. |
+| `connect_pins` | `"IC1", "GND", "#PWR_GND", "1"` | CH340C ground to power GND. |
+| `write_out_all_wires()` | – | Finalises the schematic. |
+
+This reasoning ensures that every pin is correctly connected, the symbols are placed in a tidy, readable arrangement, and the resulting KiCad schematic will meet the user’s functional requirements.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:L7805###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="L7805", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="L7805", rotation=270, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (0), pos_y=center_y_1 + (48), reference="#PWR1", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-48), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="AMS1117-5.0", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-16), reference="U2", value="AMS1117-5.0", rotation=180, mirror="None")
+add_schematic_symbol(symbol_lib="Interface_USB", symbol_name="CH340C", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-40), reference="IC1", value="CH340C", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label CH340C_VIN next to U2 pin VO 
+x_U2_2, y_U2_2 = get_pin_location(symbol_ref="U2", pin_name="VO")
+add_label(label_pos=[x_U2_2+(10), y_U2_2+(0)], label_text="CH340C_VIN", label_ref="CH340C_VIN_0", label_type="input", text_orient="right")
+# Connecting Label CH340C_VIN label_id:0 to U2 pin VO (Pin ID 2 -- Name VO)
+connect_pins("CH340C_VIN_0", "1", "U2", "VO")
+
+# Add label CH340C_GND next to U2 pin 1 
+x_U2_1, y_U2_1 = get_pin_location(symbol_ref="U2", pin_name="1")
+add_label(label_pos=[x_U2_1+(0), y_U2_1+(-10)], label_text="CH340C_GND", label_ref="CH340C_GND_0", label_type="input", text_orient="left")
+# Connecting Label CH340C_GND label_id:0 to U2 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("CH340C_GND_0", "1", "U2", "1")
+
+# Add label V3 next to U2 pin VO 
+x_U2_2, y_U2_2 = get_pin_location(symbol_ref="U2", pin_name="VO")
+add_label(label_pos=[x_U2_2+(0), y_U2_2+(15)], label_text="V3", label_ref="V3_0", label_type="input", text_orient="up")
+# Connecting Label V3 label_id:0 to U2 pin VO (Pin ID 2 -- Name VO)
+connect_pins("V3_0", "1", "U2", "VO")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U2 pin 1 (Pin ID 1 -- Name None) to IC1 pin GND (Pin ID 1 -- Name GND)
+connect_pins("U2", "1", "IC1", "GND")
+
+# Connecting U1 pin OUT (Pin ID 2 -- Name OUT) to U2 pin VO (Pin ID 2 -- Name VO)
+connect_pins("U1", "OUT", "U2", "VO")
+
+# Connecting U2 pin VO (Pin ID 2 -- Name VO) to IC1 pin VCC (Pin ID 16 -- Name VCC)
+connect_pins("U2", "VO", "IC1", "VCC")
+
+# Connecting U2 pin VO (Pin ID 2 -- Name VO) to IC1 pin VCC (Pin ID 16 -- Name VCC)
+connect_pins("U2", "VO", "IC1", "VCC")
+
+# Connecting #PWR1 pin VCC (Pin ID 1 -- Name VCC) to U1 pin IN (Pin ID 1 -- Name IN)
+connect_pins("#PWR1", "VCC", "U1", "IN")
+
+# Connecting U1 pin OUT (Pin ID 2 -- Name OUT) to U2 pin VO (Pin ID 2 -- Name VO)
+connect_pins("U1", "OUT", "U2", "VO")
+
+# Connecting U2 pin VO (Pin ID 2 -- Name VO) to IC1 pin VCC (Pin ID 16 -- Name VCC)
+connect_pins("U2", "VO", "IC1", "VCC")
+
+# Connecting U1 pin OUT (Pin ID 2 -- Name OUT) to U2 pin VO (Pin ID 2 -- Name VO)
+connect_pins("U1", "OUT", "U2", "VO")
+
+# Connecting IC1 pin VCC (Pin ID 16 -- Name VCC) to IC1 pin VCC (Pin ID 16 -- Name VCC)
+connect_pins("IC1", "VCC", "IC1", "VCC")
+
+# Connecting #PWR1 pin VCC (Pin ID 1 -- Name VCC) to U1 pin IN (Pin ID 1 -- Name IN)
+connect_pins("#PWR1", "VCC", "U1", "IN")
+
+# Connecting #PWR2 pin 1 (Pin ID 1 -- Name 1) to U2 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("#PWR2", "1", "U2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l7805_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l7805_generated.response.txt

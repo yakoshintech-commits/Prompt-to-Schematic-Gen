@@ -1,0 +1,179 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V fixed-output LDO regulator circuit using the LM1117S-5.0 component. Use exactly these real components: U1 as a LM1117S-5.0, in the KiCad library "Regulator_Linear" (5.0V fixed-output LDO regulator, 800mA, SOT-223.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1910])
+[SEQLEN] input_ids shape: torch.Size([1, 4905])
+[SEQLEN] input_ids shape: torch.Size([1, 4905])
+[SEQLEN] input_ids shape: torch.Size([1, 4905])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5126])
+[SEQLEN] input_ids shape: torch.Size([1, 5126])
+[SEQLEN] input_ids shape: torch.Size([1, 5126])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3324])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.77GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.77GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.77GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.77GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.77GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V fixed‑output LDO using the LM1117S‑5.0 part (SOT‑223, 800 mA).  
+Only the following symbols may be used:
+
+| Symbol | Library | Description | Pins (name / direction) |
+|--------|---------|-------------|--------------------------|
+| U1 | Regulator_Linear | LM1117S‑5.0 | VIN (pin 1, ↑), VOUT (pin 2, ↑), GND (pin 3, ↓) |
+| R1 | Device::C | 1 kΩ (default) | pin 1, 2 |
+| J1 | Device::R | 2.2 kΩ (pull‑up) | pin 1, 2 |
+| J2 | Device::C | 10 µF decoupling | pin 1, 2 |
+| V1 | power::VCC | 1 V5 supply | pin 1 |
+| GND | power::GND | ground | pin 1 |
+
+The schematic must contain the LDO, a series resistor for output current limiting, a pull‑up/decoupling network, and the supply/gnd connections.  
+All components should be spaced so that bounding boxes do not overlap and the layout stays near the centre of a 210 mm × 297 mm (A4) sheet.
+
+---
+
+### 1.  Symbol placement strategy
+
+1. **Center reference** – The LM1117S‑5.0 (U1) is placed at (150 mm, 110 mm).  
+   This keeps the circuit roughly in the middle of the page and leaves room for the surrounding parts.
+
+2. **Pull‑up resistor (R1)** – 1 kΩ is placed left of U1, 22 mm lower (x – 22, y – 22).  
+   It connects the VIN pin of U1 to the 1 V5 supply; the 1 kΩ value will give a small current‑limited path to the supply.
+
+3. **Series resistor (R2)** – 2.2 kΩ is placed further right (x + 15, y – 22).  
+   It forms the output current‑limiting network with the LM1117 (pin 2).  
+   The 2.2 kΩ value is a typical choice for a 5 V/0.5 A LDO.
+
+4. **Decoupling capacitor (C1)** – 10 µF is placed right of R2 (x + 33, y – 22).  
+   It provides local bypass for the LDO output.
+
+5. **Supply pad (V1)** – VCC 1 V5 is placed right of U1 (x + 10, y + 22).  
+   Its pin is connected to the VIN pin of U1.
+
+6. **GND pad (GND)** – Ground is placed right of U1 (x + 35, y + 5).  
+   It is connected to the GND pin of the LDO and to the bottom of the decoupling capacitor.
+
+7. **Label placement** – The labels “VOUT (5 V)” and “VIN (1 V5)” are positioned next to the corresponding pins of U1.  
+   The text orientation is chosen so that the label text does not cross wires and fits neatly beside the pin.
+
+---
+
+### 2.  Function arguments – what every call means
+
+| Function | Purpose | Key arguments | Why those values |
+|----------|---------|----------------|------------------|
+| `add_schematic_symbol` | Places a component | `symbol_lib`, `symbol_name` – identify the library and symbol. <br>`pos_x`, `pos_y` – absolute coordinates (mm). <br>`reference` – unique reference (U1, R1, etc.). <br>`value` – component value or part number. <br>`rotation` – angle for readability. <br>`mirror` – flip if needed. | For U1 we use `"Regulator_Linear"`, `"LM1117S-5.0"`, reference `"U1"`, value `"LM1117S-5.0"`, rotation 90 ° so the package sits upright and its pins face the expected directions. <br>R1, R2, C1 use `"Device"`, `"C"` or `"R"` with appropriate values and 0° rotation to keep pins horizontal. <br>V1 uses `"power"`, `"VCC"` with `+1V5` as value. <br>GND uses `"power"`, `"GND"` with no value. All mirrors are `"None"` because the default orientation already aligns with the schematic. |
+| `connect_pins` | Creates a net between two pins | `sym_a`, `pin_a`, `sym_b`, `pin_b` – the references and pin identifiers. | The first net connects V1 (pin 1) to U1 VIN (pin 1). <br>Second net connects U1 GND (pin 3) to GND (pin 1). <br>Third net connects U1 VOUT (pin 2) to R2 pin 1. <br>Fourth net connects R2 pin 2 to C1 pin 1. <br>Fifth net connects C1 pin 2 to GND (pin 1). <br>Sixth net connects R1 pin 1 to V1 (pin 1). <br>Seventh net connects R1 pin 2 to U1 VIN (pin 1) – this completes the pull‑up path. |
+| `write_out_all_wires` | Finalises the netlist and writes the schematic file | No arguments | Must be called after all `connect_pins` to output the wires. |
+
+---
+
+### 3.  Pin‑to‑pin mapping – why each connection is necessary
+
+| Net | From | To | Reason |
+|-----|------|----|--------|
+| VCC‑1 → U1 VIN | `V1` (pin 1) | `U1` (VIN) | Supplies the input voltage to the LDO. |
+| U1 GND → GND | `U1` (GND) | `GND` (pin 1) | Grounds the LDO. |
+| U1 VOUT → R2‑1 | `U1` (VOUT) | `R2` (pin 1) | The LDO output is routed through a series resistor. |
+| R2‑2 → C1‑1 | `R2` (pin 2) | `C1` (pin 1) | The series resistor connects to the decoupling capacitor. |
+| C1‑2 → GND | `C1` (pin 2) | `GND` (pin 1) | Grounds the capacitor’s return. |
+| R1‑1 → V1 | `R1` (pin 1) | `V1` (pin 1) | Pull‑up resistor to the 1 V5 supply. |
+| R1‑2 → U1 VIN | `R1` (pin 2) | `U1` (VIN) | Completes the pull‑up path to the input. |
+
+The pull‑up resistor (R1) is optional but often used to provide a small current path when the input is floating. The series resistor (R2) sets the maximum output current when the LDO is loaded heavily; the LM1117S‑5.0 can deliver 800 mA, but the resistor limits current to about 200–300 mA, improving stability.
+
+---
+
+### 4.  Label placement details
+
+- **VOUT label**: retrieved by `get_pin_location` on U1’s “VOUT” pin. The label is placed 13 mm to the right of the pin (`x+13`, `y+0`) and oriented “right” so the text reads left‑to‑right next to the pin.
+- **VIN label**: similar approach, placed 12 mm to the right of the VIN pin.
+
+Both labels use the reference names `VOUT_0` and `VIN_0`, and are connected to the corresponding pins with `connect_pins(label_ref, "1", sym, pin)` (labels are treated as one‑pin symbols).
+
+---
+
+### 5.  Rotation & mirroring justification
+
+- **U1**: rotated 90° because the SOT‑223 package’s pin layout is vertical; rotating it makes the VIN pin face the left side of the schematic, aligning with R1 and V1.
+- **R1, R2, C1**: left at 0° to keep their pins horizontal, simplifying wire routing.
+- **V1, GND**: default orientation is fine; no mirroring needed.
+- **Mirror**: all set to `"None"`; no component requires a flipped view for clarity.
+
+---
+
+### 6.  Summary of the final code structure
+
+1. **Import statements** – bring in the KiCad schematic interface.
+2. **Center symbol declaration** – place U1 at the chosen coordinates.
+3. **Offset placements** – each remaining component is added relative to U1 with clear offsets that avoid overlap.
+4. **Label creation** – use `get_pin_location` to locate pins and `add_label` to place the text.
+5. **Wire connections** – a series of `connect_pins` calls that implement the netlist described above.
+6. **Finalize** – `write_out_all_wires()` outputs the schematic file.
+
+All arguments are chosen to reflect the physical layout, pin directions, and functional relationships required for a simple 5 V LDO regulator circuit.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:LM1117S-5.0###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="LM1117S-5.0", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="LM1117S-5.0", rotation=90, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (0), pos_y=center_y_1 + (22), reference="#PWR1", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-22), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (10), pos_y=center_y_1 + (-22), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (22), pos_y=center_y_1 + (-22), reference="C1", value="10uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (35), pos_y=center_y_1 + (22), reference="#PWR3", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (35), pos_y=center_y_1 + (-22), reference="#PWR4", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VIN next to U1 pin VIN 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="VIN")
+add_label(label_pos=[x_U1_1+(12), y_U1_1+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="right")
+# Connecting Label VIN label_id:0 to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("VIN_0", "1", "U1", "VIN")
+
+# Add label VOUT next to U1 pin VOUT 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="VOUT")
+add_label(label_pos=[x_U1_3+(15), y_U1_3+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="input", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VOUT (Pin ID 3 -- Name VOUT)
+connect_pins("VOUT_0", "1", "U1", "VOUT")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin VCC (Pin ID 1 -- Name VCC) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("#PWR1", "VCC", "U1", "VIN")
+
+# Connecting U1 pin VOUT (Pin ID 3 -- Name VOUT) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VOUT", "R1", "1")
+
+# Connecting U1 pin GND (Pin ID 2 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR2", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "C1", "1")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "#PWR4", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117s_5_0_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117s_5_0_generated.response.txt

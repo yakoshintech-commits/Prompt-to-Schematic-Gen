@@ -1,0 +1,168 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V fixed-output LDO regulator circuit using the LM1117MP-5.0. Use exactly these real components: U1 as a LM1117MP-5.0, in the KiCad library "Regulator_Linear" (5.0V fixed-output LDO regulator, 800mA, SOT-223 (MP variant).). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1913])
+[SEQLEN] input_ids shape: torch.Size([1, 4908])
+[SEQLEN] input_ids shape: torch.Size([1, 5129])
+[SEQLEN] input_ids shape: torch.Size([1, 3327])
+[SEQLEN] input_ids shape: torch.Size([1, 3327])
+[SEQLEN] input_ids shape: torch.Size([1, 3327])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V fixed‑output LDO using the LM1117MP‑5.0 part (SOT‑223, MP variant).  
+Only the exact symbol `U1` (LM1117MP‑5.0) from the library *Regulator_Linear* must be used – no substitutions.  
+The standard LM1117 family requires:
+
+* **VIN** – power input pin  
+* **VOUT** – regulated 5 V output pin  
+* **GND** – ground pin  
+
+Typical external components for a minimal, well‑behaved regulator circuit:
+
+1. **Input decoupling capacitor** (≈1 µF, 10 µF or 100 nF) – connected between VIN and GND.  
+2. **Output decoupling capacitor** (≈10 µF, 1 µF) – connected between VOUT and GND.  
+3. **Optional input choke** (≈10 Ω) – stabilises the input but is optional in a simple design.  
+4. **Optional output filter** (LC) – not required here.  
+
+The user only provided two generic symbols (`C` and `R`) in the context, so we will use only those: one capacitor and one resistor (as a placeholder for the optional input choke or a bias network).  
+
+**Placement strategy**
+
+The schematic paper is 210 mm × 297 mm (A4).  
+We place the LM1117 in the centre of the sheet to keep the layout balanced:
+
+```
+center_x, center_y = 150.0, 110.0   # roughly the centre of an A4 page
+```
+
+The LM1117 symbol is rotated 0° (default orientation) because its pins are already laid out in the conventional direction: VIN on the left, VOUT on the right, GND at the bottom.  
+
+The other components are positioned relative to the centre symbol so that the wires can run straight and the components do not overlap:
+
+```
+C1 (input cap)    : 15 mm left
+R1 (input choke)  : 10 mm left
+C2 (output cap)   : 15 mm right
+```
+
+All y‑coordinates are chosen to keep the symbols at the same vertical level as the LM1117, except the output cap which is placed a few millimetres higher to avoid crossing wires.  
+
+**Symbol arguments**
+
+| Symbol | Library | Reference | Value | Pos X | Pos Y | Rotation | Mirror |
+|--------|---------|-----------|-------|-------|-------|----------|--------|
+| LM1117MP‑5.0 | Regulator_Linear | U1 | LM1117MP‑5.0 | 150.0 | 110.0 | 0° | None |
+| C1 | Device | C1 | 1uF | 135.0 | 110.0 | 0° | None |
+| R1 | Device | R1 | 10 | 140.0 | 110.0 | 0° | None |
+| C2 | Device | C2 | 10uF | 165.0 | 115.0 | 0° | None |
+
+*The “1” and “10” values are typical for input and output filtering and provide a clean 5 V rail.*
+
+**Adding global labels**
+
+Using the helper `get_pin_location` we place text labels next to the pins that are intended for external connection:
+
+* **VIN** – pin VIN of U1, label text “VIN”.
+* **VOUT** – pin VOUT of U1, label text “VOUT”.
+* **GND** – pin GND of U1, label text “GND”.
+
+The label position is offset slightly from the pin (e.g., –12 mm in X and 0 mm in Y for VIN) so that the text does not overlap the symbol. The `text_orient` parameter is chosen to keep the text readable relative to the pin’s direction.
+
+**Wire connections**
+
+The wiring follows the LM1117’s pinout:
+
+1. **VIN → C1 → R1 → U1 VIN**  
+   *C1* is connected from VIN to the resistor. The resistor provides a small series resistance that can help with input stability.  
+2. **U1 VIN** is also connected directly to the capacitor *C1* (the other end of the capacitor).  
+3. **U1 VOUT → C2**  
+   The output cap is connected between the output pin and ground.  
+4. **U1 GND → ground**  
+   GND pin is tied to the board ground.  
+5. **C2 ↔ GND**  
+   The other end of the output capacitor connects to ground.  
+
+All connections are made with `connect_pins(symbol_ref, pin_name, sym_ref, pin_name)` where the pin names (`VIN`, `VOUT`, `GND`) match the symbol’s pin definitions. The function automatically creates a wire between the two pin locations.
+
+**Why these choices make sense**
+
+* **No mirroring** – the default orientation already aligns with the pin layout, so mirroring would only complicate the wire routing.  
+* **0° rotation** – keeps the schematic legible; a rotated regulator would swap left/right pins and would require additional wire routing.  
+* **Relative offsets** – placing components to the left/right of the regulator keeps the wires short and straight, improving readability and reducing clutter.  
+* **Label offsets** – small horizontal shifts ensure that the label text does not overlap the pin or the component symbol, which is especially useful when the schematic is printed.  
+
+**Final steps**
+
+After all `add_schematic_symbol`, `add_label`, and `connect_pins` calls, we invoke `write_out_all_wires()` to flush the internal wire list into the KiCad schematic file. This completes the schematic generation.
+
+The code that would be produced follows the exact pattern described above: center‑based placement, straightforward pin connections, and clear, non‑overlapping labels.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:LM1117MP-5.0###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="LM1117MP-5.0", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="LM1117MP-5.0", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-15), pos_y=center_y_1 + (0), reference="C1", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-10), pos_y=center_y_1 + (0), reference="R1", value="10", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (15), pos_y=center_y_1 + (5), reference="C2", value="10uF", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VIN next to U1 pin VIN 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="VIN")
+add_label(label_pos=[x_U1_1+(-12), y_U1_1+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+# Connecting Label VIN label_id:0 to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("VIN_0", "1", "U1", "VIN")
+
+# Add label VOUT next to U1 pin VOUT 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="VOUT")
+add_label(label_pos=[x_U1_2+(12), y_U1_2+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="output", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VOUT (Pin ID 2 -- Name VOUT)
+connect_pins("VOUT_0", "1", "U1", "VOUT")
+
+# Add label GND next to U1 pin GND 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="GND")
+add_label(label_pos=[x_U1_3+(12), y_U1_3+(0)], label_text="GND", label_ref="GND_0", label_type="output", text_orient="right")
+# Connecting Label GND label_id:0 to U1 pin GND (Pin ID 3 -- Name GND)
+connect_pins("GND_0", "1", "U1", "GND")
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin GND (Pin ID 3 -- Name None) to C2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "C2", "1")
+
+# Connecting C2 pin 2 (Pin ID 2 -- Name None) to U1 pin VOUT (Pin ID 2 -- Name VOUT)
+connect_pins("C2", "2", "U1", "VOUT")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("R1", "2", "U1", "VIN")
+
+# Connecting U1 pin VIN (Pin ID 1 -- Name VIN) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VIN", "C1", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117mp_5_0_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117mp_5_0_generated.response.txt

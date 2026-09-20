@@ -1,0 +1,150 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V fixed-output LDO regulator circuit using the AMS1117-5.0 component. Use exactly these real components: U1 as a AMS1117-5.0, in the KiCad library "Regulator_Linear" (5.0V fixed-output LDO regulator, 1A, SOT-223. Input range 6.5-12V.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+[SEQLEN] input_ids shape: torch.Size([1, 4912])
+[SEQLEN] input_ids shape: torch.Size([1, 4912])
+[SEQLEN] input_ids shape: torch.Size([1, 4912])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.79GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.79GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.79GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V fixed‑output LDO using the AMS1117‑5.0 chip.  
+Only this part of the circuit needs to be described – no extra components, no power‑on/off switch or feedback.  
+The schematic must be ready for the KiCad interface functions that will be used to place symbols and wire them together.
+
+**Circuit block diagram**
+
+```
+VIN ── R ── VIN2 ──> AMS1117‑5.0 ── VOUT → 5 V
+          │                    │
+          └───── ESR (optional) ── GND
+```
+
+* **VIN** – the input pin that receives the supply voltage (6.5 – 12 V).  
+* **VIN2** – a small resistor to reduce input current ripple and protect the regulator.  
+* **VOUT** – the 5 V output of the regulator.  
+* **GND** – the ground pin of the regulator.  
+* **ESR** – an optional series resistor or small capacitor can be added; for the minimal implementation we just wire the regulator’s output directly to the load.
+
+**Symbol choices**
+
+| Symbol | Library | Reference | Value | Notes |
+|--------|---------|-----------|-------|-------|
+| AMS1117‑5.0 | Regulator_Linear | U1 | AMS1117‑5.0 | Fixed‑output LDO, 1 A, SOT‑223 |
+| Resistor (2 kΩ) | Device | R1 | 2.1 kΩ | Input‑impedance‑reducing resistor |
+| GND power symbol | power | #PWR1 | GND | Ground reference |
+| VAA power symbol | power | #PWR2 | VIN | Input supply label |
+
+**Placement strategy**
+
+The schematic sheet is 210 × 297 mm (A4).  
+To keep the circuit centered, the AMS1117 is placed at (150 mm, 110 mm).  
+All other symbols are offset from this centre:
+
+* **R1** is left of U1 by ~20 mm, the same Y‑level.  
+* **GND** is directly below U1 by ~10 mm.  
+* **VIN** is above U1 by ~22 mm.
+
+Rotations are chosen so that the pins that need to be connected are on the sides that face each other:
+
+* **AMS1117** – rotate 180° so that its VIN pin faces left (toward R1) and its VOUT pin faces right (toward GND).  
+* **Resistor R1** – no rotation; its pins are horizontal, matching the horizontal orientation of the regulator’s VIN and ground pins.  
+* **Power symbols** – no rotation; they have only one pin, so orientation is irrelevant.
+
+Mirroring is not required; all symbols are placed in their default orientation.
+
+**Adding global labels**
+
+To make the schematic readable, labels are added near the key pins:
+
+* **VIN** – a label “VIN” is placed 5 mm above the VAA pin.  
+* **GND** – a label “GND” is placed 5 mm below the GND pin.  
+* **VOUT** – a label “VOUT” is placed 5 mm above the VOUT pin.  
+
+These labels are added after the symbols so that the `get_pin_location` function can locate the exact pin coordinates.
+
+**Wire connections**
+
+1. **VIN → R1** – Connect the VAA pin of the power symbol to pin 1 of R1.  
+2. **R1 → U1 VIN** – Connect pin 2 of R1 to the VIN pin of U1.  
+3. **U1 VOUT → GND** – Connect the VOUT pin of U1 to the GND pin of U1.  
+4. **U1 VOUT → +1 V** – For completeness, a power symbol “+1 V” could be added, but it is optional.  
+5. **U1 GND → GND** – Connect the GND pin of U1 to the GND power symbol.  
+
+All connections use `connect_pins(sym_a, pin_a, sym_b, pin_b)` where `pin_a` and `pin_b` are the pin names or IDs.  
+Because the AMS1117’s pin names are “VIN”, “VOUT”, and “GND”, we use those exact names in the function calls.
+
+**Python‑API call mapping**
+
+* `add_schematic_symbol` – places each symbol at the calculated coordinates with the chosen rotation.  
+* `add_label` – places a textual label near a pin; the coordinates are derived from `get_pin_location` + offset.  
+* `connect_pins` – creates the electrical connections; the order of arguments is (symbol A, pin A, symbol B, pin B).  
+* `write_out_all_wires()` – finalises the netlist.
+
+**Why these choices give a clean schematic**
+
+* **Central placement** – keeps the main block in the middle of the page, making the sheet balanced.  
+* **Consistent rotation** – 180° on the regulator aligns its pin layout with the resistor and power symbols, reducing wire crossing.  
+* **Adequate spacing** – a 20 mm horizontal gap between U1 and R1 prevents symbol overlap and leaves room for labels.  
+* **Clear labels** – each major pin is labelled, so a reader can instantly see where VIN, VOUT, and GND are.  
+* **Minimal extra components** – the regulator is wired directly to the load; no unnecessary decoupling capacitors are added because the request was for a *simple* fixed‑output LDO.
+
+The resulting Python script will follow this logic exactly, producing a ready‑to‑export KiCad schematic that satisfies the user’s specifications.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:AMS1117-5.0###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="AMS1117-5.0", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="AMS1117-5.0", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-26), pos_y=center_y_1 + (26), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-26), pos_y=center_y_1 + (16), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-24), pos_y=center_y_1 + (0), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V1", pos_x=center_x_1 + (-16), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "VIN", "R1", "1")
+
+# Connecting #PWR2 pin 1 (Pin ID 1 -- Name None) to U1 pin 3 (Pin ID 3 -- Name None)
+connect_pins("#PWR2", "1", "U1", "3")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R2", "1")
+
+# Connecting U1 pin 2 (Pin ID 2 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "2", "#PWR2", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin 1 (Pin ID 1 -- Name VIN)
+connect_pins("R2", "2", "U1", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ams1117_5_0_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ams1117_5_0_generated.response.txt

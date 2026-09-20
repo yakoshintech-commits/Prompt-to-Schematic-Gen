@@ -1,0 +1,124 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a Generic small-footprint Schottky diode. Use exactly these real components: D1 as a D_Schottky_Small, in the KiCad library "Device" (Generic small-footprint Schottky diode). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1886])
+[SEQLEN] input_ids shape: torch.Size([1, 4881])
+[SEQLEN] input_ids shape: torch.Size([1, 5102])
+[SEQLEN] input_ids shape: torch.Size([1, 5102])
+[SEQLEN] input_ids shape: torch.Size([1, 5102])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3300])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.48GB gpu_peak=28.70GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=32.48GB gpu_peak=28.70GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.70GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.70GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.70GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a minimal schematic that only contains a single generic Schottky diode (the “D_Schottky_Small” symbol from the *Device* library).  
+Because the request explicitly forbids the introduction of any other components, the diode must be isolated – it will not be connected to any supply, load, or ground.  The schematic therefore contains only the diode and its two pins labelled as usual (A on the left, K on the right).  The code must place that symbol in a readable spot on a 210 × 297 mm A4 sheet, label the two pins, and then generate the wire connections (which, in this case, will simply be the two pins themselves).
+
+---
+
+### 1.  Placement of the diode symbol
+
+* **Library / symbol** – `"Device"` / `"D_Schottky_Small"`.  
+* **Reference** – `"D1"` (the only reference the user requested).  
+* **Value** – `"D_Schottky_Small"` (the symbol’s default value; the user did not ask for a different one).  
+* **Coordinates** – The schematic centre is roughly at (105 mm, 148.5 mm).  Placing the diode at (150 mm, 110 mm) keeps it comfortably off‑centre but still well within the page, ensuring ample room for the two pin labels to be drawn without overlap.  
+* **Rotation** – 180 ° is the most conventional orientation for a diode: cathode (K) on the left, anode (A) on the right when looking at the schematic.  Rotating 180 ° flips the symbol so that the K pin appears on the left side of the symbol’s bounding box, making the later label placement easier.  
+* **Mirror** – `None`.  No mirroring is needed because the rotation already gives the desired pin order.
+
+```python
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="D_Schottky_Small",
+    pos_x=150.0, pos_y=110.0,
+    reference="D1",
+    value="D_Schottky_Small",
+    rotation=180,
+    mirror=None
+)
+```
+
+---
+
+### 2.  Adding the label pins
+
+Each diode pin must be labelled so that a user can see its function.  We use the `get_pin_location()` function to obtain the absolute coordinates of the pins in the schematic’s coordinate system.  The label is then placed **just to the left** (for K) and **just to the right** (for A) of the pin so that the text does not collide with the symbol itself.  The `text_orient` is set accordingly: `"left"` for the K pin (label text appears to the left of the pin) and `"right"` for the A pin.
+
+* **K pin**  
+  * Pin name in the symbol: `"K"`.  
+  * Label text: `"K"` (or `"CATHODE"` if we prefer a more descriptive name).  
+  * Position: `x_K = pin_X_K + (-10)` mm, `y_K = pin_Y_K` (10 mm left).  
+  * `label_type` is `"bidirectional"` because a diode can conduct in one direction only, but the label itself is simply a direction marker.
+
+* **A pin**  
+  * Pin name: `"A"`.  
+  * Label text: `"A"` (or `"ANODE"`).  
+  * Position: `x_A = pin_X_A + (10)` mm, `y_A = pin_Y_A` (10 mm right).  
+  * Same `label_type` and `text_orient="right"`.
+
+```python
+# Pin K
+x_K, y_K = get_pin_location("D1", "K")
+add_label([x_K-10, y_K], "K", "K_0", "bidirectional", "left")
+connect_pins("K_0", "1", "D1", "K")
+
+# Pin A
+x_A, y_A = get_pin_location("D1", "A")
+add_label([x_A+10, y_A], "A", "A_0", "bidirectional", "right")
+connect_pins("A_0", "1", "D1", "A")
+```
+
+---
+
+### 3.  Wire connections
+
+Because the schematic contains only the diode, the only required connections are the two pins to their respective labels.  No power or ground nets are drawn.  The `connect_pins()` calls above already create those wires; after all components and labels have been placed we call `write_out_all_wires()` to emit the wire data into the KiCad schematic file.
+
+```python
+write_out_all_wires()
+```
+
+---
+
+### 4.  Summary of the final script
+
+1. **Import the KiCad interface** – standard boilerplate.  
+2. **Define the centre coordinates** – used as a reference point for the diode’s placement.  
+3. **Add the diode** with the correct library, symbol, reference, value, rotation, and no mirroring.  
+4. **Place two labels** (K and A) next to the corresponding pins, using calculated offsets and appropriate text orientation.  
+5. **Connect each label to its pin** – this creates the visible wires that show the pin functions.  
+6. **Write out all wires** – final step to generate the schematic file.
+
+All arguments have been chosen to satisfy the user’s constraints: only the requested diode symbol, no extra components, logical placement, readable labels, and minimal wire network.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D_Schottky_Small###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D_Schottky_Small", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="D_Schottky_Small", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_d_schottky_small_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_d_schottky_small_generated.response.txt

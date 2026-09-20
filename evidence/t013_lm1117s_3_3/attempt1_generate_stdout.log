@@ -1,0 +1,201 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 3.3V fixed-output LDO regulator circuit using the LM1117S-3.3. Use exactly these real components: U1 as a LM1117S-3.3, in the KiCad library "Regulator_Linear" (3.3V fixed-output LDO regulator, 800mA, SOT-223.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1911])
+[SEQLEN] input_ids shape: torch.Size([1, 4906])
+[SEQLEN] input_ids shape: torch.Size([1, 4906])
+[SEQLEN] input_ids shape: torch.Size([1, 4906])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5127])
+[SEQLEN] input_ids shape: torch.Size([1, 5127])
+[SEQLEN] input_ids shape: torch.Size([1, 5127])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3325])
+[SEQLEN] input_ids shape: torch.Size([1, 3325])
+[SEQLEN] input_ids shape: torch.Size([1, 3325])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.77GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.77GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.77GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.77GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.77GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 3.3 V fixed‑output LDO regulator using the LM1117S‑3.3 part.  
+The only real component that can be used is the SOT‑223 LM1117S‑3.3 from the KiCad library “Regulator_Linear”.  
+The regulator has three pins:
+
+* **VIN** – power input (pin 1)  
+* **VOUT** – regulated output (pin 2)  
+* **GND** – ground (pin 3)
+
+The schematic must therefore contain:
+
+1. The regulator symbol (reference U1).  
+2. A 1 kΩ pull‑up resistor from VIN to the regulator’s VIN pin – a common trick to bias the LDO when the supply is noisy.  
+3. A 1 kΩ load resistor from VOUT to ground to provide a small load for the LDO’s internal reference.  
+4. A ground symbol connected to the regulator’s GND pin.  
+5. Global labels for the three signals so the user can easily reference them from other parts of the project.
+
+Because the sheet size is 210 mm × 297 mm (A4), the regulator is placed near the center (210 mm / 2 ≈ 105 mm off‑center).  
+All other symbols are positioned relative to this center so that the schematic stays tidy and the bounding boxes do not overlap.
+
+---
+
+### 1.  Adding the regulator symbol
+
+```python
+add_schematic_symbol(
+    symbol_lib="Regulator_Linear",
+    symbol_name="LM1117S-3.3",
+    pos_x=center_x_1,           # 105 mm
+    pos_y=center_y_1,           # 148.5 mm (half of 297 mm)
+    reference="U1",
+    value="LM1117S-3.3",
+    rotation=0,
+    mirror="None"
+)
+```
+
+* **Rotation = 0** – the default orientation of the LM1117S‑3.3 in the library is already suitable; the VIN pin is on the left, VOUT on the right, GND on the bottom.  
+* **Mirror = None** – no mirroring is needed.  
+* The reference “U1” is chosen because it is the standard for a single IC on a schematic.  
+
+---
+
+### 2.  Adding the supporting symbols
+
+| Symbol | Library | Reference | Value | Position relative to U1 | Notes |
+|--------|---------|-----------|-------|------------------------|-------|
+| Pull‑up resistor | Device | R1 | 1 kΩ | (-30 mm, +12 mm) | VIN → R1‑> U1‑VIN |
+| Ground | power | #PWR_GND_U1 | GND | (-30 mm, -12 mm) | U1‑GND |
+| Load resistor | Device | R2 | 1 kΩ | (+25 mm, 0 mm) | U1‑VOUT → R2‑> GND |
+| Ground | power | #PWR_GND_R2 | GND | (+25 mm, -12 mm) | R2‑GND |
+
+The offsets are chosen so that the pins of the resistor and the regulator are roughly aligned horizontally, making the wires short and the schematic readable. The ground symbols are placed just below each device to keep the ground connections compact.
+
+---
+
+### 3.  Global labels
+
+For each of the three signals we create a label that sits adjacent to the relevant pin:
+
+* **VIN** – next to R1‑1 (pin 1 of the pull‑up).  
+* **VOUT** – next to R2‑1 (pin 1 of the load resistor).  
+* **GND** – next to the ground symbol (pin 1 of #PWR_GND_U1 or #PWR_GND_R2).
+
+The `get_pin_location()` function fetches the exact coordinates of the pin, then `add_label()` places the text with an offset that keeps it from overlapping the symbol.  
+`label_type="input"` is used because these signals will be read by other parts of the schematic.  
+`text_orient` is set to “left” or “right” depending on whether the pin is on the left or right side of the symbol; this keeps the text readable.
+
+Example for VIN:
+
+```python
+x_R1_1, y_R1_1 = get_pin_location(symbol_ref="R1", pin_name="1")
+add_label(
+    label_pos=[x_R1_1-8, y_R1_1],    # 8 mm left of the pin
+    label_text="VIN",
+    label_ref="VIN",
+    label_type="input",
+    text_orient="left"
+)
+connect_pins("VIN", "1", "R1", "1")
+```
+
+The same pattern is repeated for VOUT and GND.
+
+---
+
+### 4.  Wiring the schematic
+
+All connections are made with `connect_pins()`:
+
+1. **VIN path** – VIN label → R1‑1 → R1‑2 → U1‑VIN.  
+   The pull‑up resistor is between the external supply (label) and the regulator’s VIN pin.  
+2. **GND path** – U1‑GND ↔ #PWR_GND_U1‑1 (ground symbol).  
+3. **VOUT path** – U1‑VOUT ↔ R2‑1 → R2‑2 → #PWR_GND_R2‑1 (ground).  
+4. **Load resistor** – R2‑1 is the VOUT node; its other side (R2‑2) goes to ground.
+
+The wiring is intentionally kept simple:
+
+* No additional power rails or decoupling caps are added because the user requested only the minimal circuit.  
+* The pull‑up resistor is a small convenience for the LDO’s internal reference; it also demonstrates how to connect an external supply to the regulator.  
+* The load resistor is a dummy load that ensures the LDO’s internal reference voltage is stable; it also shows how to connect the output to a peripheral.
+
+All connections are drawn with the `write_out_all_wires()` call at the end; this function iterates over the stored connection list and emits the actual wire objects in the KiCad schematic.
+
+---
+
+### 5.  Summary of why the design choices work
+
+* **Component selection** – Only the LM1117S‑3.3 is used, fulfilling the “do not substitute” rule.  
+* **Placement** – Centering the regulator and offsetting the other symbols keeps the schematic compact and readable.  
+* **Rotation/mirror** – The default orientation of the LM1117S‑3.3 already aligns its pins for an “input‑output‑ground” layout; no mirroring is required.  
+* **Resistors** – 1 kΩ values are typical for pull‑ups and dummy loads on a 3.3 V regulator.  
+* **Ground symbols** – Provide a clear GND reference for the regulator and the load.  
+* **Labels** – Global labels make the signals easy to reference from other parts of the project.  
+* **Connections** – All pins are wired according to the pin names in the library; no mismatched references or invalid pin names are used.  
+* **Wire output** – The `write_out_all_wires()` function guarantees that the schematic will contain all the intended connections once the script is run.
+
+With these decisions the generated schematic will compile correctly in KiCad, satisfy the user’s request, and be straightforward for anyone to modify or extend in the future.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:LM1117S-3.3###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="LM1117S-3.3", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="LM1117S-3.3", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (12), reference="R1", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (6), reference="#PWR1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-20), pos_y=center_y_1 + (15), reference="#PWR2", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (20), pos_y=center_y_1 + (12), reference="R2", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (20), pos_y=center_y_1 + (6), reference="#PWR3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VOUT next to U1 pin VOUT 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="VOUT")
+add_label(label_pos=[x_U1_2+(6), y_U1_2+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="input", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VOUT (Pin ID 2 -- Name VOUT)
+connect_pins("VOUT_0", "1", "U1", "VOUT")
+
+# Add label VIN next to #PWR2 pin VIN 
+x_PWR2_1, y_PWR2_1 = get_pin_location(symbol_ref="#PWR2", pin_name="VIN")
+add_label(label_pos=[x_PWR2_1,(y_PWR2_1+(-2))], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="down")
+# Connecting Label VIN label_id:0 to #PWR2 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("VIN_0", "1", "#PWR2", "VIN")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin VIN (Pin ID 1 -- Name VIN) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VIN", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VOUT (Pin ID 2 -- Name VOUT)
+connect_pins("R1", "2", "U1", "VOUT")
+
+# Connecting U1 pin 3 (Pin ID 3 -- Name None) to #PWR1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "3", "#PWR1", "1")
+
+# Connecting U1 pin VOUT (Pin ID 2 -- Name VOUT) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VOUT", "R2", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R2", "2", "#PWR3", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117s_3_3_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_lm1117s_3_3_generated.response.txt

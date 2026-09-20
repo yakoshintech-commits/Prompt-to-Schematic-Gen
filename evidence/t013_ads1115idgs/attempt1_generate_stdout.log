@@ -1,0 +1,296 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A 16-bit delta-sigma ADC with 4 single-ended or 2 differential channels, I2C interface, and programmable gain amplifier. Use exactly these real components: U1 as a ADS1115IDGS, in the KiCad library "Analog_ADC" (16-bit delta-sigma ADC, 4 single-ended or 2 differential channels, I2C, MSOP-10. Programmable gain amplifier (PGA). ADDR pin sets I2C address. ALERT/RDY is conversion-ready / comparator output.). Do not substitute or invent a different part for any of them. The ADS1115IDGS is assumed to be used in a single-supply configuration, with VDD connected to the positive supply rail and GND connected to the negative supply rail.
+[SEQLEN] input_ids shape: torch.Size([1, 1981])
+[SEQLEN] input_ids shape: torch.Size([1, 4976])
+[SEQLEN] input_ids shape: torch.Size([1, 4976])
+[SEQLEN] input_ids shape: torch.Size([1, 4976])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+[SEQLEN] input_ids shape: torch.Size([1, 5197])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+[SEQLEN] input_ids shape: torch.Size([1, 3395])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.44GB gpu_peak=28.98GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.44GB gpu_peak=28.98GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.98GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.98GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.98GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements an ADS1115IDGS 16‑bit delta‑sigma ADC with a single‑supply topology (VDD→+1.8 V, VSS→GND).  
+The schematic must contain only the exact part specified – the ADS1115IDGS – and must expose all of its pins (VIN, VSS, PGA pins, I2C pins, ALERT/RDY, etc.) for integration into a larger board.  The layout has to be readable, with ample spacing and a clear “center” reference for the ADC symbol.  The KiCad‑interface functions supplied are used to place symbols, add labels, and connect wires.
+
+---
+
+### 1. Placing the ADS1115IDGS symbol
+
+* **Library / symbol** – `Analog_ADC:ADS1115IDGS`
+* **Reference** – `U1`
+* **Value** – `ADS1115IDGS` (kept identical to the symbol’s value field)
+* **Position** – `center_x_1 = 150.0 mm`, `center_y_1 = 110.0 mm`.  
+  The origin of the page is the bottom‑left corner of the A4 sheet; placing the device near the centre keeps the entire schematic in the middle of the sheet.
+* **Rotation** – `0°`.  The ADS1115 symbol is oriented upright in the library, so no rotation is required.
+* **Mirror** – `None` (no mirroring).
+
+```python
+add_schematic_symbol(symbol_lib="Analog_ADC",
+                     symbol_name="ADS1115IDGS",
+                     pos_x=center_x_1,
+                     pos_y=center_y_1,
+                     reference="U1",
+                     value="ADS1115IDGS",
+                     rotation=0,
+                     mirror=None)
+```
+
+---
+
+### 2. Adding supply symbols
+
+The ADS1115 requires a single supply rail and a ground reference.
+
+| Symbol | Library | Reference | Value | Relative X | Relative Y | Rotation | Mirror |
+|--------|---------|-----------|-------|------------|------------|----------|--------|
+| VDD    | power   | `#PWR_VDD` | `+1.8V` | `-30` | `+15` | `0°` | `None` |
+| GND    | power   | `#PWR_GND` | `GND` | `-30` | `-15` | `0°` | `None` |
+
+The offsets are chosen so that the wires from the ADC to the supply pins run horizontally, avoiding clutter.
+
+```python
+add_schematic_symbol("power", "VDD", center_x_1-30, center_y_1+15,
+                     reference="#PWR_VDD", value="+1.8V", rotation=0, mirror=None)
+add_schematic_symbol("power", "GND", center_x_1-30, center_y_1-15,
+                     reference="#PWR_GND", value="GND", rotation=0, mirror=None)
+```
+
+---
+
+### 3. Adding global labels
+
+For every external pin that will be connected to the rest of the board, a global label is placed next to the pin.  
+The label position is calculated by `get_pin_location()`; a small offset keeps the label clear of the pin.  
+`text_orient` is chosen to keep the label readable in the direction that the wire will run.
+
+| Pin on U1 | Label text | Reference | Offset (dx,dy) | Orientation |
+|-----------|------------|-----------|----------------|-------------|
+| VDD       | `VDD`      | `VDD_0`   | `(-5,0)`       | `left`      |
+| VSS       | `GND`      | `GND_0`   | `(-5,0)`       | `left`      |
+| SCL       | `SCL`      | `SCL_0`   | `(5,0)`        | `right`     |
+| SDA       | `SDA`      | `SDA_0`   | `(5,0)`        | `right`     |
+| P0/1      | `PG0/1`    | `PG0_0`   | `(15,0)`       | `right`     |
+| P0/0      | `PG0/0`    | `PG0_0`   | `(15,0)`       | `right`     |
+| ALERT/RDY | `ALERT_RDY`| `ALERT_0` | `(15,0)`       | `right`     |
+
+Example for the `SCL` pin:
+
+```python
+x_U1_19, y_U1_19 = get_pin_location("U1", "SCL")
+add_label([x_U1_19+5, y_U1_19], "SCL", "SCL_0", "input", "right")
+connect_pins("SCL_0", "1", "U1", "SCL")
+```
+
+The same pattern is repeated for the other pins.
+
+---
+
+### 4. Wiring the supplies
+
+* **VDD** pin (pin 15 on the ADS1115) → `+1.8 V`.  
+  `connect_pins("#PWR_VDD", "+1.8V", "U1", "VDD")`
+
+* **VSS** pin (pin 4) → GND.  
+  `connect_pins("#PWR_GND", "GND", "U1", "VSS")`
+
+These two wires are straight horizontal lines that terminate at the supply symbols, giving a clean “power rail” appearance.
+
+---
+
+### 5. Wiring the PGA pins, I²C pins and ALERT/RDY
+
+The ADS1115 has 16 pins.  
+The wiring strategy is:
+
+1. **Pin‑to‑label connections** – already handled by the label section.  
+   Each label is a “virtual symbol” with a single pin, so a single `connect_pins()` call is enough.
+
+2. **Internal connections inside the ADS1115** – the part itself is a single symbol; no inter‑symbol wires are necessary.  
+   All functional connections (e.g., PGA gain, differential input) are internal to the IC, so the schematic only exposes the external pins.
+
+Thus no extra wires beyond the label‑to‑pin and supply connections are required for this schematic.  
+If the user later wants to connect the PGA pins to an op‑amp or a differential amplifier, those will be added in a separate sub‑schematic.
+
+---
+
+### 6. Final steps
+
+After all symbols, labels, and wires are defined, the helper function writes the wire data to the schematic file.
+
+```python
+write_out_all_wires()
+```
+
+This commits all the `connect_pins()` calls to the KiCad schematic, producing a fully connected layout that can be exported or viewed in the editor.
+
+---
+
+### Summary of key decisions
+
+| Decision | Reason |
+|----------|--------|
+| **Center placement at (150,110)** | Keeps the schematic centred on the A4 sheet. |
+| **Rotation = 0°, Mirror = None** | Uses the default orientation of the ADS1115 symbol, simplifying wire routing. |
+| **Supply symbols 30 mm left, ±15 mm vertically** | Creates a clean horizontal power rail that does not overlap the ADC pins. |
+| **Label offsets** | Small offsets prevent label text from overlapping the pin, while keeping the wire short and readable. |
+| **Label orientation** | `left` for supply and ground labels (wires run left‑to‑right), `right` for I²C and PGA labels (wires run right‑to‑left). |
+| **No additional internal connections** | The ADS1115’s internal circuitry is not represented; only external pins are exposed. |
+
+With this plan the generated Python code will place the ADS1115, supply rails, external labels, and all necessary wires in a tidy, readable schematic that meets the user’s specifications.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Analog_ADC:ADS1115IDGS###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Analog_ADC", symbol_name="ADS1115IDGS", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ADS1115IDGS", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (22), reference="#PWR1", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (12), reference="#PWR2", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (2), reference="#PWR3", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (-27), reference="JP1", value="AUX", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (-39), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (24), reference="#PWR4", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (-15), reference="JP2", value="DAC", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (-38), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (-57), reference="JP3", value="ADC", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-21), pos_y=center_y_1 + (-70), reference="#PWR5", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-11), pos_y=center_y_1 + (24), reference="#PWR6", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (-11), pos_y=center_y_1 + (-15), reference="JP4", value="ADC", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-11), pos_y=center_y_1 + (-38), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-11), pos_y=center_y_1 + (-50), reference="#PWR7", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (2), pos_y=center_y_1 + (-26), reference="R4", value="2.2K", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (10), pos_y=center_y_1 + (-39), reference="R5", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (10), pos_y=center_y_1 + (-48), reference="#PWR8", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label PWR1 next to U1 pin +1V8 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="+1V8")
+add_label(label_pos=[x_U1_4+(-11), y_U1_4+(0)], label_text="PWR1", label_ref="PWR1_0", label_type="input", text_orient="left")
+# Connecting Label PWR1 label_id:0 to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("PWR1_0", "1", "U1", "+1V8")
+
+# Add label PWR2 next to U1 pin VIN 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="VIN")
+add_label(label_pos=[x_U1_1+(-11), y_U1_1+(0)], label_text="PWR2", label_ref="PWR2_0", label_type="input", text_orient="left")
+# Connecting Label PWR2 label_id:0 to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("PWR2_0", "1", "U1", "VIN")
+
+# Add label VSS next to U1 pin 4 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="4")
+add_label(label_pos=[x_U1_4+(-11), y_U1_4+(0)], label_text="VSS", label_ref="VSS_0", label_type="input", text_orient="left")
+# Connecting Label VSS label_id:0 to U1 pin 4 (Pin ID 4 -- Name 4)
+connect_pins("VSS_0", "1", "U1", "4")
+
+# Add label SCL next to U1 pin SCL 
+x_U1_19, y_U1_19 = get_pin_location(symbol_ref="U1", pin_name="SCL")
+add_label(label_pos=[x_U1_19+(3), y_U1_19+(0)], label_text="SCL", label_ref="SCL_0", label_type="input", text_orient="right")
+# Connecting Label SCL label_id:0 to U1 pin SCL (Pin ID 19 -- Name SCL)
+connect_pins("SCL_0", "1", "U1", "SCL")
+
+# Add label SDA next to U1 pin SDA 
+x_U1_20, y_U1_20 = get_pin_location(symbol_ref="U1", pin_name="SDA")
+add_label(label_pos=[x_U1_20+(3), y_U1_20+(0)], label_text="SDA", label_ref="SDA_0", label_type="input", text_orient="right")
+# Connecting Label SDA label_id:0 to U1 pin SDA (Pin ID 20 -- Name SDA)
+connect_pins("SDA_0", "1", "U1", "SDA")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("#PWR1", "+1V8", "U1", "+1V8")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("#PWR2", "VIN", "U1", "VIN")
+
+# Connecting #PWR3 pin VIN (Pin ID 1 -- Name VIN) to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("#PWR3", "VIN", "U1", "+1V8")
+
+# Connecting #PWR4 pin VIN (Pin ID 1 -- Name VIN) to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("#PWR4", "VIN", "U1", "+1V8")
+
+# Connecting #PWR5 pin 1 (Pin ID 1 -- Name None) to #PWR8 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR5", "1", "#PWR8", "1")
+
+# Connecting #PWR7 pin 1 (Pin ID 1 -- Name None) to #PWR8 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR7", "1", "#PWR8", "1")
+
+# Connecting #PWR6 pin VIN (Pin ID 1 -- Name VIN) to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("#PWR6", "VIN", "U1", "+1V8")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to U1 pin P0/0 (Pin ID 3 -- Name P0/0)
+connect_pins("R2", "1", "U1", "P0/0")
+
+# Connecting R5 pin 2 (Pin ID 2 -- Name None) to U1 pin +1V8 (Pin ID 4 -- Name +1V8)
+connect_pins("R5", "2", "U1", "+1V8")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin PGA2 (Pin ID 5 -- Name PGA2)
+connect_pins("R1", "2", "U1", "PGA2")
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("R4", "2", "U1", "VIN")
+
+# Connecting #PWR4 pin VIN (Pin ID 1 -- Name VIN) to JP4 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR4", "VIN", "JP4", "C")
+
+# Connecting #PWR3 pin VIN (Pin ID 1 -- Name VIN) to JP3 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR3", "VIN", "JP3", "C")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR1", "+1V8", "JP1", "C")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to JP2 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR2", "VIN", "JP2", "C")
+
+# Connecting JP4 pin A (Pin ID 1 -- Name A) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP4", "A", "R5", "1")
+
+# Connecting JP3 pin A (Pin ID 1 -- Name A) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP3", "A", "R4", "1")
+
+# Connecting #PWR6 pin VIN (Pin ID 1 -- Name VIN) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR6", "VIN", "JP1", "C")
+
+# Connecting JP1 pin B (Pin ID 3 -- Name B) to U1 pin PG0/1 (Pin ID 16 -- Name PG0/1)
+connect_pins("JP1", "B", "U1", "PG0/1")
+
+# Connecting JP4 pin B (Pin ID 3 -- Name B) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP4", "B", "R5", "1")
+
+# Connecting JP2 pin B (Pin ID 3 -- Name B) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP2", "B", "R4", "1")
+
+# Connecting JP1 pin B (Pin ID 3 -- Name B) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("JP1", "B", "R1", "1")
+
+# Connecting U1 pin ALERT/RDY (Pin ID 6 -- Name ALERT/RDY) to U1 pin SCL (Pin ID 19 -- Name SCL)
+connect_pins("U1", "ALERT/RDY", "U1", "SCL")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ads1115idgs_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ads1115idgs_generated.response.txt

@@ -1,0 +1,155 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=22.80GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=22.80GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=22.80GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a general-purpose rectifier diode for rectification. Use exactly these real components: D1 as a 1N4007, in the KiCad library "Diode" (General-purpose rectifier diode, 1000 V 1 A, through-hole). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+[SEQLEN] input_ids shape: torch.Size([1, 1893])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4888])
+[SEQLEN] input_ids shape: torch.Size([1, 4888])
+[SEQLEN] input_ids shape: torch.Size([1, 5109])
+[SEQLEN] input_ids shape: torch.Size([1, 5109])
+[SEQLEN] input_ids shape: torch.Size([1, 5109])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3307])
+[SEQLEN] input_ids shape: torch.Size([1, 3307])
+[SEQLEN] input_ids shape: torch.Size([1, 3307])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.12GB gpu_peak=28.72GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.12GB gpu_peak=28.72GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=20.00GB gpu_peak=28.72GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=20.04GB gpu_peak=28.72GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.72GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a tiny rectifier block that uses a single 1N4007 diode.  
+The schematic must contain only the specified part (no other devices, no power symbols, no labels).  
+The only thing that will be visible on the drawing is the diode and the two wires that connect it to the outside world (the “input” and the “output” of the circuit).  
+Because the user explicitly asks for *no* additional components, the schematic will consist of:
+
+1. A single diode symbol (reference **D1**, value **1N4007**).  
+2. Two wires that leave the diode’s two pins and go to nothing else (they simply terminate on the sheet).  
+3. No power symbols, no resistors, no labels, no ground – everything that is normally required for a functional circuit has been omitted to satisfy the request.
+
+**Symbol placement**  
+
+* The sheet is A4 (210 × 297 mm).  
+* To keep the circuit centered, we place the diode at the middle of the sheet: (105 mm, 148.5 mm).  
+* The diode symbol in the “Diode” library has two pins:  
+  * **A** (anode) – the pin that is normally connected to the AC supply.  
+  * **K** (cathode) – the pin that is normally connected to the load or the negative side of the supply.  
+  * In the symbol’s pin list the orientation is “Left” for the anode and “Right” for the cathode.  
+* We rotate the symbol 180° so that the anode points to the left and the cathode to the right.  
+  * This orientation matches the conventional way of drawing a rectifier: the AC side on the left, the output on the right.  
+* No mirroring is required because the default orientation already shows the pins on the correct sides.
+
+**Wire strategy**
+
+* Because we have no external power symbols, the two wires will simply extend from the diode’s pins to the “edge” of the schematic.  
+* The two wires will be drawn as straight horizontal lines that start at the diode’s pins and end at the sheet boundary.  
+* We do not need to create explicit “wire” objects; the `connect_pins` function will automatically generate the wires between the two pins.  
+* The wires will therefore have no intermediate junctions or labels – they are just the two endpoints of the diode.
+
+**Step‑by‑step explanation of the code logic**
+
+1. **Import the KiCad interface**  
+   ```python
+   import sys, os
+   PROJECT_PATH = os.environ['PROJECT_PATH']
+   sys.path.append(PROJECT_PATH)
+   from modules.kicad_sch_interface import *
+   ```  
+   *This boilerplate loads the helper functions that let us manipulate the schematic.*
+
+2. **Define the centre of the sheet**  
+   ```python
+   center_x, center_y = 105.0, 148.5
+   ```  
+   *Keeps the diagram centered.*
+
+3. **Place the diode**  
+   ```python
+   add_schematic_symbol(
+       symbol_lib="Diode",
+       symbol_name="1N4007",
+       pos_x=center_x,
+       pos_y=center_y,
+       reference="D1",
+       value="1N4007",
+       rotation=180,
+       mirror="None"
+   )
+   ```  
+   *Arguments explained:*
+
+   * `symbol_lib` and `symbol_name` tell KiCad which symbol to create.  
+   * `pos_x`/`pos_y` place the centre of the symbol at the sheet centre.  
+   * `reference` gives the unique identifier **D1**.  
+   * `value` is the textual value that will appear on the schematic.  
+   * `rotation=180` flips the symbol so that the anode (pin “A”) is on the left side of the symbol.  
+   * `mirror="None"` keeps the default mirror state.
+
+4. **Create the two wires**  
+
+   *Pin names are taken directly from the symbol definition: “A” for the anode and “K” for the cathode.*
+
+   ```python
+   # Wire from the anode to the left sheet edge
+   connect_pins("D1", "A", "D1", "A")
+   # Wire from the cathode to the right sheet edge
+   connect_pins("D1", "K", "D1", "K")
+   ```  
+
+   *Each `connect_pins` call connects the same pin to itself; this is a KiCad convention that tells the engine to draw a wire that starts at the pin and ends at the sheet boundary.  
+   *Because there are no other components, the two wires will simply run straight horizontally to the left and right edges.*
+
+5. **Write out the wires**  
+   ```python
+   write_out_all_wires()
+   ```  
+   *This final command tells the interface to generate the actual wire objects in the schematic file.*
+
+**Why this satisfies the user’s request**
+
+* The only component on the sheet is the 1N4007 diode, exactly as requested.  
+* No other symbols, no power rails, no labels – the simplest possible representation.  
+* The diode is placed centrally, rotated for readability, and the two wires clearly show its two terminals.  
+* The code uses only the supplied functions and follows the naming conventions required by KiCad.  
+* All arguments are chosen to match the symbol’s pin geometry and to keep the drawing tidy.
+
+This completes the logical plan for generating the schematic.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D1###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D1", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="1N4007", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n4007_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n4007_generated.response.txt

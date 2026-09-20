@@ -1,0 +1,117 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a Schottky barrier rectifier to rectify AC voltage. Use exactly these real components: D1 as a 1N5819, in the KiCad library "Diode" (Schottky barrier rectifier, 40 V 1 A, through-hole). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1895])
+[SEQLEN] input_ids shape: torch.Size([1, 4890])
+[SEQLEN] input_ids shape: torch.Size([1, 5111])
+[SEQLEN] input_ids shape: torch.Size([1, 3309])
+[SEQLEN] input_ids shape: torch.Size([1, 3309])
+[SEQLEN] input_ids shape: torch.Size([1, 3309])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.72GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.72GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.72GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a tiny schematic that just shows a single Schottky rectifier (the 1N5819 part from the “Diode” library) used to rectify an AC input. The schematic must use the *exact* part name and library, so the code will only contain that component, a single AC source, and a ground reference. No extra components, no substitutions.
+
+**Physical layout**
+
+* The schematic sheet is 210 mm × 297 mm (A4).  
+* We place the circuit near the centre of the sheet to keep the drawing tidy.  
+* The centre of the 1N5819 symbol will be at **(150 mm, 110 mm)** – that’s comfortably in the middle of the page.  
+* The AC source (a 5 V peak‑to‑peak sine generator) is drawn a little to the left of the diode, while the ground symbol is drawn a little to the right.  
+* All components are kept at least a few millimetres apart so their bounding boxes never overlap.
+
+**Component selection and symbol parameters**
+
+| Symbol | Library | Reference | Value | Rotation | Mirror |
+|--------|---------|-----------|-------|----------|--------|
+| 1N5819 | “Diode” | D1 | “1N5819” | **90°** | None |
+| AC source | “Jumper / AC_Sine” | VIN | “VIN” | 0° | None |
+| Ground | “power / GND” | GND | “GND” | 0° | None |
+
+The 1N5819 symbol has two pins: **Anode (A)** on the right side and **Cathode (K)** on the left side. Rotating the symbol by 90° turns the Anode to point downwards, which makes it easier to wire the rectifier’s anode to the AC source and the cathode to ground.
+
+**Pin locations**
+
+* `D1.A` – Anode pin (pin name “A”); after a 90° rotation it lies on the bottom side of the symbol.  
+* `D1.K` – Cathode pin (pin name “K”); after the rotation it lies on the top side.  
+* `VIN.S` – Source pin of the AC sine generator (pin name “S”).  
+* `GND.S` – Ground pin (pin name “S”).
+
+Using `get_pin_location` we obtain the exact (x, y) coordinates of each pin relative to the symbol centre. These coordinates are the starting points for the wires.
+
+**Wire routing**
+
+1. **VIN → D1.A** – Connect the source pin of the AC generator to the diode’s anode.  
+   * `connect_pins("VIN", "S", "D1", "A")`  
+   * The wire starts at the AC source pin and ends at the diode’s anode.
+
+2. **D1.K → GND** – Connect the diode’s cathode to the ground reference.  
+   * `connect_pins("D1", "K", "GND", "S")`  
+   * The wire starts at the diode’s cathode and ends at the ground pin.
+
+Because the diode is the only active element, no other wires are needed. The AC source is fed directly into the rectifier, and the rectified DC appears at the diode’s cathode, which is tied to ground.
+
+**Why the chosen rotation?**
+
+Rotating the diode 90° makes the Anode (normally on the right) point downwards. This orientation lets the AC source sit to the left and the ground to the right, creating a straight‑line left‑to‑right flow of power that is visually intuitive. It also keeps the label text from overlapping the symbol’s bounding box.
+
+**Why no mirroring?**
+
+Mirroring would flip the symbol horizontally or vertically, which would misalign the pin names with the expected layout and would require additional wire routing. Leaving the symbol unmirrored preserves the standard pin positions.
+
+**Final wire write‑out**
+
+After all `connect_pins` calls, `write_out_all_wires()` is executed. This function collects the wire data and writes the schematic file, ensuring that the connections appear correctly in KiCad.
+
+---
+
+*In summary*, the code will:
+
+1. Add the 1N5819 diode at the centre.  
+2. Add an AC source to its left and a ground symbol to its right.  
+3. Wire the AC source to the diode’s anode and the diode’s cathode to ground.  
+4. Write out the wire data.  
+
+All component references, pin names, positions, rotations, and mirror settings have been chosen to satisfy the user’s exact‑part request while keeping the schematic readable and centered on the A4 sheet.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Diode:1N5819###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Diode", symbol_name="1N5819", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="1N5819", rotation=90, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Connector", symbol_name="VAA", pos_x=center_x_1 + (-20), pos_y=center_y_1 + (10), reference="VIN", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-5), pos_y=center_y_1 + (-10), reference="GND", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting VIN pin VIN (Pin ID 1 -- Name VIN) to D1 pin A (Pin ID 2 -- Name A)
+connect_pins("VIN", "VIN", "D1", "A")
+
+# Connecting D1 pin K (Pin ID 1 -- Name K) to GND pin 1 (Pin ID 1 -- Name None)
+connect_pins("D1", "K", "GND", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n5819_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n5819_generated.response.txt

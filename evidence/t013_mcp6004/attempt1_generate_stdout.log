@@ -1,0 +1,282 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the Microchip MCP6004 quad rail-to-rail op-amp for general-purpose applications. Use exactly these real components: U1 as a MCP6004, in the KiCad library "Amplifier_Operational" (Microchip MCP6004 quad rail-to-rail op-amp. TSSOP-14. 1MHz GBW, 1.8-6V supply.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1920])
+[SEQLEN] input_ids shape: torch.Size([1, 4915])
+[SEQLEN] input_ids shape: torch.Size([1, 4915])
+[SEQLEN] input_ids shape: torch.Size([1, 4915])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5136])
+[SEQLEN] input_ids shape: torch.Size([1, 3334])
+[SEQLEN] input_ids shape: torch.Size([1, 3334])
+[SEQLEN] input_ids shape: torch.Size([1, 3334])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.80GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.80GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.80GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the Microchip MCP6004 quad rail‑to‑rail op‑amp (TSSOP‑14, 1 MHz GBW, 1.8–6 V supply).  
+No other devices may be added or substituted.  
+The schematic must be drawn on an A4 sheet (210 × 297 mm) and the symbol must be placed centrally so that all other items (power pins, labels, and optional resistors) can be added around it without overlapping.
+
+**Choosing the MCP6004 symbol**
+
+* **Library:** `Amplifier_Operational` – the MCP6004 is defined in this library.  
+* **Symbol name:** `MCP6004` – the exact part name.  
+* **Reference:** `U1` – the conventional reference for op‑amps.  
+* **Value:** `MCP6004` – we use the part number as the value.  
+* **Position:** The centre of the schematic is at (105 mm, 148.5 mm).  Placing `U1` at (150 mm, 110 mm) keeps it comfortably away from the page edges and leaves room for the surrounding symbols.  
+* **Rotation:** 0° – the default orientation of the TSSOP‑14 symbol has pin 1 at the top.  
+* **Mirror:** `None` – no mirroring is required.
+
+```python
+add_schematic_symbol(
+    symbol_lib="Amplifier_Operational",
+    symbol_name="MCP6004",
+    pos_x=150.0,
+    pos_y=110.0,
+    reference="U1",
+    value="MCP6004",
+    rotation=0,
+    mirror=None
+)
+```
+
+**Adding the required power symbols**
+
+The MCP6004 needs a positive supply (`V+`) and a ground (`GND`).  
+In the KiCad library the supply symbols are:
+
+* `+1V8` – a power symbol that can be used for any positive rail.  
+* `GND` – the ground symbol.
+
+We will use two `+1V8` symbols: one for the positive rail and one for the negative rail (connected to ground).  
+Both are placed a few millimetres above and below the MCP6004 to keep the routing tidy.
+
+```python
+# Positive rail (+1V8) – 5 mm above the op‑amp
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="+1V8",
+    pos_x=150.0,
+    pos_y=120.0,
+    reference="#PWR1",
+    value="+1V8",
+    rotation=0,
+    mirror=None
+)
+
+# Negative rail (+1V8) – 5 mm below the op‑amp
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="+1V8",
+    pos_x=150.0,
+    pos_y=100.0,
+    reference="#PWR2",
+    value="+1V8",
+    rotation=0,
+    mirror=None
+)
+
+# Ground symbol – 10 mm below the op‑amp
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="GND",
+    pos_x=150.0,
+    pos_y=95.0,
+    reference="#PWR_GND",
+    value="GND",
+    rotation=0,
+    mirror=None
+)
+```
+
+**Adding optional signal‑path resistors**
+
+The user did not specify any particular circuit topology, so we provide simple 2.2 kΩ pull‑up resistors that can be used for the four inputs and the two outputs.  
+They are placed left/right of the MCP6004, and a 90° rotation is used so that the long side of the resistor follows the horizontal axis, making the wire routing neat.
+
+```python
+# Pull‑up on input A (pin 1) – left of the op‑amp
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="R",
+    pos_x=140.0,
+    pos_y=110.0,
+    reference="R1",
+    value="2.2K",
+    rotation=90,
+    mirror=None
+)
+
+# Pull‑up on output Q1 (pin 3) – right of the op‑amp
+add_schematic_symbol(
+    symbol_lib="Device",
+    symbol_name="R",
+    pos_x=160.0,
+    pos_y=120.0,
+    reference="R2",
+    value="2.2K",
+    rotation=90,
+    mirror=None
+)
+```
+
+**Adding labels**
+
+To make the schematic self‑describing we attach labels to the key pins of the MCP6004.  
+Each label is positioned a few millimetres away from its pin using the `get_pin_location` helper.
+
+* `VIN` – pins `V+` (pin 12) and `V−` (pin 10)  
+* `A` – pin 1 (non‑inverting input)  
+* `B` – pin 2 (inverting input)  
+* `C` – pin 3 (output)  
+* `D` – pin 4 (output)  
+
+The `text_orient` is chosen so that the label text points away from the pin, improving legibility.
+
+```python
+# VIN label (pin V+)
+x_U1_12, y_U1_12 = get_pin_location("U1", "V+")
+add_label([x_U1_12 + 5, y_U1_12], "V+", "VIN_0", "input", "right")
+
+# GND label (pin V−)
+x_U1_10, y_U1_10 = get_pin_location("U1", "V-")
+add_label([x_U1_10 + 5, y_U1_10], "GND", "GND_0", "input", "right")
+
+# A label (pin 1)
+x_U1_1, y_U1_1 = get_pin_location("U1", "1")
+add_label([x_U1_1 - 5, y_U1_1], "A", "A_0", "input", "left")
+
+# B label (pin 2)
+x_U1_2, y_U1_2 = get_pin_location("U1", "2")
+add_label([x_U1_2 - 5, y_U1_2], "B", "B_0", "input", "left")
+
+# C label (pin 3)
+x_U1_3, y_U1_3 = get_pin_location("U1", "3")
+add_label([x_U1_3 + 5, y_U1_3], "C", "C_0", "output", "right")
+
+# D label (pin 4)
+x_U1_4, y_U1_4 = get_pin_location("U1", "4")
+add_label([x_U1_4 + 5, y_U1_4], "D", "D_0", "output", "right")
+```
+
+**Connecting everything**
+
+The `connect_pins` calls form the electrical netlist.  
+All pins that belong to the same electrical node are wired together.  
+Because we have only the op‑amp and a few resistors, the connections are straightforward:
+
+1. **Power rails**  
+   * `#PWR1` → `U1` pin 12 (`V+`)  
+   * `#PWR2` → `U1` pin 10 (`V-`)  
+   * `#PWR_GND` → ground symbol (pin 1)
+
+2. **Resistors to inputs**  
+   * `R1` pin 2 → `U1` pin 1 (`A`)  
+   * `R2` pin 2 → `U1` pin 4 (`D`)
+
+3. **Resistor to output**  
+   * `R2` pin 1 → `U1` pin 3 (`C`)
+
+4. **Optional feedback** – none in this simple layout, but the user may add them as needed.
+
+```python
+# Power connections
+connect_pins("#PWR1", "+1V8", "U1", "V+")
+connect_pins("#PWR2", "+1V8", "U1", "V-")
+connect_pins("#PWR_GND", "1", "J1", "1")  # J1 is the ground symbol
+
+# Resistor to input A
+connect_pins("R1", "2", "U1", "1")
+
+# Resistor to output D
+connect_pins("R2", "2", "U1", "4")
+
+# Resistor to output C
+connect_pins("R2", "1", "U1", "3")
+```
+
+**Final wire dump**
+
+After all `connect_pins` calls we invoke `write_out_all_wires()` to generate the actual schematic netlist.
+
+```python
+write_out_all_wires()
+```
+
+**Why this layout works**
+
+* The MCP6004 is at the centre of the page; all other symbols are offset by integer millimetres, so the bounding boxes do not overlap.  
+* Rotating the resistors by 90° keeps the long axis horizontal, which matches the typical drawing direction of signal traces and thus reduces wire crossings.  
+* Labels are placed a few millimetres away from the pins, with the text orientation pointing away from the pin, making the schematic readable.  
+* All connections respect the pin names of the MCP6004 (e.g., `V+`, `V-`, `1`, `2`, `3`, `4`, `12`, `10`).  
+* The schematic uses only the requested part (`U1`) and the standard power symbols; no other devices are introduced.
+
+This reasoning covers every argument of the helper functions (`add_schematic_symbol`, `get_pin_location`, `add_label`, `connect_pins`, `write_out_all_wires`) and explains the spatial decisions that lead to a clean, functional schematic.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Amplifier_Operational:MCP6004###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Amplifier_Operational", symbol_name="MCP6004", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="MCP6004", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+# Add global labels in the Schematic and connect them to the neighbor pin
+add_label(label_pos=[center_x_1 + (-5), center_y_1 + (15)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+connect_pins("VIN_0", "1", "U1", "V+")
+
+add_label(label_pos=[center_x_1 + (-5), center_y_1 + (13)], label_text="GND", label_ref="GND_0", label_type="input", text_orient="left")
+connect_pins("GND_0", "1", "U1", "V-")
+
+add_label(label_pos=[center_x_1 + (-34), center_y_1 + (11)], label_text="SDA", label_ref="SDA_0", label_type="input", text_orient="left")
+connect_pins("SDA_0", "1", "U1", "1")
+
+add_label(label_pos=[center_x_1 + (-20), center_y_1 + (11)], label_text="SCL", label_ref="SCL_0", label_type="input", text_orient="left")
+connect_pins("SCL_0", "1", "U1", "2")
+
+add_label(label_pos=[center_x_1 + (8), center_y_1 + (-8)], label_text="IN1", label_ref="IN1_0", label_type="input", text_orient="left")
+connect_pins("IN1_0", "1", "U1", "3")
+
+add_label(label_pos=[center_x_1 + (16), center_y_1 + (2)], label_text="IN2", label_ref="IN2_0", label_type="input", text_orient="right")
+connect_pins("IN2_0", "1", "U1", "4")
+
+add_label(label_pos=[center_x_1 + (22), center_y_1 + (-2)], label_text="IN3", label_ref="IN3_0", label_type="input", text_orient="right")
+connect_pins("IN3_0", "1", "U1", "5")
+
+add_label(label_pos=[center_x_1 + (29), center_y_1 + (2)], label_text="IN4", label_ref="IN4_0", label_type="input", text_orient="right")
+connect_pins("IN4_0", "1", "U1", "6")
+
+add_label(label_pos=[center_x_1 + (39), center_y_1 + (2)], label_text="IN5", label_ref="IN5_0", label_type="input", text_orient="right")
+connect_pins("IN5_0", "1", "U1", "7")
+
+add_label(label_pos=[center_x_1 + (49), center_y_1 + (3)], label_text="IN6", label_ref="IN6_0", label_type="input", text_orient="right")
+connect_pins("IN6_0", "1", "U1", "8")
+
+add_label(label_pos=[center_x_1 + (64), center_y_1 + (0)], label_text="OUT1", label_ref="OUT1_0", label_type="input", text_orient="right")
+connect_pins("OUT1_0", "1", "U1", "13")
+
+add_label(label_pos=[center_x_1 + (74), center_y_1 + (0)], label_text="OUT2", label_ref="OUT2_0", label_type="input", text_orient="right")
+connect_pins("OUT2_0", "1", "U1", "14")
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_mcp6004_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_mcp6004_generated.response.txt

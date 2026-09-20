@@ -1,0 +1,232 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a DC optocoupler with NPN phototransistor for isolation. Use exactly these real components: U1 as a EL817, in the KiCad library "Isolator" (DC optocoupler with NPN phototransistor, Vce 35V. Pin names are '~' in KiCad; use pin numbers. Pin 1=Anode (LED+), Pin 2=Cathode (LED-), Pin 3=Emitter (NPN), Pin 4=Collector (NPN). Primary side: pins 1,2 (LED). Secondary side: pins 3,4 (phototransistor).). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1973])
+[SEQLEN] input_ids shape: torch.Size([1, 4968])
+[SEQLEN] input_ids shape: torch.Size([1, 4968])
+[SEQLEN] input_ids shape: torch.Size([1, 4968])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5189])
+[SEQLEN] input_ids shape: torch.Size([1, 5189])
+[SEQLEN] input_ids shape: torch.Size([1, 5189])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3387])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.41GB gpu_peak=28.95GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.41GB gpu_peak=28.95GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.95GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.95GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.95GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a simple DC‑optocoupler isolation stage using the real part **EL817** (an NPN phototransistor inside a ferrite core).  
+The schematic must contain  
+* the EL817 symbol from the **Isolator** library (pin names “~”)  
+* a source of +5 V for the LED side  
+* a resistor to limit the LED current  
+* a ground symbol for the LED cathode  
+* a resistor to limit the transistor base current  
+* a second resistor to limit the collector (optional, but gives a clearer view)  
+* a 1 kΩ resistor or a pull‑up to +5 V on the collector side (to make the secondary side a clean logic output)  
+
+All components must be placed with enough spacing so that pin names can be connected without crossing wires.
+
+---
+
+### 1.  Symbol selection & placement
+
+| Symbol | Library | Reference | Position (mm) | Rotation | Mirror | Notes |
+|--------|---------|-----------|---------------|----------|--------|-------|
+| EL817 | Isolator | U1 | (150, 150) | 0° | None | Center of the sheet |
+| +5 V | power | #PWR1 | (110, 170) | 0° | None | Supplies LED anode |
+| R (LED current) | Device | R1 | (110, 150) | 0° | None | 2.2 kΩ |
+| GND | power | #PWR1 | (110, 130) | 0° | None | LED cathode |
+| R (base bias) | Device | R2 | (130, 150) | 0° | None | 1 kΩ |
+| R (collector pull‑up) | Device | R3 | (150, 170) | 0° | None | 2 kΩ |
+| GND | power | #PWR2 | (150, 130) | 0° | None | Collector side ground |
+
+The offsets are chosen so that the vertical distances between the LED side (+5 V → R1 → U1 pin 1) and the collector side (U1 pin 4 → R3 → +5 V) are about 20 mm, giving plenty of room for wires.
+
+---
+
+### 2.  Pin mapping (EL817)
+
+`EL817` has four pins, all named “~” in the library:
+
+| Pin | Name | Function |
+|-----|------|----------|
+| 1 | ~ | LED+ (anode) |
+| 2 | ~ | LED- (cathode) |
+| 3 | ~ | Phototransistor emitter (NPN) |
+| 4 | ~ | Phototransistor collector (NPN) |
+
+Because the library uses identical names, we will refer to them by their **pin numbers** in the code.
+
+---
+
+### 3.  Wire connections – logic behind each link
+
+1. **LED anode to +5 V**  
+   `#PWR1 (+5 V)` → `R1` pin 1 → `U1` pin 1  
+   *Rationale*: The resistor limits the LED current; the +5 V source drives the LED.
+
+2. **LED cathode to ground**  
+   `U1` pin 2 → `#GND`  
+   *Rationale*: Completes the LED loop.
+
+3. **Base bias to LED current**  
+   `R2` pin 1 → `U1` pin 3 (emitter)  
+   `R2` pin 2 → `R1` pin 2 (LED cathode)  
+   *Rationale*: The LED current flows through R1 into the EL817 emitter, providing the base drive for the NPN transistor.
+
+4. **Collector pull‑up**  
+   `U1` pin 4 → `R3` pin 1 → `#PWR2` (+5 V)  
+   `U1` pin 4 → `R3` pin 2 → `GND` (optional)  
+   *Rationale*: The collector is pulled up to +5 V so that the secondary side presents a clean logic high when the LED is off, and goes low when the LED is on. The optional GND connection is not strictly needed but can be used if a ground reference is required on the collector side.
+
+5. **Optional decoupling**  
+   A small capacitor could be added between the +5 V and GND pins, but the user did not request it, so we omit it.
+
+---
+
+### 4.  Labels for readability
+
+Each side of the optocoupler is labeled:
+
+| Label | Position relative to symbol | Type | Orientation |
+|-------|-----------------------------|------|-------------|
+| **LED_SIDE** | left of `U1` pin 1 | input | left |
+| **BASE_SIDE** | left of `U1` pin 3 | input | left |
+| **COLLECTOR_SIDE** | right of `U1` pin 4 | input | right |
+| **OUTPUT** | right of `R3` pin 1 | input | right |
+
+These labels are placed using `add_label()` with coordinates derived from the pin locations obtained by `get_pin_location()`.
+
+---
+
+### 5.  Code construction – step‑by‑step
+
+1. **Import the KiCad interface**  
+   ```python
+   import sys, os
+   PROJECT_PATH = os.environ['PROJECT_PATH']
+   sys.path.append(PROJECT_PATH)
+   from modules.kicad_sch_interface import *
+   ```
+
+2. **Place the centre symbol (EL817)**  
+   ```python
+   center_x, center_y = 150.0, 150.0
+   add_schematic_symbol(symbol_lib="Isolator",
+                        symbol_name="EL817",
+                        pos_x=center_x,
+                        pos_y=center_y,
+                        reference="U1",
+                        value="EL817",
+                        rotation=0,
+                        mirror="None")
+   ```
+
+3. **Place the peripheral symbols** – each with its own offset.  
+   For example:
+   ```python
+   add_schematic_symbol(symbol_lib="power", symbol_name="+5V",
+                        pos_x=center_x-40, pos_y=center_y+20,
+                        reference="#PWR1", value="+5V",
+                        rotation=0, mirror="None")
+   ```
+   The same pattern is repeated for `R1`, `R2`, `R3`, `#GND`, `#PWR2`.
+
+4. **Add labels**  
+   ```python
+   x_U1_1, y_U1_1 = get_pin_location("U1","1")
+   add_label([x_U1_1-10, y_U1_1], "LED_SIDE", "LED_LABEL", "input", "left")
+   ```
+   Similar calls are made for the other three labels.
+
+5. **Wire the connections** – using `connect_pins()` with the correct reference and pin names.  
+   Example for the LED anode wire:
+   ```python
+   connect_pins("#PWR1", "+5V", "R1", "1")
+   connect_pins("R1", "1", "U1", "1")
+   ```
+   Continue this pattern for all other required connections.
+
+6. **Finalize**  
+   ```python
+   write_out_all_wires()
+   ```
+
+---
+
+### 6.  Why this arrangement is good
+
+* **Center‑biased layout** keeps the schematic symmetrical and balanced.  
+* **Zero rotation** for all symbols means pins face the expected direction (up/down), making manual wire routing straightforward.  
+* **No mirroring** keeps the pin order consistent across all components.  
+* **Spacing of 20 mm** between the two sides prevents overlapping wires and keeps the diagram readable.  
+* **Labels** give a quick visual cue of which pins belong to the primary (LED) side and which to the secondary (collector) side.  
+
+With these design choices the schematic will compile cleanly in KiCad, and the logical connections will correctly implement a DC‑optocoupler isolation stage using the EL817 part.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Isolator:EL817###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Isolator", symbol_name="EL817", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="EL817", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (-45), pos_y=center_y_1 + (19), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (0), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-17), pos_y=center_y_1 + (3), reference="R2", value="1K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (0), pos_y=center_y_1 + (19), reference="#PWR3", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-12), reference="#PWR4", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (12), pos_y=center_y_1 + (3), reference="R3", value="2.2K", rotation=90, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR3 pin +5V (Pin ID 1 -- Name +5V) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR3", "+5V", "R3", "2")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R2", "1")
+
+# Connecting U1 pin ~ (Pin ID 3 -- Name ~) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "~", "R2", "2")
+
+# Connecting U1 pin ~ (Pin ID 4 -- Name ~) to U1 pin ~ (Pin ID 3 -- Name ~)
+connect_pins("U1", "~", "U1", "~")
+
+# Connecting R1 pin 1 (Pin ID 1 -- Name None) to U1 pin ~ (Pin ID 1 -- Name ~)
+connect_pins("R1", "1", "U1", "~")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to #PWR4 pin GND (Pin ID 1 -- Name GND)
+connect_pins("R3", "1", "#PWR4", "GND")
+
+# Connecting #PWR2 pin GND (Pin ID 1 -- Name GND) to R1 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR2", "GND", "R1", "2")
+
+# Connecting U1 pin ~ (Pin ID 2 -- Name ~) to #PWR4 pin GND (Pin ID 1 -- Name GND)
+connect_pins("U1", "~", "#PWR4", "GND")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_el817_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_el817_generated.response.txt

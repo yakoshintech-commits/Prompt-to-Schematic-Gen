@@ -1,0 +1,115 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the Arduino Nano Every module for a basic microcontroller project. Use exactly these real components: U1 as a Arduino_Nano_Every, in the KiCad library "MCU_Module" (Arduino Nano Every module (ATmega4809). Same 30-pin form factor as classic Nano. 48KB flash, 6KB SRAM.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1909])
+[SEQLEN] input_ids shape: torch.Size([1, 4904])
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3323])
+[SEQLEN] input_ids shape: torch.Size([1, 3323])
+[SEQLEN] input_ids shape: torch.Size([1, 3323])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.76GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.76GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.76GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.76GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.76GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the Arduino‑Nano‑Every module (U1).  
+No other components may be inserted, and the module must be taken from the
+*MCU_Module* library with the symbol name *Arduino_Nano_Every*.  
+Because the module is a 30‑pin 0‑offset package, we can place it in the
+center of the sheet and leave the rest of the sheet empty.
+
+**Choosing the reference and value**
+
+* **Reference** – “U1” is the convention for the first microcontroller.
+* **Value** – The value field is normally used to display the part number or
+  a descriptive name.  We set it to “Arduino_Nano_Every” so the schematic
+  immediately shows what the block is.
+
+**Placement**
+
+The KiCad coordinate system has the origin (0,0) at the lower‑left corner.
+The A4 sheet is 210 mm × 297 mm, so a good centre point is
+`X = 105 mm`, `Y = 148.5 mm`.  The module’s centre will be placed there.
+No rotation or mirroring is required; the default orientation of the
+symbol already shows the pins pointing in the expected directions
+(up/down, left/right).
+
+**No power symbols or other labels**
+
+Because the request does not ask for any power connections or
+external labels, we do not add any additional symbols.  The schematic
+will contain a single component, which satisfies the “exactly these real
+components” constraint.
+
+**Final code outline**
+
+1. **Import the KiCad schematic interface** – gives us access to the helper
+   functions.
+2. **Add the Arduino‑Nano‑Every symbol**  
+   ```python
+   add_schematic_symbol(
+       symbol_lib="MCU_Module",
+       symbol_name="Arduino_Nano_Every",
+       pos_x=105.0,
+       pos_y=148.5,
+       reference="U1",
+       value="Arduino_Nano_Every",
+       rotation=0,
+       mirror=None
+   )
+   ```
+   * The `rotation=0` keeps the pins in their default positions.  
+   * `mirror=None` indicates no mirroring; the symbol is symmetrical
+     for a 0‑offset package, so mirroring would not help.
+3. **(Optional) Add a placeholder comment or pass** – the script ends here,
+   because no further connections are required.
+
+**Why this works**
+
+* The single `add_schematic_symbol` call places the exact required
+  component with the correct reference and value.  
+* The centre coordinates keep the component well within the page
+  limits, leaving plenty of white space around it.  
+* No other symbols are added, so the schematic contains only the
+  requested component and nothing more.  
+* Because we do not create additional wires or labels, the schematic
+  remains simple and clean, exactly as the user requested.
+
+With this reasoning the generated Python script will create a KiCad
+schematic that contains only the Arduino‑Nano‑Every module, correctly
+referenced, valued, and positioned.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : MCU_Module:Arduino_Nano_Every###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="MCU_Module", symbol_name="Arduino_Nano_Every", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="Arduino_Nano_Every", rotation=0, mirror="None")
+
+### Placing all other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_arduino_nano_every_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_arduino_nano_every_generated.response.txt

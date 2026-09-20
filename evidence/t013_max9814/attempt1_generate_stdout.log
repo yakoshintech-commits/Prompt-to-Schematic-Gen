@@ -1,0 +1,153 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using the MAX9814 microphone amplifier with AGC and low-noise bias to amplify an electret microphone signal. Use exactly these real components: U1 as a MAX9814, in the KiCad library "Amplifier_Audio" (Microphone amplifier with AGC and low-noise bias, TSSOP-14. MICIN is electret mic input. MICBIAS provides bias voltage for electret mic. MICOUT is amplified output. GAIN selects gain (GND=40dB, VDD=50dB, float=60dB). A/R sets attack/release ratio. CT/CG are AGC timing capacitors. TH sets AGC threshold. ~SHDN enables/disables (active low).). Do not substitute or invent a different part for any of them. Wire it up as follows: connect U1's GND pin (pin 4) to U1's GND pin (pin 7) to U1's GND pin (pin 11) to U1's GND pin (pin 15). The electret microphone is assumed to be connected to the MICIN pin of the MAX9814. The circuit assumes a 2.7-5.5V supply voltage for the MAX9814.
+[SEQLEN] input_ids shape: torch.Size([1, 2085])
+[SEQLEN] input_ids shape: torch.Size([1, 5080])
+[SEQLEN] input_ids shape: torch.Size([1, 5080])
+[SEQLEN] input_ids shape: torch.Size([1, 5080])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5301])
+[SEQLEN] input_ids shape: torch.Size([1, 3499])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.92GB gpu_peak=29.28GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.92GB gpu_peak=29.28GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=29.28GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=29.28GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=29.28GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements the MAX9814 microphone amplifier with AGC and low‑noise bias.  
+Only the MAX9814 (U1) is allowed – all other parts must be taken from the supplied lists (`R`, `C`, `L`, `Microphone`, `+5V`, `GND`, `R_Small`).  
+The schematic must be centred on an A4 page (210 × 297 mm), with reasonable spacing, and every pin of U1 has to be wired exactly as described.
+
+**Key design decisions**
+
+| Symbol | Library | Reference | Value | Position relative to U1 | Rotation | Mirror | Reason |
+|--------|---------|-----------|-------|------------------------|----------|--------|--------|
+| MAX9814 | Amplifier_Audio | U1 | MAX9814 | centre (150 mm + 110 mm) | 0° (default) | None | Keeps the pins in their natural orientation. |
+| 48 Ω resistor (bias) | Device | R1 | 48 | U1‑VOUT‑node → +5 V | 0° | None | Provides the bias voltage to the electret mic. |
+| +5 V supply | power | #PWR1 | +5V | above R1 | 0° | None | Connects directly to the bias resistor. |
+| GND symbol | power | #PWR_GND | GND | below U1 | 0° | None | Common ground for all pins. |
+| Two‑pin RC filter | Device | R1 (again) & R2 (2.2 kΩ) | 2.2 kΩ | R1‑+5 V → R2‑+5 V → R2‑GND | 0° | None | Creates the AGC timing network (CT/CG). |
+| Microphone pair | Device | MIC | – | left of U1 | 0° | None (or mirrored if needed) | Represents the electret mic (+ / −). |
+| Labels | – | AUX_DA, AUX_DA_VIN, AUX_CL, AUX_CL_VIN | – | placed near the corresponding pins of Q1/Q2 | – | – | Provides visual identification of the signals. |
+
+**Spatial placement**
+
+The centre symbol U1 is placed at (150 mm, 110 mm).  
+All other symbols are offset by integer millimetre values to keep the drawing tidy:
+
+* **+5 V** at (150 − 72, 110 + 22) – above the resistor chain.  
+* **R1** (48 Ω) at (150 − 72, 110 + 8) – directly below +5 V.  
+* **R2** (2.2 kΩ) at (150 − 53, 110 + 8) – next to R1.  
+* **R3** (2.2 kΩ) at (150 − 31, 110 + 8) – part of the RC network feeding the AGC.  
+* **#PWR2** (+1.8 V) at (150 − 31, 110 + 22) – supplies the VDD pin.  
+* **JP1** (bridge) at (150 − 31, 110 + 15) – connects VDD to the RC network.  
+* **R4** (2.2 kΩ) at (150 + 10, 110 + 8) – feeds into the output stage.  
+* **R5** (2.2 kΩ) at (150 + 22, 110 + 8) – optional load on the output.  
+* **#PWR3** (+1.8 V) at (150 + 31, 110 + 22) – extra supply for the output bias if needed.  
+* **R6** (2.2 kΩ) at (150 + 31, 110 + 8) – another output resistor.  
+* All components are spaced at least 10 mm from each other to avoid overlapping bounding boxes.
+
+**Connecting the pins**
+
+The `connect_pins` function uses the symbol reference and the pin name or number.  
+Because the MAX9814 pins are named (e.g., “MICIN”, “VOUT”), we refer to them by those names; for generic components we use the numerical IDs.
+
+1. **Grounding**  
+   * Connect U1’s GND pin (pin 4) to the common GND symbol.  
+   * All GND pins of U1 (4, 7, 11, 15) are tied together by repeating the same `connect_pins` call with the same symbol reference.  
+2. **Bias network**  
+   * +5 V → R1 (48 Ω) → R2 (2.2 kΩ) → R3 (2.2 kΩ).  
+   * R3’s other side goes to GND, completing the RC network.  
+3. **Microphone input**  
+   * The electret mic is connected to the MICIN pin of U1.  
+   * The bias network (R1) supplies the bias voltage to MICIN through a resistor.  
+4. **AGC timing**  
+   * R2 and R3 form the CT/CG capacitors; their junction is connected to the GND pin of U1.  
+5. **Output stage**  
+   * U1’s VOUT pin is routed through R4 and then to the output label.  
+   * R4 can be tied to GND or left floating depending on the desired load.  
+6. **Labels**  
+   * For each signal (AUX_DA, AUX_DA_VIN, AUX_CL, AUX_CL_VIN) we place a label adjacent to the corresponding pin of the transistor (Q1, Q2).  
+   * `add_label` uses the pin location of the component, then offsets the label by a few millimetres (e.g., `(+/-13, 0)` or `(+/-6, 0)`) to keep the text clear.  
+   * `connect_pins(label_ref, "1", component_ref, pin_name)` wires the label to the pin.
+
+**Why rotations/mirrors are chosen**
+
+* **MAX9814**: No rotation – its pins are already in the correct orientation for a standard TSSOP‑14 footprint.  
+* **Resistors**: Horizontal orientation (0°) keeps the series chain straight.  
+* **Microphone pair**: If the symbol’s default orientation puts the positive lead to the left, we may mirror the X axis to keep the positive lead pointing towards the MAX9814, making the bias path obvious.  
+* **Transistor symbols (Q1, Q2)**: Rotating 270° (or 90°) aligns the collector and emitter so that the current flow direction is consistent with the schematic flow (from left to right).  
+* **Power symbols**: No rotation – their pins are centered and always vertical.
+
+**Final steps**
+
+After all symbols are placed and wired, `write_out_all_wires()` is called to export the schematic netlist.  
+The code will be wrapped in a Python script that imports the KiCad schematic interface, defines the centre coordinates, places each symbol with the calculated offsets, adds the labels, connects every pin, and finally writes out the wires.
+
+*The script is kept concise (≈200 lines) and follows KiCad’s API naming conventions exactly, ensuring the schematic compiles and the resulting netlist matches the user’s requirements.*<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Amplifier_Audio:MAX9814###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Amplifier_Audio", symbol_name="MAX9814", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="MAX9814", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (22), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (8), reference="R1", value="48", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (8), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (22), reference="#PWR2", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (15), reference="JP1", value="AUX", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-31), pos_y=center_y_1 + (8), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (22), reference="#PWR3", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (8), reference="R4", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="L", pos_x=center_x_1 + (10), pos_y=center_y_1 + (1), reference="L1", value="R", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (22), pos_y=center_y_1 + (8), reference="R5", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (31), pos_y=center_y_1 + (22), reference="#PWR4", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (8), reference="R6", value="2.2K", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR2 pin +1V8 (Pin ID 1 -- Name +1V8) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR2", "+1V8", "JP1", "C")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting #PWR3 pin +1V8 (Pin ID 1 -- Name +1V8) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "+1V8", "R4", "1")
+
+# Connecting U1 pin VDD (Pin ID 5 -- Name VDD) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VDD", "R5", "1")
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to L1 pin 1 (Pin ID 1 -- Name +)
+connect_pins("R4", "2", "L1", "1")
+
+# Connecting L1 pin 2 (Pin ID 2 -- Name -) to R5 pin 2 (Pin ID 2 -- Name None)
+connect_pins("L1", "2", "R5", "2")
+
+# Connecting R5 pin 2 (Pin ID 2 -- Name None) to R6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R5", "2", "R6", "1")
+
+# Connecting #PWR4 pin +1V8 (Pin ID 1 -- Name +1V8) to R6 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR4", "+1V8", "R6", "2")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_max9814_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_max9814_generated.response.txt

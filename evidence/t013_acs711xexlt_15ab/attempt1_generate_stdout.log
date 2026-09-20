@@ -1,0 +1,285 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using the Allegro ACS711 bidirectional current sensor IC to measure current in a circuit. Use exactly these real components: U1 as a ACS711xEXLT-15AB, in the KiCad library "Sensor_Current" (Allegro ACS711 bidirectional +/-15A Hall-effect current sensor IC. QFN package. IP+ and IP- carry the sensed current path; VIOUT outputs a proportional analog voltage.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1925])
+[SEQLEN] input_ids shape: torch.Size([1, 1925])
+[SEQLEN] input_ids shape: torch.Size([1, 1925])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4920])
+[SEQLEN] input_ids shape: torch.Size([1, 4920])
+[SEQLEN] input_ids shape: torch.Size([1, 4920])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5141])
+[SEQLEN] input_ids shape: torch.Size([1, 3339])
+[SEQLEN] input_ids shape: torch.Size([1, 3339])
+[SEQLEN] input_ids shape: torch.Size([1, 3339])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.20GB gpu_peak=28.81GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.20GB gpu_peak=28.81GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.81GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.81GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.81GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements the Allegro ACS711 bidirectional Hall‑effect current sensor.  
+The only part that can be used is  
+
+* **U1** – the ACS711xEXLT‑15AB (`Sensor_Current:ACS711xEXLT-15AB`)  
+* the usual auxiliary circuitry that a QFN sensor needs (power pins, pull‑ups, decoupling, etc.)  
+
+No other parts may be substituted.  
+The schematic must be drawn with the KiCad Python API, using the helper functions that the project provides.  
+
+---
+
+### 1.  Choosing a convenient reference point
+
+A QFN device has a very small footprint, so we place it in the centre of the page.  
+The page is 210 × 297 mm (A4).  
+We pick a centre at **(150 mm, 110 mm)** – this keeps the drawing well inside the sheet and gives plenty of room for additional symbols.  
+The centre symbol will be **U1** (the ACS711).  
+Its value in the schematic is the part name, so we set `value="ACS711xEXLT-15AB"`.  
+The QFN pins are all on a square, so a rotation of 0° keeps the pins in their natural order and simplifies wire routing.
+
+```python
+center_x, center_y = 150.0, 110.0
+add_schematic_symbol(
+    symbol_lib="Sensor_Current",
+    symbol_name="ACS711xEXLT-15AB",
+    pos_x=center_x,
+    pos_y=center_y,
+    reference="U1",
+    value="ACS711xEXLT-15AB",
+    rotation=0,
+    mirror=None
+)
+```
+
+---
+
+### 2.  Adding the support components
+
+| Symbol | Library | Reference | Value | Position offset | Reason |
+|--------|---------|-----------|-------|-----------------|--------|
+| 5.1 kΩ resistor | Device | R1 | 5.1 kΩ (pull‑up to VCC) | (-80 mm, +20 mm) | Provides a bias to the H‑bridge input |
+| 2.2 kΩ resistor | Device | R2 | 2.2 kΩ (pull‑down to GND) | (-80 mm, -20 mm) | Sets the bias for the H‑bridge output |
+| 1 µF capacitor | Device | C1 | 1 µF (decoupling) | (-70 mm, 0 mm) | Decouples the sensor’s VDD input |
+| Power rail +1 V8 | power | +1V8 | +1.8 V | (-70 mm, +30 mm) | Supplies the sensor’s VDD pin |
+| Ground rail | power | GND | GND | (-70 mm, -30 mm) | Grounds the sensor’s VSS pin |
+| VCC rail | power | VCC | 15 V | (+50 mm, +20 mm) | Provides the optional external bias rail for the Hall sensor (optional, but common in ACS711 designs) |
+| LED (optional indicator) | Device | D1 | LED | (+50 mm, -20 mm) | Optional visual indicator for over‑current |
+
+All offsets are chosen so that the symbols are well spaced (≥10 mm apart) and their bounding boxes do not overlap.  
+All rotations are 0° except the power symbols, which are 0° as well. No mirroring is required – the QFN pins are already arranged left‑to‑right in the standard orientation.
+
+```python
+# Pull‑up resistor
+add_schematic_symbol("Device", "R", center_x-80, center_y+20, "R1", "5.1k", 0, None)
+# Pull‑down resistor
+add_schematic_symbol("Device", "R", center_x-80, center_y-20, "R2", "2.2k", 0, None)
+# Decoupling capacitor
+add_schematic_symbol("Device", "C", center_x-70, center_y, "C1", "1uF", 0, None)
+# VDD supply
+add_schematic_symbol("power", "+1V8", center_x-70, center_y+30, "#PWR1", "+1V8", 0, None)
+# GND
+add_schematic_symbol("power", "GND", center_x-70, center_y-30, "#PWR_GND", "GND", 0, None)
+# VCC supply (optional)
+add_schematic_symbol("power", "VCC", center_x+50, center_y+20, "#PWR2", "VCC", 0, None)
+# LED indicator
+add_schematic_symbol("Device", "LED", center_x+50, center_y-20, "D1", "LED", 90, None)
+```
+
+---
+
+### 3.  Adding global labels
+
+The ACS711 has three important external pins:
+
+* **VIN** – the voltage that will flow through the Hall element.  
+  We connect it to the pull‑up resistor (R1) and to the VDD supply.  
+* **VOUT** – the analog output of the sensor.  
+  We will route this to the LED’s anode via a series resistor (R3) so we can observe the sensor output.  
+* **GND** – the sensor ground.
+
+Labels help the schematic reader.  
+We place a label next to each pin of the QFN that corresponds to an external net:
+
+```python
+# VIN label near U1 pin VIN
+x, y = get_pin_location("U1", "VIN")
+add_label([x-5, y], "VIN", "VIN_lbl", "input", "left")
+connect_pins("VIN_lbl", "1", "U1", "VIN")
+
+# VOUT label near U1 pin VOUT
+x, y = get_pin_location("U1", "VOUT")
+add_label([x+5, y], "VOUT", "VOUT_lbl", "output", "right")
+connect_pins("VOUT_lbl", "1", "U1", "VOUT")
+
+# GND label near U1 pin GND
+x, y = get_pin_location("U1", "GND")
+add_label([x-5, y], "GND", "GND_lbl", "input", "left")
+connect_pins("GND_lbl", "1", "U1", "GND")
+```
+
+---
+
+### 4.  Wiring the schematic
+
+**Power connections**
+
+1. **+1.8 V** → R1 pin 1 (VDD bias)  
+   ```python
+   connect_pins("#PWR1", "+1V8", "R1", "1")
+   ```
+2. **VDD bias** (U1 pin VDD) ← R1 pin 2  
+   ```python
+   connect_pins("R1", "2", "U1", "VDD")
+   ```
+3. **GND** (U1 pin GND) ← GND rail  
+   ```python
+   connect_pins("#PWR_GND", "1", "U1", "GND")
+   ```
+
+**Signal path**
+
+1. **VIN** → pull‑up resistor R1 → U1 VIN  
+   ```python
+   connect_pins("#PWR1", "+1V8", "R2", "1")
+   connect_pins("R2", "2", "U1", "VIN")
+   ```
+
+2. **VOUT** from U1 VOUT → series resistor R3 → LED anode → LED cathode → GND  
+   ```python
+   # Series resistor
+   add_schematic_symbol("Device", "R", center_x+40, center_y, "R3", "10k", 0, None)
+   connect_pins("U1", "VOUT", "R3", "1")
+   connect_pins("R3", "2", "D1", "A")   # LED anode
+   connect_pins("D1", "K", "#PWR_GND", "1")  # LED cathode to ground
+   ```
+
+3. **Optional VCC rail** → LED cathode (if we want to drive the LED brighter)  
+   ```python
+   connect_pins("#PWR2", "VCC", "D1", "K")
+   ```
+
+**Miscellaneous connections**
+
+* The pull‑up resistor R1 is also tied to the VDD pin of the sensor, giving it a stable reference.  
+* The pull‑down resistor R2 is tied to the VIN pin to keep the Hall element’s current path biased.  
+* The decoupling capacitor C1 sits between VDD and GND, reducing supply ripple.
+
+The final `write_out_all_wires()` call writes the netlist to the KiCad schematic file.
+
+---
+
+### 5.  Why this layout is readable
+
+* **Central QFN** – keeps the sensor at the core, so all external nets radiate outward.  
+* **Horizontal alignment** – all power rails are on the left/right edges, making it obvious which pin is which.  
+* **Consistent offsets** – 10‑20 mm spacing between symbols prevents accidental wire crossings.  
+* **Rotation 0°** – no extra wire bends; the pin order matches the symbol’s pin list, simplifying `connect_pins` calls.  
+* **Left‑oriented labels** – the VIN and GND labels sit to the left of the pins, which is the conventional placement for inputs/grounds.  
+* **Right‑oriented output label** – VOUT is to the right, guiding the eye towards the output path.
+
+With this reasoning, the generated Python code will create a clean, functional schematic that meets the user’s exact constraints.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Sensor_Current:ACS711xEXLT-15AB###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Sensor_Current", symbol_name="ACS711xEXLT-15AB", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ACS711xEXLT-15AB", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-80), pos_y=center_y_1 + (22), reference="#PWR1", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-80), pos_y=center_y_1 + (15), reference="R1", value="5.1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-80), pos_y=center_y_1 + (0), reference="C1", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-80), pos_y=center_y_1 + (-15), reference="#PWR_C1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (15), pos_y=center_y_1 + (22), reference="#PWR2", value="VAA", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (15), pos_y=center_y_1 + (15), reference="R2", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (15), pos_y=center_y_1 + (-15), reference="R3", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (15), pos_y=center_y_1 + (-22), reference="#PWR3", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (27), pos_y=center_y_1 + (22), reference="#PWR4", value="VCC", rotation=0, mirror="None")
+
+## Placing all global labels in the Schematic and connect them to the neighbor pin ##
+
+# Add label IOL next to U1 pin IIL 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="IIL")
+add_label(label_pos=[x_U1_2+(-8), y_U1_2+(2)], label_text="IOL", label_ref="IOL_0", label_type="input", text_orient="left")
+# Connecting Label IOL label_id:0 to U1 pin IIL (Pin ID 2 -- Name IIL)
+connect_pins("IOL_0", "1", "U1", "IIL")
+
+# Add label VIN next to U1 pin VIN 
+x_U1_6, y_U1_6 = get_pin_location(symbol_ref="U1", pin_name="VIN")
+add_label(label_pos=[x_U1_6+(-7), y_U1_6+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+# Connecting Label VIN label_id:0 to U1 pin VIN (Pin ID 6 -- Name VIN)
+connect_pins("VIN_0", "1", "U1", "VIN")
+
+# Add label IOL next to U1 pin IOL 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="IOL")
+add_label(label_pos=[x_U1_9+(7), y_U1_9+(0)], label_text="IOL", label_ref="IOL_1", label_type="input", text_orient="right")
+# Connecting Label IOL label_id:1 to U1 pin IOL (Pin ID 9 -- Name IOL)
+connect_pins("IOL_1", "1", "U1", "IOL")
+
+# Add label VOUT next to U1 pin VOUT 
+x_U1_7, y_U1_7 = get_pin_location(symbol_ref="U1", pin_name="VOUT")
+add_label(label_pos=[x_U1_7+(7), y_U1_7+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="input", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VOUT (Pin ID 7 -- Name VOUT)
+connect_pins("VOUT_0", "1", "U1", "VOUT")
+
+# Add label IOL next to U1 pin IOL 
+x_U1_10, y_U1_10 = get_pin_location(symbol_ref="U1", pin_name="IOL")
+add_label(label_pos=[x_U1_10+(29), y_U1_10+(0)], label_text="IOL", label_ref="IOL_2", label_type="input", text_orient="right")
+# Connecting Label IOL label_id:2 to U1 pin IOL (Pin ID 10 -- Name IOL)
+connect_pins("IOL_2", "1", "U1", "IOL")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R1", "1")
+
+# Connecting C1 pin 1 (Pin ID 1 -- Name None) to #PWR_C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "1", "#PWR_C1", "1")
+
+# Connecting U1 pin VD (Pin ID 1 -- Name VD) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "VD", "R2", "2")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to U1 pin VD (Pin ID 1 -- Name VD)
+connect_pins("R3", "2", "U1", "VD")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VD (Pin ID 1 -- Name VD)
+connect_pins("R1", "2", "U1", "VD")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to #PWR2 pin VAA (Pin ID 1 -- Name VAA)
+connect_pins("R2", "1", "#PWR2", "VAA")
+
+# Connecting #PWR2 pin VAA (Pin ID 1 -- Name VAA) to U1 pin VIN (Pin ID 6 -- Name VIN)
+connect_pins("#PWR2", "VAA", "U1", "VIN")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "R3", "1")
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to U1 pin VD (Pin ID 1 -- Name VD)
+connect_pins("R4", "2", "U1", "VD")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R1", "2", "R2", "2")
+
+# Connecting #PWR4 pin VCC (Pin ID 1 -- Name VCC) to R4 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR4", "VCC", "R4", "2")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_acs711xexlt_15ab_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_acs711xexlt_15ab_generated.response.txt

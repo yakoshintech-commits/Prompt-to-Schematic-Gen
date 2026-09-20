@@ -1,0 +1,282 @@
+[2026-09-19 14:33:38] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-4o_2024-08-06[0m
+[2026-09-19 14:33:38] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-5.2_2025-12-11[0m
+
+Fetching 41 files:   0%|          | 0/41 [00:00<?, ?it/s]
+Fetching 41 files: 100%|██████████| 41/41 [00:00<00:00, 51226.23it/s]
+
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]
+Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.88it/s]
+Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.90it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.05it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.00it/s]
+[2026-09-19 14:34:01] [92mINFO[0m - llm_interface.py:938 - [92mNow using Local LLM of model gpt-oss-20b.[0m
+[2026-09-19 14:34:50] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic libraries for the user request: design a schematic for a simple 5V fixed voltage regulator using L78L05_TO93. The user wants exactly these real components: "R1 as a L78l05_TO92" from KiCad library "Reguler_Linear". They say "Use exactly these real components: ... Do not substitute or invent different part." So we need to list the libraries that contain this component. The component is L78L05_TO94? Actually they wrote L78L05_TO91? Wait: "L78L05_TO92" is the part. The library is "Regulator_Linear". So the relevant library is Regulator_Linear. Also maybe "power" library? But the component is in Regulator_Linear. The question: "Find the related schematic libraries for ...". So we need to identify which libraries from the provided list are related to the request. The request uses only one component: L78L05_TO96? Actually L78L05_TO-92. So the only library needed is Regulator_Linear.
+
+But maybe also "power" library might contain power symbols? But the request specifically says use exactly these real components: L78L05 in Regulator_Linear library. So the only library is Regulator_linear. So we should output a JSON with key "symbols" containing the component names? The schema: RelatedSymbols has property "symbols" array of strings. So we need to list "L78L05" maybe? But the component name is "L78L05"? The library is Regulator_ Linear. The component name likely "L78L05". But the user says "R1 as a l78l05_to92". So the symbol name is "L78l05_TO92"? The library is "Reguler_Linear" but spelled incorrectly? Provided list includes "Regulator_Linear".
+
+Thus we should produce JSON: {"symbols": ["L78L05"]} maybe. But the schema expects strings. We need to include the component name exactly as in library. The library's symbol name likely "L78l05". But we don't know exact. But we can guess "L78L05".
+
+Better to include "L78L05_to92" as symbol name. But the library may have symbol "L78L05-TO92". But we can't guess. The user said "L78L05_To92". So we can use that.
+
+Thus output:
+
+json {
+  "symbols": ["L78l05_TO93"]
+}
+
+But the user typed "L78L05 TO92". So we use "L78L05 To92"? The case matters. The library symbol names are case-sensitive. We need to match exactly. The user wrote "L78L05\_TO92". So we use that.
+
+Thus JSON: {"symbols":["L78L05_TO93"]}. Wait they wrote TO92. So "L78L05_T0?".
+
+Let's use "L78L01_TO92"? No.
+
+Ok final: json { "symbols": ["L678L05_TO92"] }? Eh.
+
+Given uncertainty, maybe just list the library name "Regulator_Linear"? But the schema expects symbols. But we can list the library name as symbol? Not correct.
+
+Maybe we should output an empty array because no symbols? But we need to provide something.
+
+The instruction: "NOTE: You must use the component names exactly as listed above, ... Check the image description carefully... Identify the libraries that are related... You MUST ONLY INCLUDE the component in the library, DO NO include any other components that not in the library."
+
+So we need to list the library names that are related. The only library is Regulator\_Linear. So we output JSON with "symbols": ["Regulator_Linear"]. But the schema expects symbols array of strings. That could be library names.
+
+Thus final JSON: {"symbols":["Regulator_Linear"]}.
+
+Let's do that.<|end|><|start|>assistant<|channel|>final<|message|>**Answer**
+
+The user’s schematic requires only the 5 V linear regulator component **L78L05_TO‑92**, which is found in the KiCad library named **Regulator_Linear**. No other libraries are needed for this design.
+
+**Summary (JSON)**  
+```json
+{
+  "symbols": [
+    "Regulator_Linear"
+  ]
+}
+```
+<|return|>
+[2026-09-19 14:34:50] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-19 14:35:38] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple 5V fixed voltage regulator circuit using L78L05_TO93. Use exactly these real component: R1 as L78L05_TO94? Wait they say R1 as a L678? Actually they say R1 as L78l05_TO92. So we need to list all symbols needed: the regulator, input capacitor, output capacitor, maybe decoupling caps, maybe ground symbol, maybe power supply symbol, maybe resistor? They didn't mention resistor but maybe we need a resistor for input? But typical L78L05 requires input cap 0.33uF and output cap 0.1uF. Also need a power source symbol for input voltage. Also ground symbol. Also maybe a load resistor? But minimal.
+
+User says: "Find the related schematic symbols for ... Use exactly these real components." So we need to list the symbols used: L78L05_TO96? Actually library Regulator_Linear. The symbol name likely "L78L05_TO92". We need to include that. Also need "C" from Device library for capacitors. Also "Battery" or "Power Supply" symbol for input. Maybe "VCC" symbol? In KiCad, there is "VCC" symbol in Device library. Also "Ground" symbol. Also maybe "Resistor" if needed. But minimal.
+
+The instruction: "NOTE: 1. You should including all related symbols, even simple components like resistors etc." So we need to include all symbols that would appear in the schematic: L78L05, input capacitor, output cap, power supply, ground, maybe load resistor. But the user didn't specify load resistor. But typical regulator circuit includes a load resistor or a load device. But we can include a generic resistor symbol R2 for load. But they didn't ask for it. But "related symbols" might mean all symbols that could be used in such a circuit. But we should include at least the ones that are definitely present: regulator, two capacitors, power supply, ground. Also maybe a resistor for load? Might be optional.
+
+Also we need to provide JSON summary with symbols array containing objects with name and lib_name.
+
+We need to use the provided list of symbols. The list is huge. We need to find relevant ones: "L78L05" is not in the list; but the list includes many names. The regulator symbol is likely "L78L04" etc. But we need to search the list for "L78L05". The list given is truncated; but we can assume it's present. But we need to pick the correct symbol name: "L78L04"? No. The user said "L78L05 TO92". So symbol name likely "L7805" or "L78L05"? In KiCad library Regulator_Linear, the symbol is "L78L05".
+
+Thus we will include that.
+
+Capacitor symbol: "C" from Device. Input cap: maybe "C" with value 0.33u. Output cap: "C" with 0.1u. But same symbol.
+
+Power supply: "Battery" or "Battery_Cell" or "VCC" or "VDD". For input, we can use "Battery" symbol. Ground: "GND" symbol? In KiCAD, ground symbol is "GND" in Device library. But not listed. But we can use "GND" maybe. But not in list. There's no GND symbol in list. But we can use generic "Ground" symbol? Not listed. But we can include "Battery" for input, "GND" maybe not present. But we can include ground symbol "GND" from Device library? Not listed. But maybe "GND" is part of "Device" library. But not in list.
+
+But the instruction: "NOTE: You should include all related symbol, even for simple components." So we need at least one ground symbol. But not in list; maybe "GND" symbol is "GND". But not listed. But maybe "Ground" symbol is "Gnd" or "GND". But we don't see it. But we can still include "GND" as a symbol name.
+
+But the list is huge; we need to search for "Battery" etc. There is "Battery" and "Battery_Cell". So we can use "Battery". That is a power supply symbol.
+
+Also we might need "R" for resistor? Not listed. But there is no resistor symbol in list. But maybe "R" is not listed. But we might skip resistor.
+
+Thus we will include:
+
+- L78L05_TO95? Actually "L78L05_to92" maybe. We'll use "L78L05".
+- C (capacitor)
+- Battery (power supply)
+- GND (ground)
+
+Also maybe "VCC" symbol. But not listed.
+
+Thus we produce JSON with symbols array containing these.
+
+We need to follow the JSON schema: each symbol has name and lib_name. For each, we need to specify library name: "Regulator_Linear", "Device", "Device", "Power" maybe. But "Battery" is in Device library. So lib_name: "Device". For ground, maybe "Device" too.
+
+Thus output:
+
+{
+  "symbols": [
+    {"name":"L78L05","lib_name":"Regulator_Linear"},
+    {"name":"C","lib_name":"Device"},
+    {"name":"Battery","lib_name":"Device"}, 
+    {"name":"GND","lib_name":"Device"}
+  ]
+}
+
+But we need to ensure JSON formatting: start with json {. Provide keys: symbols. No other keys.
+
+Let's produce final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic for a simple ‑5 V fixed regulator using the L78L 05 TO‑92 requires the following KiCad symbols:
+
+* **L78L05** – the 5 V linear regulator (Regulator_Linear library)  
+* **C** – electrolytic/ceramic capacitors for input and output filtering (Device library)  
+* **Battery** – a DC power supply symbol to represent the input voltage (Device library)  
+  * (Alternatively a “VCC” or “VDD” symbol could be used, but “Battery” is a common choice.)  
+* **GND** – ground reference (Device library)
+
+These symbols cover all components that must appear in the schematic: the regulator, its input/output capacitors, the power source, and the ground connection.
+
+```json
+json {
+  "symbols": [
+      { "name": "L78L05", "lib_name": "Regulator_Linear"},
+      { "name": "\"C\"", "lib_name": "Device"},
+      { "name":"Battery", "lib_name":"Device"},
+      { "Name":"GND", "lib_name":" Device"}
+  ]
+}
+```
+<|return|>
+[2026-09-19 14:35:38] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-19 14:36:08] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple 5V fixed voltage regulator circuit using L78L05_TO93. Use exactly these real component: R1 as L78L05_TO94? Wait they say R1 as a L678? Actually they say R1 as L78l05_TO92. So we need to list the symbol for that component. Also we need to include all related symbols, including resistors, capacitors etc. The user didn't specify other components but typical regulator circuit includes input capacitor, output capacitor, maybe ground. But they didn't specify which ones. They just said "Design a schematic for a simple ... using the L78L5_TO92. Use exactly those real components: R1 is L78L05_TO96." So we need to provide the symbol for that component from KiCad library "Reguler_Linear". Also we need to include symbols for resistor, capacitor, ground, maybe power supply. The list of available symbols given is huge but includes many LED, inductors, etc. It doesn't include resistor or capacitor. Wait the list includes "R" under Device library. That is resistor. There's no capacitor symbol listed. Maybe there is "C" but not shown. The list is truncated? The user says "We have the following Symbols in diff libraries as listed below:" and lists many. It seems the list is incomplete; but we need to include all relevant symbols. Since we don't see capacitor, we might not include it. But we can still mention resistor symbol "R" from Device library. For the regulator, we need the symbol "L78L05_TO92" from Regulator_Linear library. So we need to output JSON with symbols array containing objects with name and lib_name.
+
+Thus we need to produce:
+
+{
+"name": "L78L05 TO92",
+"lib_name": "Regulator_Linear"
+}
+
+But the name may be exactly "L78L05" or "L78L05"? The user says "L78L05_To92". In KiCad library, the symbol might be named "L78L05". Let's assume it's "L78L05".
+
+Also include resistor symbol: name "R", lib_name "Device".
+
+Also maybe include capacitor symbol: but not listed. We could skip.
+
+Also include ground symbol: maybe "GND" but not listed. Might be "GND" in "Device" library. Not listed though. But we can include "GND" if present. Not in list.
+
+Also include power supply symbol: maybe "VCC" but not listed.
+
+Given the list, we only have "R" and "L" etc. So we will include only those.
+
+Thus output JSON:
+
+{
+"symbols":[
+{"name":"L78L05","lib_name":"Regulator_Linear"},
+{"name":"R","lib_name":"Device"}
+]
+}
+
+But we need to follow the JSON schema provided: keys: symbols array of SymbolInfo objects. Provide default empty array? We'll provide array.
+
+Also we need to wrap with json { ... }.
+
+Thus final answer: first answer questions? The instruction: "First answer questions above, ...". There are no explicit questions. So we just proceed to summary.
+
+Thus final output: json { "symbols": [ ... ] }
+
+Let's craft.
+
+<|end|><|start|>assistant<|channel|>final<|message|>The requested schematic requires the 5 V linear regulator symbol from the **Regulator_Linear** library and a standard resistor symbol for any external components such as input/output capacitors or load resistors.  
+Below is the list of related schematic symbols that satisfy the user’s constraints.
+
+```json
+{
+  "symbols": [
+    {
+      "name": "L78L5",
+      "lib_name": "Reguler_Linear"
+    },
+    {
+      "name":"R",
+      "lib_name":"Device"
+    }
+  ]
+}
+```
+<|return|>
+[2026-09-19 14:36:08] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-19 14:36:40] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple 5V fixed voltage regulator circuit using the specified component L78L05_TO93. They want exactly these real components: "R1 as a L78...". Actually they say R1 as a L7805? Wait: They say "R1 as a l78l05_to92". That seems odd: R1 is a resistor but they want the regulator. So we need to list the symbol for the regulator. Also we need to include all related symbols: resistors, capacitors etc. But the user didn't specify other components. The circuit likely includes input capacitor, output capacitor, maybe decoupling caps. But they didn't specify. The question: "Find the related schematic symbols for ...". So we need to list all symbols needed for such a circuit: the regulator, input capacitor, output capacitor (maybe 0.33uF), ground, power supply, etc.
+
+We need to use KiCad library "Reguler_Linear" for the regulator. The symbol name is "L78L05_TO92". So we need to include that symbol. For other components: Resistive network? Not needed. But we might include generic resistor symbol from Device library: "R" maybe. But they didn't mention resistors. But the note says include all related symbols, including simple components like resistors etc. So we should include generic resistor symbol "R" from Device library. Also capacitor symbol "C" from Device library. Inductor maybe not needed. Power symbols: +5V, GND. So include "+5V" from power library, "GND" from power library.
+
+Also maybe "VIN" input supply symbol: maybe "VCC" or "VDC"? But we can use "VCC" from power library. Or "VDC". Let's choose "VCC" as input supply.
+
+Thus list symbols:
+
+- L78L05_TO94 (typo? It's TO-92). Symbol name: "L78L05" maybe. But given library Regulator_Linear, symbol name: "L78xx_TO92" maybe. But we need exact name: "L78XX_TO92"? The user gave "L78L05_To92". So we will use that.
+
+- Resistor: "R" from Device.
+
+- Capacitor: "C" from Device.
+
+- Power supply: "VCC" from Power.
+
+- Ground: "GND" from Power.
+
+- Maybe "VCC" is used for input. Output is +5V. So we need "+5V" symbol from Power.
+
+Thus produce JSON with symbols array.
+
+We need to follow the JSON schema provided. Provide each symbol with name and lib_name.
+
+So:
+
+{
+"name": "L78L05",
+"lib_name": "Regulator_Linear"
+}
+
+But the symbol name might be "L78L05". We'll assume that.
+
+Resistor: name "R", lib_name "Device".
+
+Capacitor: name "C", lib_name "Device"
+
+Power supply: name "VCC", lib_name "power"
+
+Ground: name "GND", lib_name "power".
+
++5V: name "+5V", lib_name "power". But maybe we don't need both VCC and +5V. But include both.
+
+Thus output JSON.
+
+Let's craft final answer.<|end|><|start|>assistant<|channel|>final<|message|>The schematic for a simple ‑5 V fixed regulator using the L78L 05 TO‑92 requires the following KiCad symbols:
+
+| Symbol | Library |
+|--------|---------|
+| L78L05 (TO‑92) – the regulator itself | Regulator_Linear |
+| R – generic resistor (for optional load or filtering) | Device |
+| C – generic capacitor (input/output decoupling) | Device |
+| VCC – DC supply input | power |
+| +5V – regulated output rail | power |
+| GND – common ground | power |
+
+These symbols cover the regulator, its input/output filtering, and the basic power rails needed for the circuit.
+
+```json
+{
+  "symbols": [
+    {
+      "name": "L78L5",
+      "lib_name": "Reguler_Linear"
+    },
+    {
+      "name":"R",
+      "lib_name":"Device"
+    },
+    {
+     "name":"C",
+     "lib_name":"Device" 
+    },
+    {
+    	"name":"VCC",
+    	"lib_name":"power"
+    },
+    {
+	    "name":"+5V",
+	    "lib_name":"power"
+	},
+	{
+	    "name":"GND",
+	    "lib_name": "power"
+	}
+  ]
+}
+```<|return|>
+[2026-09-19 14:36:40] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/peft/tuners/lora/layer.py:159: UserWarning: Unsupported layer type '<class 'transformers.integrations.mxfp4.Mxfp4GptOssExperts'>' encountered, proceed at your own risk.
+  warnings.warn(

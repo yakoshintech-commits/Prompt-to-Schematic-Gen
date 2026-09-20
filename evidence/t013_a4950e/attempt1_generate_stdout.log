@@ -1,0 +1,200 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit candidate using the A4950E full-bridge motor driver to control a motor. Use exactly these real components: U1 as a A4950E, in the KiCad library "Driver_Motor" (Full-bridge motor driver, 40V 3.5A peak, SOIC-8 + exposed pad. IN1/IN2 control the H-bridge output direction. VREF sets current limit via LSS sense resistor. PAD (pin 9) is exposed thermal pad, connect to GND.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1945])
+[SEQLEN] input_ids shape: torch.Size([1, 4940])
+[SEQLEN] input_ids shape: torch.Size([1, 4940])
+[SEQLEN] input_ids shape: torch.Size([1, 4940])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5161])
+[SEQLEN] input_ids shape: torch.Size([1, 3359])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.29GB gpu_peak=28.87GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.29GB gpu_peak=28.87GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.87GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.87GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.87GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that drives a motor with the A4950E full‑bridge driver.  
+Only the exact parts listed in the request may be used, so we cannot substitute the driver or the resistors.  
+The schematic must contain:
+
+1. The A4950E (SOIC‑8, exposed pad) – pin layout given in the description.  
+2. Four 2.2 kΩ sense resistors that set the current limit through the VREF pin.  
+3. A +12 V supply and a GND symbol.  
+4. The power‑pad (pin 9) of the driver must be tied to GND.  
+5. All pins that are part of the motor‑control logic must be wired so the H‑bridge works correctly.
+
+The schematic will be placed roughly in the centre of a 210 × 297 mm page (A4).  
+The coordinates are chosen to keep the symbols well separated and to avoid overlapping bounding boxes.
+
+---
+
+### 1.  Symbol placement
+
+| Symbol | Library | Reference | Position (mm) | Rotation | Mirror |
+|--------|---------|-----------|---------------|----------|--------|
+| A4950E | Driver_Motor | U1 | (150, 110) | 0° | None |
+| +12 V | power | #PWR1 | (93, 132) | 0° | None |
+| R | Device | R1 | (93, 125) | 0° | None |
+| R | Device | R2 | (85, 125) | 0° | None |
+| VREF | (implicit) | – | – | – | – |
+| +1 V8 | power | #PWR2 | (119, 132) | 0° | None |
+| R | Device | R3 | (119, 125) | 0° | None |
+| R | Device | R4 | (158, 125) | 0° | None |
+| GND | power | #PWR3 | (158, 132) | 0° | None |
+
+*Why these offsets?*  
+- The driver sits at the centre.  
+- The +12 V/ground pair is 57 mm to the left; the sense‑resistor chain is 8 mm further left, so the ground pin of the driver will be close to the chain.  
+- The second +1.5 V rail is 29 mm to the right; its sense resistor is 8 mm further right, placing the motor‑control pins near the centre again.  
+- The extra +12 V rail is 8 mm further right, giving a clear path for the motor‑control pins.
+
+All pins of the driver are at the centre of the symbol; the symbol’s bounding box is ±7.62 mm, so the 8 mm offsets keep the symbols from overlapping.
+
+---
+
+### 2.  Pin mapping
+
+| Driver pin | Function | Connected to |
+|------------|----------|--------------|
+| VREF | Sets current via LSS | R3 (pin 2) |
+| IN1, IN2 | H‑bridge direction | Driver pins IN1/IN2 (no extra components – they will be driven by a controller) |
+| OUT1, OUT2 | Motor outputs | Not connected in this schematic (they will go to the motor). |
+| LSS | Sense line | R3 (pin 1) |
+| PAD | Thermal pad | GND |
+| VBB | Supply | Not used (assumed +12 V through the board) |
+| GND | Ground | GND symbol |
+
+The sense resistor chain is a classic 2‑R divider:  
+```
++12 V ── R1 ── R2 ── driver VREF
+            \
+             └─ driver LSS
+```
+R1 (left) and R2 (right) set the current limit.  
+R3 is connected between VREF and LSS to provide the reference voltage.
+
+---
+
+### 3.  Label creation
+
+For readability we add textual labels next to certain pins:
+
+- **VREF** – placed left of driver pin VREF.  
+- **PAD** – placed below driver pin PAD.  
+
+The `text_orient` is chosen so the label text points away from the pin (left or right), making the schematic tidy.
+
+---
+
+### 4.  Wire connections (logic)
+
+1. **Power chain**  
+   - `#PWR1 (+12 V)` → `R1` pin 1  
+   - `R1` pin 2 → `U1` pin VREF  
+   - `#PWR2 (+1.5 V)` → `R3` pin 2  
+   - `R3` pin 1 → `U1` pin LSS  
+
+2. **Sense resistor**  
+   - `R2` pin 2 → `U1` pin VREF (the other end of the sense resistor chain).  
+   - `R2` pin 1 → `U1` pin GND (ground reference).  
+
+3. **Ground**  
+   - `#PWR3 (GND)` → `U1` pin GND.  
+   - `U1` pin PAD → `#PWR3`.  
+
+4. **Return path for the sense divider**  
+   - `R3` pin 2 → `U1` pin LSS (already covered).  
+
+All these connections are made with `connect_pins()` calls, using the reference names and pin identifiers that were defined in the symbol descriptions.
+
+---
+
+### 5.  Wire drawing
+
+After all `connect_pins()` calls, `write_out_all_wires()` traverses the internal net list and writes the actual wire objects into the KiCad schematic.  
+Because every pin that needs to be connected has already been linked, the final schematic will contain a clean, well‑spaced network of wires that respects the physical pin positions.
+
+---
+
+### 6.  Summary of function arguments
+
+| Function | Key arguments | Reasoning |
+|----------|----------------|-----------|
+| `add_schematic_symbol` | `symbol_lib`, `symbol_name`, `pos_x`, `pos_y`, `reference`, `value`, `rotation`, `mirror` | Places a component at the specified coordinates; rotation is 0° to keep the pin layout natural; mirror is None to avoid flipping the symbol. |
+| `get_pin_location` | `symbol_ref`, `pin_name` | Retrieves the exact (x, y) of a pin so labels can be positioned relative to it. |
+| `add_label` | `label_pos`, `label_text`, `label_ref`, `label_type`, `text_orient` | Adds a readable text label next to a pin; orientation keeps the label away from the pin. |
+| `connect_pins` | `sym_a`, `pin_a`, `sym_b`, `pin_b` | Creates a net between two pins; pin names are taken from the symbol description (e.g., “VREF”, “LSS”, “GND”). |
+| `write_out_all_wires` | None | Finalizes the schematic by exporting all the wires that were defined. |
+
+---
+
+### 7.  Design choices explained
+
+- **Rotation 0°** keeps the driver’s pins in their natural orientation: the input pins (IN1/IN2) are on the left, the outputs on the right, VREF on the left side, LSS on the right side, and PAD below – exactly as shown in the symbol’s pin list.  
+- **No mirroring** – the default orientation already matches the intended layout; mirroring would only complicate the wire routing.  
+- **Offset distances** – 8 mm between the driver and each resistor chain gives enough room for wires and labels without crowding.  
+- **Label placement** – left of the VREF pin and below the PAD pin make the schematic readable without overlapping other symbols.  
+- **Ground connections** – the PAD pin is tied to GND directly; the sense resistor’s lower end is also grounded, ensuring a stable reference for the LSS line.
+
+With these decisions the final Python script will read the KiCad API, place every required symbol at the correct spot, add the necessary labels, connect the pins to form the motor‑driver circuit, and then output a clean, fully‑connected schematic.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Driver_Motor:A4950E###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Driver_Motor", symbol_name="A4950E", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="A4950E", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+12V", pos_x=center_x_1 + (-57), pos_y=center_y_1 + (22), reference="#PWR1", value="+12V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-57), pos_y=center_y_1 + (15), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-57), pos_y=center_y_1 + (3), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (22), reference="#PWR2", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (15), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-15), pos_y=center_y_1 + (-11), reference="#PWR3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin REF_VCC (Pin ID 8 -- Name REF_VCC)
+connect_pins("R1", "2", "U1", "REF_VCC")
+
+# Connecting #PWR1 pin +12V (Pin ID 1 -- Name +12V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+12V", "R1", "1")
+
+# Connecting #PWR2 pin +1V8 (Pin ID 1 -- Name +1V8) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR2", "+1V8", "R3", "2")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin VREF (Pin ID 6 -- Name VREF)
+connect_pins("R2", "2", "U1", "VREF")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to U1 pin GND (Pin ID 7 -- Name GND)
+connect_pins("R2", "1", "U1", "GND")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to U1 pin LSS (Pin ID 4 -- Name LSS)
+connect_pins("R3", "1", "U1", "LSS")
+
+# Connecting U1 pin PAD (Pin ID 9 -- Name PAD) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "PAD", "#PWR3", "1")
+
+# Connecting #PWR2 pin +1V8 (Pin ID 1 -- Name +1V8) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "+1V8", "R2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_a4950e_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_a4950e_generated.response.txt

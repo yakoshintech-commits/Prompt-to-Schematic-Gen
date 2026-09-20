@@ -1,0 +1,211 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 3.3V fixed-output LDO regulator circuit using the AP2112K-3.3. Use exactly these real components: U1 as a AP2112K-3.3, in the KiCad library "Regulator_Linear" (3.3V fixed-output LDO regulator, 600mA, SOT-23-5. Low quiescent current. EN pin enables/disables output.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1926])
+[SEQLEN] input_ids shape: torch.Size([1, 1926])
+[SEQLEN] input_ids shape: torch.Size([1, 1926])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4921])
+[SEQLEN] input_ids shape: torch.Size([1, 4921])
+[SEQLEN] input_ids shape: torch.Size([1, 4921])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5142])
+[SEQLEN] input_ids shape: torch.Size([1, 5142])
+[SEQLEN] input_ids shape: torch.Size([1, 5142])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3340])
+[SEQLEN] input_ids shape: torch.Size([1, 3340])
+[SEQLEN] input_ids shape: torch.Size([1, 3340])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.21GB gpu_peak=28.81GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.21GB gpu_peak=28.81GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.81GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.81GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.81GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 3.3 V fixed‑output LDO using the AP2112K‑3.3 part.  
+Only the exact part must be used – no substitutions or other regulators.  
+The schematic must be readable, centred on an A4 sheet (210 × 297 mm), and all pins must be connected according to the AP2112K‑3.3 pinout.
+
+**Symbol placement strategy**
+
+* **U1 (AP2112K‑3.3)** is the heart of the circuit.  
+  * The reference is forced to **U1**.  
+  * The symbol is placed at the centre of the sheet: `pos_x = 150.0 mm`, `pos_y = 110.0 mm`.  
+  * The AP2112K‑3.3 in the KiCad library is a SOT‑23‑5 symbol.  
+  * Rotating it by **270°** aligns the EN pin (pin 4) horizontally to the left, the VIN (pin 5) to the right, and the VOUT (pin 1) to the top.  
+  * No mirroring is required (`mirror = None`).
+
+* **Power symbols**  
+  * **+3.3 V** (pin 1 of the regulator) is supplied by a +3.3 V symbol.  
+    * It is placed to the right of U1: `pos_x = 150 + 30`, `pos_y = 120`.  
+    * Rotated 0° so its pin points leftwards, connecting to U1’s VIN.  
+  * **GND** (pin 2 of the regulator) is a ground symbol.  
+    * Placed below U1: `pos_x = 150 + 30`, `pos_y = 100`.  
+    * Rotated 0° so its pin points up, connecting to U1’s GND.
+
+* **Series resistors for the EN pin**  
+  * A 2.2 kΩ resistor limits the current into the EN pin.  
+  * It is placed to the right of U1, aligned with the EN pin: `pos_x = 150 + 40`, `pos_y = 110`.  
+  * Rotated 0° so its two pins are left/right, convenient for a straight wire to the EN pin.
+
+* **Optional pull‑up on the VIN pin**  
+  * A 2.2 kΩ resistor can pull the VIN pin up to 3.3 V.  
+  * Placed to the right of the +3.3 V symbol: `pos_x = 150 + 50`, `pos_y = 120`.  
+  * Rotated 0°.
+
+All components are spaced at least 10 mm apart to avoid overlapping bounding boxes.
+
+**Label placement**
+
+The AP2112K‑3.3 has four key pins that need external labels:
+
+| Pin | Name | Label text | Position offset | Text orientation |
+|-----|------|------------|-----------------|------------------|
+| VIN (pin 5) | “VIN” | `[+3, 0]` from the pin | “right” |
+| EN (pin 4) | “EN” | `[-10, 0]` from the pin | “left” |
+| VOUT (pin 1) | “VOUT” | `[+3, 0]` from the pin | “right” |
+| GND (pin 2) | “GND” | `[-10, 0]` from the pin | “left” |
+
+The code uses `get_pin_location` to fetch the exact (x, y) of each pin, then offsets the label so the text does not overlap the pin. The `text_orient` is chosen so the label text points away from the pin, improving readability.
+
+**Wire connections**
+
+1. **VIN supply**  
+   * Connect +3.3 V symbol pin 1 → resistor R1 pin 1.  
+   * R1 pin 2 → U1 VIN (pin 5).  
+   * This creates a simple series path from the supply to the regulator’s input.
+
+2. **EN path**  
+   * Ground symbol pin 1 → resistor R2 pin 1.  
+   * R2 pin 2 → U1 EN (pin 4).  
+   * The resistor limits current, and the path can be pulled high via the optional pull‑up.
+
+3. **Pull‑up on VIN** (optional)  
+   * +3.3 V symbol pin 1 → resistor R3 pin 1.  
+   * R3 pin 2 → U1 VIN (pin 5).  
+   * If the pull‑up is desired, this adds a parallel path from the supply to the VIN pin.
+
+4. **Output path**  
+   * U1 VOUT (pin 1) → resistor R4 pin 1.  
+   * R4 pin 2 → ground symbol pin 1.  
+   * This forms a simple output load; in a real design a decoupling capacitor would be added, but the user only requested the regulator.
+
+**Why these choices make the schematic clear**
+
+* **Rotation 270° for U1** places the EN pin leftwards, so the pull‑up network sits to the right, a common convention.  
+* **All resistors are horizontal** (rotation 0°) so wires run straight left/right, reducing crossing.  
+* **Labels are offset to the side of the pin** with an orientation that points away from the pin; this keeps the text from overlapping the symbol.  
+* **Power symbols are on the same side (right)**, making the main supply path a straight line from left to right.
+
+**Summary of function arguments used**
+
+* `add_schematic_symbol`  
+  * `symbol_lib="Regulator_Linear"`, `symbol_name="AP2112K-3.3"`  
+  * Position: `(150, 110)` for U1, `(180, 120)` for +3.3 V, etc.  
+  * `reference="U1"` (or `#PWR1`, `R1`, etc.)  
+  * `value` set to the part name or resistor value.  
+  * `rotation=270` for U1, `rotation=0` for others.  
+  * `mirror=None`.
+
+* `get_pin_location`  
+  * Gets the exact coordinates of a pin to center a label.
+
+* `add_label`  
+  * `label_pos` = pin coordinates + offset.  
+  * `label_text` = “VIN”, “EN”, etc.  
+  * `label_ref` = unique identifier (`VIN_0`, `EN_0`).  
+  * `label_type` = “input” (or “output” for VOUT).  
+  * `text_orient` = “left” or “right”.
+
+* `connect_pins`  
+  * Connects a pin of one symbol to a pin of another (or to a label).  
+  * Uses the reference names and pin names from the library.
+
+* `write_out_all_wires`  
+  * Finalises the schematic by outputting all created wires.
+
+With these placements, labels, and connections the schematic satisfies the user’s requirement for a 3.3 V fixed‑output LDO using the AP2112K‑3.3, keeps the layout tidy, and uses the exact requested component.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:AP2112K-3.3###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="AP2112K-3.3", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="AP2112K-3.3", rotation=270, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+3.3V", pos_x=center_x_1 + (0), pos_y=center_y_1 + (21), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (6), pos_y=center_y_1 + (7), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+3.3V", pos_x=center_x_1 + (20), pos_y=center_y_1 + (21), reference="#PWR3", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (20), pos_y=center_y_1 + (7), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (30), pos_y=center_y_1 + (-27), reference="#PWR4", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (45), pos_y=center_y_1 + (25), reference="#PWR5", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (45), pos_y=center_y_1 + (15), reference="JP1", value="AUX", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="power", symbol_name="+3.3V", pos_x=center_x_1 + (60), pos_y=center_y_1 + (20), reference="#PWR6", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (60), pos_y=center_y_1 + (7), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (70), pos_y=center_y_1 + (-5), reference="#PWR7", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to JP1 pin A (Pin ID 1 -- Name A)
+connect_pins("R2", "2", "JP1", "A")
+
+# Connecting #PWR4 pin 1 (Pin ID 1 -- Name None) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR4", "1", "JP1", "C")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to JP1 pin B (Pin ID 3 -- Name B)
+connect_pins("R3", "2", "JP1", "B")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to U1 pin VIN (Pin ID 5 -- Name VIN)
+connect_pins("R3", "1", "U1", "VIN")
+
+# Connecting U1 pin VIN (Pin ID 5 -- Name VIN) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VIN", "R1", "1")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to U1 pin EN (Pin ID 4 -- Name EN)
+connect_pins("R2", "1", "U1", "EN")
+
+# Connecting U1 pin VIN (Pin ID 5 -- Name VIN) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "VIN", "R2", "2")
+
+# Connecting #PWR5 pin VIN (Pin ID 1 -- Name VIN) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR5", "VIN", "JP1", "C")
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "VIN", "R1", "1")
+
+# Connecting U1 pin VIN (Pin ID 5 -- Name VIN) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "VIN", "R2", "2")
+
+# Connecting #PWR3 pin VIN (Pin ID 1 -- Name VIN) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "VIN", "R2", "1")
+
+# Connecting U1 pin VOUT (Pin ID 1 -- Name VOUT) to #PWR3 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("U1", "VOUT", "#PWR3", "VIN")
+
+# Connecting U1 pin ~{GND} (Pin ID 1 -- Name ~{GND}) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "~{GND}", "#PWR2", "1")
+
+# Connecting #PWR6 pin VIN (Pin ID 1 -- Name VIN) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR6", "VIN", "R3", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ap2112k_3_3_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ap2112k_3_3_generated.response.txt

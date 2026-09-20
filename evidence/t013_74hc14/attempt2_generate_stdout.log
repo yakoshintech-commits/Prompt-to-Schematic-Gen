@@ -1,0 +1,87 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=3570)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using a 74HC14 IC with 6 independent inverter gates. Use exactly these real components: U1 as a 74HC14, in the KiCad library "74xx" (Hex Schmitt-trigger inverter. Contains 6 independent inverter gates. Pin names are '~' in KiCad; use pin numbers. Odd pins (1,3,5,9,11,13) are inputs, even pins (2,4,6,8,10,12) are outputs for each gate pair.). Do not substitute or invent a different part for any of them. This design assumes a 5V power supply and proper decoupling capacitors are used for the VCC and GND nets.
+[SEQLEN] input_ids shape: torch.Size([1, 1970])
+[SEQLEN] input_ids shape: torch.Size([1, 4965])
+[SEQLEN] input_ids shape: torch.Size([1, 4965])
+[SEQLEN] input_ids shape: torch.Size([1, 4965])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5186])
+[SEQLEN] input_ids shape: torch.Size([1, 3384])
+[SEQLEN] input_ids shape: torch.Size([1, 3384])
+[SEQLEN] input_ids shape: torch.Size([1, 3384])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.39GB gpu_peak=28.94GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.39GB gpu_peak=28.94GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.94GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.94GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.94GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : 74xx:74HC14###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="74xx", symbol_name="74HC14", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="74HC14", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (0), pos_y=center_y_1 + (12), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-3), reference="C1", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (15), pos_y=center_y_1 + (-3), reference="C2", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (-3), reference="R1", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (31), pos_y=center_y_1 + (-6), reference="#PWR3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "2", "#PWR2", "1")
+
+# Connecting C2 pin 2 (Pin ID 2 -- Name None) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "2", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "#PWR3", "1")
+
+# Connecting C1 pin 1 (Pin ID 1 -- Name None) to C2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "1", "C2", "1")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to U1 pin VCC (Pin ID 14 -- Name VCC)
+connect_pins("#PWR1", "+5V", "U1", "VCC")
+
+# Connecting U1 pin 13 (Pin ID 13 -- Name None) to U1 pin 14 (Pin ID 14 -- Name VCC)
+connect_pins("U1", "13", "U1", "14")
+
+# Connecting U1 pin 11 (Pin ID 11 -- Name None) to U1 pin 12 (Pin ID 12 -- Name None)
+connect_pins("U1", "11", "U1", "12")
+
+# Connecting U1 pin 9 (Pin ID 9 -- Name None) to U1 pin 10 (Pin ID 10 -- Name None)
+connect_pins("U1", "9", "U1", "10")
+
+# Connecting U1 pin 7 (Pin ID 7 -- Name None) to U1 pin 8 (Pin ID 8 -- Name None)
+connect_pins("U1", "7", "U1", "8")
+
+# Connecting U1 pin 5 (Pin ID 5 -- Name None) to U1 pin 6 (Pin ID 6 -- Name None)
+connect_pins("U1", "5", "U1", "6")
+
+# Connecting U1 pin 3 (Pin ID 3 -- Name None) to U1 pin 4 (Pin ID 4 -- Name None)
+connect_pins("U1", "3", "U1", "4")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_74hc14_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_74hc14_generated.response.txt

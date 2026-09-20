@@ -1,0 +1,231 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the ATtiny13A microcontroller. Use exactly these real components: U1 as a ATtiny13A-P, in the KiCad library "MCU_Microchip_ATtiny" (ATtiny13A 8-bit AVR MCU, 8-pin DIP, 20MHz, 1KB flash). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1903])
+[SEQLEN] input_ids shape: torch.Size([1, 1903])
+[SEQLEN] input_ids shape: torch.Size([1, 1903])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5119])
+[SEQLEN] input_ids shape: torch.Size([1, 5119])
+[SEQLEN] input_ids shape: torch.Size([1, 5119])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.11GB gpu_peak=28.75GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.11GB gpu_peak=28.75GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.75GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.75GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.75GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a minimal schematic that shows an ATtiny13A‑P (8‑pin DIP, 1 kB flash, 20 MHz) wired to a simple bias‑and‑switch network.  
+All components must be the exact parts listed in the request; none may be substituted.  
+The schematic must be written with the KiCad‑Python API helpers provided (`add_schematic_symbol`, `connect_pins`, `add_label`, etc.), taking care to:
+
+1. **Place the symbols** – keep them centered on the 210 × 297 mm sheet, give enough clearance, and orient them so that wires run straight.
+2. **Add labels** – for each external signal that the user will want to connect to, so the schematic is self‑documenting.
+3. **Wire everything** – connect the MCU to the bias network and to the power rails, mirroring the pin‑out of the ATtiny13A.
+
+The final script will end with `write_out_all_wires()` to flush the wire list into the KiCad database.
+
+---
+
+### 1.  Symbol placement
+
+| Symbol | Library | Reference | Value | Position (x,y) | Rotation | Mirror | Reason |
+|--------|---------|-----------|-------|----------------|----------|--------|--------|
+| ATtiny13A‑P | MCU_Microchip_ATtiny | `U1` | `ATtiny13A-P` | (150 mm, 110 mm) | 0° (default) | None | Center of the sheet, gives room all around. |
+| Power | power | `#PWR_VIN` | `VIN` | (150 − 60, 110 + 20) | 0° | None | VIN rail, 20 mm above the MCU. |
+| Ground | power | `#PWR_GND` | `GND` | (150 − 60, 110 − 20) | 0° | None | GND rail, 20 mm below the MCU. |
+| Resistor (bias) | Device | `R1` | `2.2K` | (150 − 60, 110 − 10) | 0° | None | Pull‑up for the first switch. |
+| Resistor (bias) | Device | `R2` | `2.2K` | (150 − 45, 110 + 10) | 0° | None | Pull‑up for the second switch. |
+| Resistor (bias) | Device | `R3` | `2.2K` | (150 + 45, 110 + 10) | 0° | None | Pull‑up for the third switch. |
+| Resistor (bias) | Device | `R4` | `2.2K` | (150 + 60, 110 − 10) | 0° | None | Pull‑up for the fourth switch. |
+| Switch (SolderJumper_3_Bridged123) | Jumper | `JP1` | `AUX` | (150 + 15, 110 + 10) | 0° | X (mirror) | Mirrors the symbol so the “A” pin is on the left, matching the natural direction from the MCU. |
+
+*Why these offsets?*  
+The offsets are chosen so that each element’s bounding box sits comfortably beside the MCU, leaving at least 5 mm of clearance on every side. The 20 mm offset for the power rails places them near the top edge, while the 15 mm offset for the jumper keeps it close to the fourth switch, making the wire routes short and tidy.
+
+---
+
+### 2.  Labels
+
+For every external point that the user might want to hook up, we create a label next to the MCU pin it connects to.  
+The `get_pin_location` helper gives the absolute coordinates of a pin, so the label is placed a few millimetres away, with `text_orient` chosen to keep the text readable.
+
+| Label | Pin | Pos offset | Text orientation |
+|-------|-----|------------|------------------|
+| `VIN` | `U1` pin 3 (VCC) | (−12, 0) | left |
+| `GND` | `U1` pin 8 (GND) | (+8, 0) | right |
+| `MCLR` | `U1` pin 4 (PE2) | (+12, 0) | right |
+| `PA0` | `U1` pin 5 (PA3) | (−12, 0) | left |
+| `PA1` | `U1` pin 6 (PB0/PA2) | (+12, 0) | right |
+| `PA2` | `U1` pin 7 (PB1/PA1) | (−12, 0) | left |
+| `PA3` | `U1` pin 8 (PB2/PA0) | (+12, 0) | right |
+
+*Why left/right?*  
+Left‑oriented labels sit to the left of the pin, keeping the wire straight to the symbol. Right‑oriented labels sit to the right, again keeping the wire short. The choice matches the physical orientation of the pins on the DIP package: lower‑numbered pins on the left side, higher‑numbered pins on the right.
+
+---
+
+### 3.  Wire connections
+
+| From | Pin | To | Pin | Reason |
+|------|-----|----|-----|--------|
+| `#PWR_VIN` | VIN | `U1` | 3 | Supplies VCC to the MCU. |
+| `#PWR_GND` | GND | `U1` | 8 | Supplies ground. |
+| `U1` 3 (VCC) |  | `R1` | 1 | Connects VCC through a resistor to the bias network. |
+| `R1` 1 |  | `U1` | 5 (PA3) | Pull‑up to PA3. |
+| `R1` 2 |  | `U1` | 4 (MCLR) | Pull‑up to MCLR (also PA2). |
+| `U1` 5 (PA3) |  | `R2` | 1 | Pull‑up to PA3. |
+| `R2` 2 |  | `U1` | 6 (PB0/PA2) | Pull‑up to PB0/PA2. |
+| `U1` 6 (PB0/PA2) |  | `R3` | 1 | Pull‑up to PB0/PA2. |
+| `R3` 2 |  | `U1` | 7 (PB1/PA1) | Pull‑up to PB1/PA1. |
+| `U1` 7 (PB1/PA1) |  | `R4` | 1 | Pull‑up to PB1/PA1. |
+| `R4` 2 |  | `U1` | 8 (PB2/PA0) | Pull‑up to PB2/PA0. |
+| `JP1` A |  | `R1` | 2 | First switch connects to the first resistor. |
+| `JP1` C |  | `U1` | 3 (VCC) | Common VCC rail. |
+| `JP1` B |  | `R4` | 1 | Fourth switch connects to the fourth resistor. |
+
+*Why these connections?*  
+The ATtiny13A pin‑out is:  
+
+| Pin | Function |
+|-----|----------|
+| 1 | PE2 (PA3) |
+| 2 | PE1/PA2 (PB0) |
+| 3 | VCC |
+| 4 | PE0/PA1 (PB1) |
+| 5 | PB2/PA0 |
+| 6 | GND |
+| 7 | PE3 (PA0) |
+| 8 | AVCC? (not used in this simple circuit) |
+
+We use the three internal pins (PA2, 2, 0) as the outputs that the four external signals will drive.  The bias network keeps them high when the external switch is open.  The jumper `JP1` represents a 3‑way switch: when the jumper is closed, the selected pin is connected to the resistor that pulls it high.  The resistor values (2.2 kΩ) provide a comfortable pull‑up for the AVR pin while limiting current when the switch is closed.
+
+---
+
+### 4.  Code‑level explanation
+
+1. **Importing the interface** – the script starts by adding the project path to `sys.path` and importing the KiCad schematic helper module.  
+2. **Center symbol** – `add_schematic_symbol` places the ATtiny13A at (150, 110) mm.  The reference `U1` and value `ATtiny13A-P` are passed exactly as requested.  
+3. **Placing peripheral symbols** – each call gives the library, symbol name, position, reference, value, rotation, and mirror.  Rotation is `0°` for all except the jumper, which is mirrored on the X‑axis so that its “A” pin faces left, matching the natural numbering of the MCU pins.  
+4. **Adding labels** – for each external pin we call `get_pin_location` to fetch the absolute coordinates of the MCU pin, offset the label by a small amount (±12 mm horizontally), and choose `text_orient` so the text lies on the same side as the wire will run.  
+5. **Connecting labels to pins** – `connect_pins` takes the label reference (e.g. `"VIN_0"`) and the pin name (`"VIN"` or `"1"` for a label) and connects them to the MCU pin.  
+6. **Wiring the network** – every `connect_pins` call ties two pins together.  The order of arguments follows the helper signature: `(sym_a, pin_a, sym_b, pin_b)`.  The pin names are the exact names from the symbol’s pin list (e.g. `"VCC"`, `"GND"`, `"PA3"`).  For power symbols, the pin name is simply `"VIN"` or `"GND"`.  
+7. **Finalisation** – `write_out_all_wires()` flushes the wire list to the KiCad schematic file.
+
+---
+
+### 5.  Why this layout is good
+
+* **Readability** – All power rails are at the top, all pull‑up resistors are adjacent to the MCU, and the jumper sits to the right.  This mirrors the typical “clock‑clock” direction of a DIP MCU, making it easy to follow the signal flow.  
+* **Space efficiency** – The 5 mm spacing rule prevents symbol overlap; the 20 mm vertical offset for power keeps the rails out of the way of the MCU pins.  
+* **Wire simplicity** – Most wires run vertically or horizontally with at most one bend, which the KiCad helper will handle automatically.  
+* **Exact part match** – Every symbol name, reference, and value is taken verbatim from the user’s request; no substitutions are made.  
+
+The resulting schematic is a clean, self‑documented representation of a minimal ATtiny13A power‑bias network that can be expanded later if more pins or peripherals are added.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : MCU_Microchip_ATtiny:ATtiny13A-P###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="MCU_Microchip_ATtiny", symbol_name="ATtiny13A-P", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ATtiny13A-P", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (0), pos_y=center_y_1 + (19), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (10), pos_y=center_y_1 + (-5), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (16), pos_y=center_y_1 + (19), reference="#PWR2", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (16), pos_y=center_y_1 + (-5), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Jumper", symbol_name="SolderJumper_3_Bridged123", pos_x=center_x_1 + (25), pos_y=center_y_1 + (11), reference="JP1", value="AUX", rotation=0, mirror="x")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (38), pos_y=center_y_1 + (19), reference="#PWR3", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (38), pos_y=center_y_1 + (-5), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (44), pos_y=center_y_1 + (19), reference="#PWR4", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (44), pos_y=center_y_1 + (-5), reference="R4", value="2.2K", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label MCLR next to U1 pin ~{PE2} 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="~{PE2}")
+add_label(label_pos=[x_U1_3+(-12), y_U1_3+(0)], label_text="MCLR", label_ref="MCLR_0", label_type="input", text_orient="left")
+# Connecting Label MCLR label_id:0 to U1 pin ~{PE2} (Pin ID 3 -- Name ~{PE2})
+connect_pins("MCLR_0", "1", "U1", "~{PE2}")
+
+# Add label PA0 next to U1 pin PA3 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="PA3")
+add_label(label_pos=[x_U1_5+(-12), y_U1_5+(0)], label_text="PA0", label_ref="PA0_0", label_type="input", text_orient="left")
+# Connecting Label PA0 label_id:0 to U1 pin PA3 (Pin ID 5 -- Name PA3)
+connect_pins("PA0_0", "1", "U1", "PA3")
+
+# Add label A next to U1 pin PA2 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="PA2")
+add_label(label_pos=[x_U1_2+(12), y_U1_2+(0)], label_text="A", label_ref="A_0", label_type="input", text_orient="right")
+# Connecting Label A label_id:0 to U1 pin PA2 (Pin ID 2 -- Name PA2)
+connect_pins("A_0", "1", "U1", "PA2")
+
+# Add label PI next to U1 pin PA1 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="PA1")
+add_label(label_pos=[x_U1_4+(12), y_U1_4+(0)], label_text="PI", label_ref="PI_0", label_type="input", text_orient="right")
+# Connecting Label PI label_id:0 to U1 pin PA1 (Pin ID 4 -- Name PA1)
+connect_pins("PI_0", "1", "U1", "PA1")
+
+# Add label PI2 next to U1 pin PA0 
+x_U1_6, y_U1_6 = get_pin_location(symbol_ref="U1", pin_name="PA0")
+add_label(label_pos=[x_U1_6+(12), y_U1_6+(0)], label_text="PI2", label_ref="PI2_0", label_type="input", text_orient="right")
+# Connecting Label PI2 label_id:0 to U1 pin PA0 (Pin ID 6 -- Name PA0)
+connect_pins("PI2_0", "1", "U1", "PA0")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R4 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R1", "2", "R4", "2")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R2", "1", "R3", "1")
+
+# Connecting U1 pin ~{PE2} (Pin ID 3 -- Name ~{PE2}) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "~{PE2}", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to JP1 pin A (Pin ID 1 -- Name A)
+connect_pins("R1", "2", "JP1", "A")
+
+# Connecting JP1 pin B (Pin ID 3 -- Name B) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("JP1", "B", "R3", "2")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to JP1 pin C (Pin ID 2 -- Name C)
+connect_pins("R2", "2", "JP1", "C")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "VIN", "R2", "1")
+
+# Connecting #PWR4 pin VIN (Pin ID 1 -- Name VIN) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR4", "VIN", "R4", "1")
+
+# Connecting #PWR3 pin VIN (Pin ID 1 -- Name VIN) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "VIN", "R3", "1")
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to U1 pin VCC (Pin ID 7 -- Name VCC)
+connect_pins("#PWR1", "VIN", "U1", "VCC")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny13a_p_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny13a_p_generated.response.txt

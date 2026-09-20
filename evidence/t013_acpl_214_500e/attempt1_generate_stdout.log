@@ -1,0 +1,188 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using an AC/DC phototransistor optocoupler to isolate a digital signal. Use exactly these real components: U1 as a ACPL-214-500E, in the KiCad library "Isolator" (AC/DC phototransistor optocoupler, Vce 80V, CTR 20-400%. Pin names are '~' in KiCad; use pin numbers. Pin 1=Anode (LED+), Pin 2=Cathode (LED-), Pin 3=Emitter (NPN), Pin 4=Collector (NPN). Same pinout as EL817.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1965])
+[SEQLEN] input_ids shape: torch.Size([1, 1965])
+[SEQLEN] input_ids shape: torch.Size([1, 1965])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4960])
+[SEQLEN] input_ids shape: torch.Size([1, 4960])
+[SEQLEN] input_ids shape: torch.Size([1, 4960])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5181])
+[SEQLEN] input_ids shape: torch.Size([1, 5181])
+[SEQLEN] input_ids shape: torch.Size([1, 5181])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3379])
+[SEQLEN] input_ids shape: torch.Size([1, 3379])
+[SEQLEN] input_ids shape: torch.Size([1, 3379])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.38GB gpu_peak=28.93GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.38GB gpu_peak=28.93GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.93GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.93GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.93GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that isolates a digital signal with a single AC‑DC phototransistor optocoupler (U1 = ACPL‑214‑500E).  
+The optocoupler has four pins that match the EL817 pinout:  
+
+| Pin | Name in KiCad | Function | Voltage/Current | Symbol pin id |
+|-----|--------------|----------|-----------------|---------------|
+| 1   | LED+ (Anode) | LED anode | 0‑80 V (forward 1‑2 V) | 1 |
+| 2   | LED‑ (Cathode) | LED cathode | 0‑80 V (forward 1‑2 V) | 2 |
+| 3   | NPN emitter | Emitter of the NPN transistor | Up to a few mA | 3 |
+| 4   | NPN collector | Collector of the NPN transistor | Up to a few mA | 4 |
+
+The block diagram is simply: **Input → LED (pins 1‑2) → NPN (pins 3‑4)**.  
+The rest of the schematic is a standard bias network that pulls the LED anode to +1 V and the NPN emitter to the input voltage (VIN).  
+
+**Symbol placement strategy**
+
+* Center of the layout: a horizontal line of symbols that keeps the drawing compact and readable.  
+* Reference point (0, 0) is the origin of the schematic.  
+  * The optocoupler (U1) is placed at the centre of the sheet: (105 mm, 148.5 mm).  
+* All other components are positioned relative to U1 so that their pin‑to‑pin connections are short and the layout is symmetric.  
+  * The +1 V supply symbol is 30 mm to the left and 20 mm above U1.  
+  * A 10 kΩ resistor (R1) bridges the +1 V supply to the LED anode.  
+  * The LED cathode is connected to a second resistor (R2) that pulls the NPN emitter to the input voltage (VIN).  
+  * VIN is represented by a VAA symbol 40 mm to the left of U1 and 20 mm above.  
+  * A 100 kΩ resistor (R3) connects VIN to the LED cathode path.  
+  * The NPN collector is tied to a 1 kΩ resistor (R4) that pulls the collector to +1 V.  
+  * The collector resistor is 15 mm to the right of U1 and 15 mm above.  
+
+The chosen rotations are 0° for passive components (resistors, power symbols) because their pins are aligned horizontally, and 90° for the optocoupler to keep its emitter and collector pins vertical, which makes the NPN pins easier to route. No mirroring is needed.
+
+**Label placement**
+
+* We add input labels next to the LED cathode (pin 2) and the NPN emitter (pin 3).  
+* The label for VIN is placed to the left of VIN symbol, while the collector label is placed to the right of R4.  
+* Labels use “input” type and are oriented left/right so that the text does not overlap the wires.
+
+**Wire connections – why**
+
+1. **Power to LED anode**  
+   * `#PWR1 (+1 V) → R1 → U1 pin 1 (LED+)`  
+     This supplies the LED with the required forward voltage.
+2. **LED cathode to NPN emitter**  
+   * `U1 pin 2 (LED‑) → R2 → U1 pin 3 (NPN emitter)`  
+     The resistor limits the current and biases the NPN.
+3. **NPN collector to +1 V**  
+   * `U1 pin 4 (NPN collector) → R4 → #PWR3 (+1 V)`  
+     Pulls the collector to the supply so that the phototransistor can turn on.
+4. **VIN to LED cathode path**  
+   * `#PWR2 (VIN) → R3 → U1 pin 2 (LED‑)`  
+     This injects the ambient light‑sensing voltage into the LED.  
+5. **Parallel bias for LED**  
+   * `R2 → U1 pin 3` is also connected to `#PWR2` through the same node, forming a common ground for the LED and NPN emitter.
+
+All connections are short, horizontal/vertical, and avoid crossing. The resistor values are chosen from typical optocoupler data sheets: 10 kΩ for LED bias, 100 kΩ to limit the NPN emitter current, and 1 kΩ for collector pull‑up.
+
+**Code generation outline**
+
+* `add_schematic_symbol(...)` calls will use the calculated positions, references, values, rotations, and mirrors.  
+* `get_pin_location(...)` fetches the exact (x, y) of a pin, so labels can be placed exactly adjacent to that pin.  
+* `add_label(...)` creates the input labels with the chosen orientation.  
+* `connect_pins(...)` wires every pair of pins according to the list above.  
+* `write_out_all_wires()` finalises the netlist.
+
+With these decisions, the resulting schematic will clearly show the isolation function of the AC‑DC phototransistor optocoupler, keep all components in a tidy area, and satisfy the user’s requirement of using the exact ACPL‑214‑500E symbol.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Isolator:ACPL-214-500E###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Isolator", symbol_name="ACPL-214-500E", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ACPL-214-500E", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (-58), pos_y=center_y_1 + (21), reference="#PWR1", value="+1V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-58), pos_y=center_y_1 + (16), reference="R1", value="100K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-44), pos_y=center_y_1 + (-13), reference="R2", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-44), pos_y=center_y_1 + (21), reference="#PWR2", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (16), reference="R3", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V", pos_x=center_x_1 + (12), pos_y=center_y_1 + (34), reference="#PWR3", value="+1V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (12), pos_y=center_y_1 + (27), reference="R4", value="1k", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VIN next to #PWR2 pin VIN 
+x_PWR2_1, y_PWR2_1 = get_pin_location(symbol_ref="#PWR2", pin_name="VIN")
+add_label(label_pos=[x_PWR2_1+(-12), y_PWR2_1+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+# Connecting Label VIN label_id:0 to #PWR2 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("VIN_0", "1", "#PWR2", "VIN")
+
+# Add label 1k3 next to R4 pin 1 
+x_R4_1, y_R4_1 = get_pin_location(symbol_ref="R4", pin_name="1")
+add_label(label_pos=[x_R4_1+(-8), y_R4_1+(0)], label_text="1k3", label_ref="1k3_0", label_type="input", text_orient="left")
+# Connecting Label 1k3 label_id:0 to R4 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("1k3_0", "1", "R4", "1")
+
+# Add label 10k next to R3 pin 1 
+x_R3_1, y_R3_1 = get_pin_location(symbol_ref="R3", pin_name="1")
+add_label(label_pos=[x_R3_1+(-27), y_R3_1+(0)], label_text="10k", label_ref="10k_0", label_type="input", text_orient="left")
+# Connecting Label 10k label_id:0 to R3 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("10k_0", "1", "R3", "1")
+
+# Add label 100k next to R2 pin 1 
+x_R2_1, y_R2_1 = get_pin_location(symbol_ref="R2", pin_name="1")
+add_label(label_pos=[x_R2_1+(-31), y_R2_1+(0)], label_text="100k", label_ref="100k_0", label_type="input", text_orient="left")
+# Connecting Label 100k label_id:0 to R2 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("100k_0", "1", "R2", "1")
+
+# Add label 100k2 next to U1 pin 3 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="3")
+add_label(label_pos=[x_U1_3+(-10), y_U1_3+(0)], label_text="100k2", label_ref="100k2_0", label_type="input", text_orient="left")
+# Connecting Label 100k2 label_id:0 to U1 pin 3 (Pin ID 3 -- Name 3)
+connect_pins("100k2_0", "1", "U1", "3")
+
+# Add label +1V1 next to #PWR1 pin +1V (Pin ID 1 -- Name +1V)
+x_PWR1_1, y_PWR1_1 = get_pin_location(symbol_ref="#PWR1", pin_name="+1V")
+add_label(label_pos=[x_PWR1_1+(-11), y_PWR1_1+(0)], label_text="+1V1", label_ref="+1V1_0", label_type="input", text_orient="left")
+# Connecting Label +1V1 label_id:0 to #PWR1 pin +1V (Pin ID 1 -- Name +1V)
+connect_pins("+1V1_0", "1", "#PWR1", "+1V")
+
+# Add label 100k1 next to U1 pin 1 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="1")
+add_label(label_pos=[x_U1_1+(-5), y_U1_1+(0)], label_text="100k1", label_ref="100k1_0", label_type="input", text_orient="left")
+# Connecting Label 100k1 label_id:0 to U1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("100k1_0", "1", "U1", "1")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR3 pin +1V (Pin ID 1 -- Name +1V) to R4 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR3", "+1V", "R4", "2")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to U1 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("R3", "2", "U1", "2")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "VIN", "R2", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("R1", "2", "U1", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("R2", "2", "U1", "1")
+
+# Connecting U1 pin 2 (Pin ID 2 -- Name 2) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "2", "R3", "1")
+
+# Connecting R1 pin 1 (Pin ID 1 -- Name None) to #PWR1 pin +1V (Pin ID 1 -- Name +1V)
+connect_pins("R1", "1", "#PWR1", "+1V")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_acpl_214_500e_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_acpl_214_500e_generated.response.txt

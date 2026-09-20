@@ -1,0 +1,147 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a USB to UART bridge IC to connect a USB port to a UART interface. Use exactly these real components: U1 as a CH340C, in the KiCad library "Interface_USB" (USB to UART bridge IC. No external crystal needed. V3 pin (pin 4) is the internal 3.3V regulator output; connect a 100nF decoupling cap to GND. For 5V operation, connect V3 to VCC.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1937])
+[SEQLEN] input_ids shape: torch.Size([1, 4932])
+[SEQLEN] input_ids shape: torch.Size([1, 5153])
+[SEQLEN] input_ids shape: torch.Size([1, 5153])
+[SEQLEN] input_ids shape: torch.Size([1, 5153])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3351])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.26GB gpu_peak=28.84GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.26GB gpu_peak=28.84GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.84GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.84GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.84GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that shows a USB‑to‑UART bridge using a real CH340C part.  
+* The CH340C is in the KiCad library “Interface_USB”.  
+* The 3.3 V regulator output is pin **V3** (pin 4).  
+* Pin GND must be tied to the decoupling capacitor.  
+* Pin V3 is connected to the 5 V supply (VCC).  
+* All other UART pins are left free – we only need to wire the power and decoupling network.  
+* No extra parts are allowed.  
+
+The schematic must fit on a 210 × 297 mm A4 sheet; we therefore place the CH340C near the centre and lay the small components around it with enough clearance.
+
+---
+
+**Symbol placement**
+
+| Symbol | Library | Position (mm) | Reference | Value | Rotation | Mirror |
+|--------|---------|---------------|-----------|-------|----------|--------|
+| CH340C | Interface_USB | (150, 110) | U1 | CH340C | 0° | None |
+| +5 V (power) | power | (120, 135) | #PWR1 | +5 V | 0° | None |
+| VCC (power) | power | (135, 135) | #PWR2 | VCC | 0° | None |
+| GND (ground) | power | (150, 85) | #PWR_GND | GND | 0° | None |
+| Decoupling capacitor C1 | Device | (150, 95) | C1 | 100 nF | 0° | None |
+
+*The CH340C centre is at (150, 110).  
+*The power symbols are offset left (120 mm, +5 V) and right (135 mm, VCC) so that the horizontal wire from the chip to the supplies is short.  
+*The capacitor is placed just below the CH340C; its two pins are 7.62 mm apart, so a vertical wire to GND is easy.*
+
+All symbols use the default orientation (no rotation or mirroring) because the pin geometry of the CH340C is already convenient: the power pins are on the left side, the GND pin is on the bottom, and the V3 pin is on the top.
+
+---
+
+**Label creation**
+
+The only labels needed are the standard power names, which are already represented by the power symbols.  
+We therefore do **not** create extra labels; the power symbols themselves carry the net names (+5 V, VCC, GND, and the 5 V decoupling node).
+
+---
+
+**Wire connections**
+
+1. **CH340C VCC pin** (pin 5 in the symbol’s pin list) → **#PWR2 VCC**  
+   *Purpose:* supplies the internal regulator.  
+2. **CH340C V3 pin** (pin 4) → **CH340C VCC pin** (pin 5)  
+   *Purpose:* the regulator output is fed into the device’s VCC pin, which the datasheet calls V3.  
+3. **CH340C GND pin** (pin 1) → **#PWR_GND**  
+4. **CH340C V3 pin** (pin 4) → **C1 pin 1**  
+   *Purpose:* decoupling capacitor to smooth the regulator output.  
+5. **C1 pin 2** → **#PWR_GND**  
+   *Purpose:* completes the capacitor’s ground reference.  
+6. **CH340C VCC pin** (pin 5) → **#PWR1 +5 V**  
+   *Purpose:* ties the internal regulator’s input to the 5 V rail.  
+
+All connections are made with straight wires; the relative positions keep the wires short and the schematic tidy.
+
+---
+
+**Why the chosen rotations and mirrors work**
+
+* **CH340C at 0°** – its power pins are on the left, GND on the bottom, V3 on the top.  
+  This layout matches the schematic coordinates: the left side is easy to reach from the +5 V symbol, the bottom connects to GND, and the top connects to V3.  
+* **Power symbols at 0°** – they are simple single‑pin symbols; rotation would not change anything.  
+* **Capacitor at 0°** – the two pins are vertical, which matches the vertical wire to GND.  
+
+No mirroring is required because the pin order is already correct. Mirroring would swap pin positions and make the wire routing more complicated.
+
+---
+
+**Summary of the reasoning**
+
+* Identify the required pins from the symbol definition.  
+* Place the CH340C centrally and the power symbols left/right with clear spacing.  
+* Add a single 100 nF capacitor below the chip to ground.  
+* Connect VCC to VCC and V3 to the regulator input, then to the capacitor, and finally to GND.  
+* Connect the 5 V rail to VCC.  
+* Use straight wires; no extra labels are needed because the power symbols already provide net names.  
+
+The resulting schematic meets the user’s constraints, uses only the specified parts, and is laid out cleanly on an A4 sheet.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Interface_USB:CH340C###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Interface_USB", symbol_name="CH340C", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="CH340C", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (-22), pos_y=center_y_1 + (17), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (-10), pos_y=center_y_1 + (19), reference="#PWR2", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-25), reference="#PWR3", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-19), reference="C1", value="100nF", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin VCC (Pin ID 5 -- Name VCC) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VCC", "#PWR3", "1")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to #PWR2 pin VCC (Pin ID 1 -- Name VCC)
+connect_pins("#PWR1", "+5V", "#PWR2", "VCC")
+
+# Connecting #PWR2 pin VCC (Pin ID 1 -- Name VCC) to U1 pin VCC (Pin ID 5 -- Name VCC)
+connect_pins("#PWR2", "VCC", "U1", "VCC")
+
+# Connecting U1 pin 1 (Pin ID 1 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "1", "#PWR3", "1")
+
+# Connecting U1 pin V3 (Pin ID 4 -- Name V3) to U1 pin TXD (Pin ID 2 -- Name TXD)
+connect_pins("U1", "V3", "U1", "TXD")
+
+# Connecting U1 pin VCC (Pin ID 5 -- Name VCC) to U1 pin TXD (Pin ID 2 -- Name TXD)
+connect_pins("U1", "VCC", "U1", "TXD")
+
+# Connecting U1 pin TXD (Pin ID 2 -- Name TXD) to U1 pin TXD (Pin ID 3 -- Name TXD)
+connect_pins("U1", "TXD", "U1", "TXD")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ch340c_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ch340c_generated.response.txt

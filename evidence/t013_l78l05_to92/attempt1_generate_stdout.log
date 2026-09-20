@@ -1,0 +1,150 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V fixed positive voltage regulator circuit using the L78L05_TO92. Use exactly these real components: R1 as a L78L05_TO92, in the KiCad library "Regulator_Linear" (5V fixed positive voltage regulator, 100mA, TO-92. Note pin order: pin1=VO, pin2=GND, pin3=VI.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1920])
+[SEQLEN] input_ids shape: torch.Size([1, 4915])
+[SEQLEN] input_ids shape: torch.Size([1, 5136])
+[SEQLEN] input_ids shape: torch.Size([1, 3334])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.18GB gpu_peak=28.80GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.80GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.80GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.80GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V fixed regulator using the L78L05_TO‑92 part.  
+The only acceptable component is the TO‑92 regulator in the *Regulator_Linear* library (`symbol_name="R"`).  
+All other parts may be arbitrary (e.g. a power‑symbol for +5 V and a GND symbol) – but the regulator must be the exact part the user specified.  
+The schematic must fit on an A4 sheet (210 × 297 mm) with enough clearance between symbols so that the drawing is readable.
+
+---
+
+### 1.  Placing the regulator symbol
+
+| Argument | Reasoning |
+|----------|-----------|
+| `symbol_lib="Regulator_Linear"` | The L78L05_TO‑92 is stored in that library. |
+| `symbol_name="R"` | The symbol name for the regulator in that library. |
+| `pos_x=150.0`, `pos_y=110.0` | 150 mm from the left edge and 110 mm from the bottom places the regulator in the centre of the page (the centre of an A4 sheet is roughly 105 mm × 148.5 mm, so we leave a small margin). |
+| `reference="U1"` | Conventional reference for a regulator. |
+| `value="L78L05_TO92"` | The value field should read the part name; we avoid the underscore because the library expects it without. |
+| `rotation=0` | The default orientation of the TO‑92 symbol already has pin 1 (VO) to the right, pin 2 (GND) at the bottom, pin 3 (VI) to the left. This orientation is convenient for a simple left‑to‑right flow of power. |
+| `mirror="None"` | No mirroring is needed; the symbol looks correct as is. |
+
+---
+
+### 2.  Adding supporting power symbols
+
+| Symbol | Justification |
+|--------|---------------|
+| `#PWR1` (type *power*, symbol `+5V`) | Provides the external 5 V rail that feeds the regulator. |
+| `#PWR2` (type *power*, symbol `GND`) | Provides the system ground. |
+| `#PWR3` (type *power*, symbol `VAA`) | Optional extra rail that could be used for the regulator’s VIN, but the L78L05_TO‑92 only needs a single input. In this minimal schematic we connect the regulator’s VIN directly to the +5 V rail, so `#PWR3` is not required and can be omitted. |
+
+Positions for the power symbols are chosen a few centimetres away from the regulator so that the wires can run neatly without crossing each other. For example:
+
+- `+5V` at `(143, 123)` (7 mm left, 13 mm up from the regulator).  
+- `GND` at `(143, 97)` (7 mm left, 13 mm down).
+
+These offsets keep the pins of the regulator and the power symbols roughly aligned vertically, which makes the wires straight.
+
+---
+
+### 3.  Connecting the pins
+
+| Connection | Pin names | Explanation |
+|------------|-----------|-------------|
+| `+5V` → regulator `VI` | `#PWR1` pin **+5V** to `U1` pin **VI** | Supplies the input voltage to the regulator. |
+| regulator `VO` → load (not shown) | `U1` pin **VO** to external load or to the next stage | The regulator’s output is left unconnected in the minimal schematic, but a label could be added to indicate the output. |
+| regulator `GND` → system ground | `U1` pin **GND** to `#PWR2` pin **GND** | Grounds the regulator. |
+
+In the code the `connect_pins` calls would use the exact reference and pin names, e.g.:
+
+```python
+connect_pins("#PWR1", "+5V", "U1", "VI")
+connect_pins("#PWR2", "GND", "U1", "GND")
+```
+
+---
+
+### 4.  Adding labels
+
+To make the schematic self‑describing we add two global labels:
+
+1. **VIN** – placed just left of the regulator’s VI pin.  
+   ```python
+   x, y = get_pin_location("U1", "VI")
+   add_label([x-5, y], "VIN", "VIN_0", "input", "left")
+   connect_pins("VIN_0", "1", "U1", "VI")
+   ```
+2. **VOUT** – placed right of the regulator’s VO pin.  
+   ```python
+   x, y = get_pin_location("U1", "VO")
+   add_label([x+5, y], "VOUT", "VOUT_0", "output", "right")
+   connect_pins("VOUT_0", "1", "U1", "VO")
+   ```
+
+The `text_orient` (“left” or “right”) keeps the label text from overlapping the symbol.
+
+---
+
+### 5.  Finalising the schematic
+
+After all `connect_pins` statements we call `write_out_all_wires()` to generate the netlist.  
+The resulting schematic will contain:
+
+- The regulator centre symbol `U1`.  
+- Two power symbols (`+5V` and `GND`).  
+- Two labels (`VIN`, `VOUT`).  
+- Straight wires that connect the power rails to the regulator pins.
+
+The layout is clean, with no overlapping components, and the power flow is obvious: +5 V → regulator input → regulator output → load (implicit). The schematic is ready to be saved and added to the KiCad project.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Linear:R###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Linear", symbol_name="R", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="L78L05_TO92", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (6), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-8), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label VIN next to U1 pin VI 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="VI")
+add_label(label_pos=[x_U1_3+(-10), y_U1_3+(0)], label_text="VIN", label_ref="VIN_0", label_type="input", text_orient="left")
+# Connecting Label VIN label_id:0 to U1 pin VI (Pin ID 3 -- Name VI)
+connect_pins("VIN_0", "1", "U1", "VI")
+
+# Add label VOUT next to U1 pin VO 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="VO")
+add_label(label_pos=[x_U1_2+(10), y_U1_2+(0)], label_text="VOUT", label_ref="VOUT_0", label_type="output", text_orient="right")
+# Connecting Label VOUT label_id:0 to U1 pin VO (Pin ID 2 -- Name VO)
+connect_pins("VOUT_0", "1", "U1", "VO")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin GND (Pin ID 1 -- Name GND) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR2", "1")
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to U1 pin VI (Pin ID 3 -- Name VI)
+connect_pins("#PWR1", "VIN", "U1", "VI")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l78l05_to92_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_l78l05_to92_generated.response.txt

@@ -1,0 +1,54 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=2099)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a small-signal switching diode to rectify a small AC signal. Use exactly these real components: D1 as a BAW75, in the KiCad library "Diode" (Small-signal switching diode, 30 V 200 mA, SMD). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1894])
+[SEQLEN] input_ids shape: torch.Size([1, 4889])
+[SEQLEN] input_ids shape: torch.Size([1, 5110])
+[SEQLEN] input_ids shape: torch.Size([1, 3308])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.07GB gpu_peak=28.72GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.72GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.72GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.72GB
+Model raw response: <|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="BAW75", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="AC", pos_x=center_x_1 + (-20), pos_y=center_y_1 + (12), reference="PWR1", value="AC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="R", symbol_name="R", pos_x=center_x_1 + (-20), pos_y=center_y_1 + (0), reference="R1", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-16), reference="PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting PWR1 pin AC (Pin ID 1 -- Name AC) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("PWR1", "AC", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to D1 pin K (Pin ID 1 -- Name K)
+connect_pins("R1", "2", "D1", "K")
+
+# Connecting D1 pin A (Pin ID 2 -- Name A) to PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("D1", "A", "PWR2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_baw75_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_baw75_generated.response.txt

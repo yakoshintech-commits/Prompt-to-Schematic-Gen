@@ -1,0 +1,135 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a small-signal fast-switching diode for general-purpose applications. Use exactly these real components: D1 as a 1N4148, in the KiCad library "Diode" (Small-signal fast-switching diode, 100 V 200 mA, through-hole). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1898])
+[SEQLEN] input_ids shape: torch.Size([1, 4893])
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3312])
+[SEQLEN] input_ids shape: torch.Size([1, 3312])
+[SEQLEN] input_ids shape: torch.Size([1, 3312])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.73GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.73GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.73GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.73GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.73GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a one‑component schematic that contains only a single 1N4148 fast‑switching diode.  
+The only symbol that can be used is the “D” symbol from the *Device* library, and it must be the exact part 1N4148.  
+No other components or power symbols are allowed.  
+The schematic must be readable, with the diode centred on the sheet and its two pins clearly labelled.
+
+**Choosing the symbol and its orientation**
+
+The “D” symbol has two pins – anode (label “A”) on the right and cathode (label “K”) on the left (the pin orientation data confirm this).  
+Because the cathode is the “K” pin, placing the symbol such that the cathode points left makes the wire that connects to the cathode run horizontally to the left, which keeps the schematic tidy.  
+Therefore the symbol is rotated **90°** (clockwise) so that the cathode is on the left side of the symbol.  
+No mirroring is required – the default orientation after a 90° rotation already gives the correct layout.
+
+**Positioning the symbol**
+
+The A4 sheet is 210 mm × 297 mm.  
+To centre the single component, we pick an X coordinate of 110 mm (half of 210) and a Y coordinate of 148.5 mm (half of 297).  
+Thus the centre of the diode is at (110 mm, 148.5 mm).  
+The symbol’s bounding box is ±1.27 mm in each direction, so the diode occupies a 2.54 mm × 2.54 mm square.
+
+**Adding the symbol**
+
+```python
+add_schematic_symbol(
+    symbol_lib="Device",          # library containing the D symbol
+    symbol_name="D",              # the 1N4148 symbol
+    pos_x=110.0, pos_y=148.5,     # centre of the sheet
+    reference="D1",               # unique reference
+    value="1N4148",               # part value shown
+    rotation=90,                  # cathode on the left
+    mirror="None"                 # no mirroring
+)
+```
+
+**Labeling the pins**
+
+The schematic interface provides `get_pin_location(symbol_ref, pin_name)` which returns the absolute coordinate of a pin.  
+Using that we can place labels immediately next to each pin.  
+The label text is the pin name itself – “A” for the anode and “K” for the cathode.
+
+```python
+# Anode label (pin A)
+x_D1_A, y_D1_A = get_pin_location("D1", "A")
+add_label(
+    label_pos=[x_D1_A + 5, y_D1_A],      # 5 mm to the right of the pin
+    label_text="A",                     # label text
+    label_ref="A_0",                    # unique label id
+    label_type="input",                 # not a power net
+    text_orient="right"                 # text to the right
+)
+
+# Cathode label (pin K)
+x_D1_K, y_D1_K = get_pin_location("D1", "K")
+add_label(
+    label_pos=[x_D1_K - 5, y_D1_K],      # 5 mm to the left of the pin
+    label_text="K",
+    label_ref="K_0",
+    label_type="input",
+    text_orient="left"
+)
+```
+
+**Connecting the labels to the pins**
+
+Each label is effectively a one‑pin symbol; to make the schematic readable we connect the label’s single pin (“1”) to the corresponding diode pin.
+
+```python
+connect_pins("A_0", "1", "D1", "A")
+connect_pins("K_0", "1", "D1", "K")
+```
+
+**Finalising the schematic**
+
+All wires are now defined. The `write_out_all_wires()` call outputs the netlist into the KiCad schematic file.
+
+```python
+write_out_all_wires()
+```
+
+**Why this arrangement is ideal**
+
+* The diode is centred, so the schematic looks balanced.
+* Rotating 90° places the cathode on the left, which aligns the horizontal wire that would usually go to a negative supply or to a ground plane.
+* The labels are offset just enough to avoid overlapping the symbol but close enough to be clearly associated with the correct pin.
+* No additional components or power symbols are introduced, satisfying the user’s constraint of a single‑component schematic.
+
+This reasoning translates directly into the Python code that will be executed by the KiCad schematic interface.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="1N4148", rotation=90, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n4148_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_1n4148_generated.response.txt

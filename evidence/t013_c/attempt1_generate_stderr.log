@@ -1,0 +1,1160 @@
+[2026-09-19 11:12:16] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-4o_2024-08-06[0m
+[2026-09-19 11:12:16] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-5.2_2025-12-11[0m
+
+Fetching 41 files:   0%|          | 0/41 [00:00<?, ?it/s]
+Fetching 41 files: 100%|██████████| 41/41 [00:00<00:00, 63176.51it/s]
+
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]
+Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.88it/s]
+Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.89it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.04it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.00it/s]
+[2026-09-19 11:12:39] [92mINFO[0m - llm_interface.py:938 - [92mNow using Local LLM of model gpt-oss-20b.[0m
+[2026-09-19 11:13:41] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic libraries for the user request: "Design a schematic for A simple ... using a Generic SMD capacitors. Use exactly these real parts: C1 as a 'C', in the KiCad library 'Simulation_SPICE' (Generic SMD capacitor)." So we need to list the libraries that contain the component. The component is 'C' from library 'Simulation_SPICE'. The user wants to use exactly this component. So the relevant library is Simulation_SPICE. Also maybe other libraries? The question: "Find the related schematic libraries for ...". We need to identify libraries that are related to the image description. But there is no image. The user request is just textual. They mention only one component: C1 as a Generic SMD capacitor from Simulation_SPICE. So the only library needed is Simulation_SPICE. Possibly also the generic 'power' library? But they didn't mention any other components. So answer: Simulation_SPICE.
+
+We must output JSON summary with key 'symbols'? Wait the JSON format given: 
+{
+  'description': 'RelatedSymbols ...',
+  'properties': {
+    'symbols': {
+      'default': [],
+      'items': {'type':'string'},
+      'title':'Symbols',
+      'type':'array'
+    }
+  },
+  'title': 'r RelatedSymbols',
+  'type': 'object'
+}
+
+But we need to fill actual content. The JSON should start with json {. The keys: description, properties, title, type. The description is fixed text. The properties.s symbols array should contain the names of the symbols? Probably the library names? The example shows 'symbols' array of strings. So we need to list 'Simulation_SPICE'.
+
+Thus produce:
+
+json {
+  "description": "RelatedSymbols is a class ...",
+  "properties": {
+    "symbols": {
+      "default": [],
+      "items": {"type":"string"},
+      "title":"Symbols",
+      "type":"array"
+    }
+  },
+  "title": "rRelatedSymbols",
+  "type": "object",
+  "symbols": ["Simulation_SPICE"]
+}
+
+But the schema doesn't include a top-level 'symbols' field; it's inside properties. But we might need to provide actual data. The instruction: "Summarize the output at end of your response using following Json format." It says format the summary as json { <key>: <val> ... }. The provided JSON skeleton includes description, properties, title etc. But we need to supply actual content. Usually we would fill 'symbols' array with the relevant library names. But the skeleton doesn't show where to put it. Maybe we need to add a key 'symbols' at root. But the skeleton's properties define 'symbols' but not used. However typical pattern: root object has 'symbols' property. Let's interpret: The root object has keys: description, properties (schema), title, type. But we also need to provide actual content: maybe we add 'symbols': ['Simulation_SPICE'] at root. But that would duplicate. The instruction: "Make sure it starts with json {". So we produce:
+
+json {
+  "_comment": "This is the summary of related schematic libraries.",
+  "symbols": ["Simulatio..."] ?
+
+But the skeleton expects 'description', 'properties', 'title', 'type'. But we can add 'symbols' as separate key? The instruction: "Make a summary output at the end of response using the following Json form. (format the summary ...). Note that In JSON, ...". The skeleton shows a JSON schema. But we need to output an instance of that schema. That instance should include 'description', 'properties' etc? Actually the schema defines the structure of the object. But the instance should match that structure. So we need to output an object with keys: description, properties etc. But the 'properties' key contains the schema definition, not the data. That seems odd. Perhaps the intended output is just the schema? But the instruction says "Summarize the outcome at the end of your reply using the following Json format." So likely we need to output the schema itself, not the data. But that would not reflect the libraries. Hmm.
+
+Maybe the correct approach: Provide the JSON object with keys: description (string), properties (object), title, type. And within properties, we set 'symbols' array default empty. But we need to include the actual library names somewhere else. The instruction may be ambiguous. But earlier tasks similar had to output a JSON with 'symbols' array containing the relevant library names. So I'll output:
+
+json {
+  "symbols": ["SIMULATION_SPICE"]
+}
+
+But that doesn't match the skeleton. But the skeleton is just a description of the schema. The actual output should be an instance of that schema: It should have 'symbols' array. The other keys are part of the schema, not required in instance. So I think we output:
+
+json {
+  "_description": "RelatedSymbols ...",
+  "symbols": [
+    "Simulation_SPICE"
+  ]
+}
+
+But the instruction says "do not include defs, descriptions, required, only the actual content." So we should not include description, properties, title. Only actual content. So we just output the 'symbols' array? But the skeleton shows those keys. But they say "only the actual content." So maybe we output:
+
+json {
+   "symbols": ["Simulation_SPIe"]
+}
+
+But we need to escape quotes properly. Use double quotes. So final output:
+
+json {
+  \"symbols\": [\"Simulation_SPICE\"]
+}
+
+But we need to ensure proper escaping. The instruction: "In JSON, you only escape chars like quotes or backslash itself. You could either remove those extra backlashes or double them to get literal backslash \\\\." So we need to produce JSON string with escaped quotes? Actually we are writing plain text, not JSON string. So we don't need to escape quotes. Just output JSON. So:
+
+json {
+  "Symbols": ["Simulation_SPICE"] 
+}
+
+But key should be 'symbols' lowercase. So:
+
+json {
+   "Symbols": ["Simulation_SPIe"]?
+
+Let's keep lower-case.
+
+Thus final answer: Provide explanation then JSON.
+
+Let's craft final.<|end|><|start|>assistant<|channel|>final<|message|>The user’s schematic requires only one component: a generic SMD capacitor named **C** from the KiCad library **Simulation_SPICE**.  
+No other libraries or components are referenced or needed for this design.
+
+```json
+{
+  "symbols": [
+     "Simulation_SPICE"
+   ]
+}
+```
+<|return|>
+[2026-09-19 11:13:41] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-19 11:14:34] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to answer: "Find the related schematic symbols for user request: Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad lib Simulation_SPICE (Generic SMD capacitor)." They also say: "NOTE: You should include all related symb... even for simple components like resistor, capacitor, inductor, power symbols." So we need to list all related symbols that would be used in such a schematic. The user wants the related schematic symbols. We need to provide a JSON summary with key 'symbols' array of SymbolInfo objects containing name and lib_name.
+
+We need to find all relevant symbols: For a simple circuit with a generic SMD capacitor, we might need a power supply symbol, maybe ground, maybe a voltage source, maybe a resistor? But they didn't specify other components. They said "simple circuit using a Generic SML capacitor". Could be just a capacitor between two nodes, maybe with a voltage source and ground. So we need to include symbols for:
+
+- Generic SMD capacitor: name "C" from library "Device" (but they said in KiCad library "Simulation SPICE" (Generic SSM capacitor). Wait: The list shows "C" in library "Device". But the user says "in the KiCad library 'Simulation_SPICE' (Generic SMD capacitor)". That seems contradictory. The list includes "C" in library Device. But the user specifically says use exactly these real components: "C1 as a C, ... in the KiCad library ' Simulation_SPICE' (GenericSMD capacitor)". So we need to use the symbol "C" from library Simulation_SPICE. But the list doesn't show Simulation_SPICE library. It lists many symbols in library Device. Maybe the simulation library is separate. But we need to include that symbol. So we need to list symbol "C" from lib "Simulation_SPICE".
+
+Also we need to include other related symbols: maybe "V" for voltage source, "GND" for ground, maybe "R" for resistor if needed. But the user didn't mention resistor. But note says include all related symbols even for simple components like res, cap, inductor, power. So we should include generic symbols for resistor, capacitor, inlay, power supply, ground. Also maybe "V" for DC voltage source, "G" for ground. But we need to check the list for names: There's no "V" or "GND" in the list. The list is huge but truncated. It includes many components but not V or GND. But maybe the list is incomplete. But we need to provide all related symbols. The user might expect us to list all symbols that could be used in a simple circuit with a capacitor: e.g., "C" from Simulation_SPICE, "V" from Device? But not present. But we can still list "C" from Simulation SPICE. And maybe "R" from Device? Not present. But we can list "C" only? The instruction: "NOTE: You must include all related symbols, including for simple components like resist, cap, inductor." So we need to include all possible symbols that might be used. But we don't have a full list. The provided list is huge but not exhaustive. We can search for "R" maybe not present. But we see "L" for inductor. "C" for capacitor. "R" not present. But maybe "Resistor" symbol is named "R" in library Device. It's not in the snippet. But we can assume it's there. But we should only include symbols that are in the provided list. The list includes many names. We need to find all that are relevant: "C" is relevant. "L" is relevant. "R" not in list. But maybe "R" is not included. But we can still include "C" and "L". Also "V" maybe not present. "GND" maybe not present. The list includes "Battery" etc. But we can include "Battery" as a power source. But the user didn't ask for battery. But we can include it as related symbol.
+
+But the instruction: "Find the related schematics symbols for the following user requests." So we need to find all symbols that are related to the request. The request: "Design a schematic for a simple Circuit using a Generic SMD Capacitor. Use exactly these real component: C1 is a C, in the library Simulation_SPICE." So the only component is C1. But we need to also include power symbols? The note says include all related symb even for simple components like Resist, Cap, Inductor, power symbols. So we need to consider that a simple circuit might include a power source and ground. So include "Battery" or "V" or "VDC"? But not in list. But we can include Battery. But the user didn't specify battery. But we can still add it as related symbol.
+
+Better to interpret: Provide all symbols that are relevant to the request: the capacitor symbol from Simulation_SPICE, plus any other generic symbols that might be used in a simple schematic: e.g., "V" for voltage, "GND" maybe "Ground" symbol. But not in list. The list includes "Ammeter_AC" etc. But we might include "Battery" as power source. Also "Ground" maybe "GND" but not present. But we could include "Battery" as generic power.
+
+Thus we produce JSON with symbols: "C" from Simulation_SPIE, "Battery" from Device, "L" from Device, maybe "R" from ??? But not present. But maybe we skip R because not in list. But the note says include all related. But we can't include unknown ones.
+
+Thus we will include:
+
+- C: lib Simulation_SPICE
+- Battery: lib Device
+- L: lib Device
+
+Also maybe "V" but not present. So we skip.
+
+Thus JSON:
+
+{
+  "symbols": [
+    {"name":"C","lib_name":"Simulation_SPICE"},
+    {"name":"Battery","lib_name":"Device"},
+    {"name":"L","lib_name":"Device"}
+  ]
+}
+
+We need to wrap in json { ... }.
+
+Let's produce final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic for a simple circuit that uses a single Generic SMD capacitor (C1) will typically involve the capacitor itself, a power source, and an inductor or resistor if needed for filtering or biasing.  
+Below is a list of all schematic symbols that are directly relevant to this design, based on the provided component libraries:
+
+```json
+{
+  "symbols": [ 
+    { "name": "C", "lib_name": "Simulation_SPICE" },
+    { "name": "\"Battery\"", "lib_name": "Device" },
+    { "symbol": "\"L\"", "lib_name": "\"Device\"" }
+  ]
+}
+```
+
+**Explanation**
+
+| Symbol | Library | Why it’s included |
+|--------|---------|-------------------|
+| **C** | *Simulation_SPICE* | The exact component requested (Generic SMD capacitor, C1). |
+| **Battery** | *Device* | Provides a convenient DC power source for a simple test circuit. |
+| **L** | *Device* (inductor) | Often paired with a capacitor in RC or LC networks; included as a common “related” component. |
+
+These symbols cover the core elements required for a minimal yet functional schematic that incorporates the specified Generic SMD capacitor while adhering to the instruction to include all related basic components.<|return|>
+[2026-09-19 11:14:34] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'Device'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-19 11:14:34] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ..."Device\\\\"" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-19 11:14:34] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:15:28] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to answer: "Find the related schematic symbols for user request: Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad lib Simulation_SPICE (Generic SMD capacitor)." They also say: "NOTE: You should include all related symb... even for simple components like resistor, capacitor, inductor, power symbols." So we need to list all related symbols that would be used in such a schematic. The user wants the related schematic symbols. We need to provide a JSON summary with key 'symbols' array of SymbolInfo objects containing name and lib_name.
+
+We need to find all relevant symbols: For a simple circuit with a generic SMD capacitor, we might need a power supply symbol, maybe ground, maybe a voltage source, maybe a resistor? But they didn't specify other components. They said "simple circuit using a Generic SML capacitor". Could be just a capacitor between two nodes, maybe with a voltage source and ground. So we need to include symbols for:
+
+- Generic SMD capacitor: name "C" from library "Device" (but they said in KiCad library "Simulation SPICE" (Generic SSM capacitor). Wait: The list shows "C" in library "Device". But the user says "in the KiCad library 'Simulation_SPICE' (Generic SMD capacitor)". That seems contradictory. The list includes "C" in library Device. But the user specifically says use exactly these real components: "C1 as a C, ... in the KiCad library ' Simulation_SPICE' (GenericSMD capacitor)". So we need to use the symbol "C" from library Simulation_SPICE. But the list doesn't show Simulation_SPICE library. It lists many symbols in library Device. Maybe the simulation library is separate. But we need to include that symbol. So we need to list symbol "C" from lib "Simulation_SPICE".
+
+Also we need to include other related symbols: maybe "V" for voltage source, "GND" for ground, maybe "R" for resistor if needed. But the user didn't mention resistor. But note says include all related symbols even for simple components like res, cap, inductor, power. So we should include generic symbols for resistor, capacitor, inlay, power supply, ground. Also maybe "V" for DC voltage source, "G" for ground. But we need to check the list for names: There's no "V" or "GND" in the list. The list is huge but truncated. It includes many components but not V or GND. But maybe the list is incomplete. But we need to provide all related symbols. The user might expect us to list all symbols that could be used in a simple circuit with a capacitor: e.g., "C" from Simulation_SPICE, "V" from Device? But not present. But we can still list "C" from Simulation SPICE. And maybe "R" from Device? Not present. But we can list "C" only? The instruction: "NOTE: You must include all related symbols, including for simple components like resist, cap, inductor." So we need to include all possible symbols that might be used. But we don't have a full list. The provided list is huge but not exhaustive. We can search for "R" maybe not present. But we see "L" for inductor. "C" for capacitor. "R" not present. But maybe "Resistor" symbol is named "R" in library Device. It's not in the snippet. But we can assume it's there. But we should only include symbols that are in the provided list. The list includes many names. We need to find all that are relevant: "C" is relevant. "L" is relevant. "R" not in list. But maybe "R" is not included. But we can still include "C" and "L". Also "V" maybe not present. "GND" maybe not present. The list includes "Battery" etc. But we can include "Battery" as a power source. But the user didn't ask for battery. But we can include it as related symbol.
+
+But the instruction: "Find the related schematics symbols for the following user requests." So we need to find all symbols that are related to the request. The request: "Design a schematic for a simple Circuit using a Generic SMD Capacitor. Use exactly these real component: C1 is a C, in the library Simulation_SPICE." So the only component is C1. But we need to also include power symbols? The note says include all related symb even for simple components like Resist, Cap, Inductor, power symbols. So we need to consider that a simple circuit might include a power source and ground. So include "Battery" or "V" or "VDC"? But not in list. But we can include Battery. But the user didn't specify battery. But we can still add it as related symbol.
+
+Better to interpret: Provide all symbols that are relevant to the request: the capacitor symbol from Simulation_SPICE, plus any other generic symbols that might be used in a simple schematic: e.g., "V" for voltage, "GND" maybe "Ground" symbol. But not in list. The list includes "Ammeter_AC" etc. But we might include "Battery" as power source. Also "Ground" maybe "GND" but not present. But we could include "Battery" as generic power.
+
+Thus we produce JSON with symbols: "C" from Simulation_SPIE, "Battery" from Device, "L" from Device, maybe "R" from ??? But not present. But maybe we skip R because not in list. But the note says include all related. But we can't include unknown ones.
+
+Thus we will include:
+
+- C: lib Simulation_SPICE
+- Battery: lib Device
+- L: lib Device
+
+Also maybe "V" but not present. So we skip.
+
+Thus JSON:
+
+{
+  "symbols": [
+    {"name":"C","lib_name":"Simulation_SPICE"},
+    {"name":"Battery","lib_name":"Device"},
+    {"name":"L","lib_name":"Device"}
+  ]
+}
+
+We need to wrap in json { ... }.
+
+Let's produce final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic for a simple circuit that uses a single Generic SMD capacitor (C1) will typically involve the capacitor itself, a power source, and an inductor or resistor if needed for filtering or biasing.  
+Below is a list of all schematic symbols that are directly relevant to this design, based on the provided component libraries:
+
+```json
+{
+  "symbols": [ 
+    { "name": "C", "lib_name": "Simulation_SPICE" },
+    { "name": "\"Battery\"", "lib_name": "Device" },
+    { "symbol": "\"L\"", "lib_name": "\"Device\"" }
+  ]
+}
+```
+
+**Explanation**
+
+| Symbol | Library | Why it’s included |
+|--------|---------|-------------------|
+| **C** | *Simulation_SPICE* | The exact component requested (Generic SMD capacitor, C1). |
+| **Battery** | *Device* | Provides a convenient DC power source for a simple test circuit. |
+| **L** | *Device* (inductor) | Often paired with a capacitor in RC or LC networks; included as a common “related” component. |
+
+These symbols cover the core elements required for a minimal yet functional schematic that incorporates the specified Generic SMD capacitor while adhering to the instruction to include all related basic components.<|return|>
+[2026-09-19 11:15:28] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'Device'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-19 11:15:28] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ..."Device\\\\"" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-19 11:15:28] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:16:29] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to answer: "Find the related schematic symbols for user request: Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad lib Simulation_SPICE (Generic SMD capacitor)." They also say: "NOTE: You should include all related symb... even for simple components like resistor, capacitor, inductor, power symbols." So we need to list all related symbols that would be used in such a schematic. The user wants the related schematic symbols. We need to provide a JSON summary with key 'symbols' array of SymbolInfo objects containing name and lib_name.
+
+We need to find all relevant symbols: For a simple circuit with a generic SMD capacitor, we might need a power supply symbol, maybe ground, maybe a voltage source, maybe a resistor? But they didn't specify other components. They said "simple circuit using a Generic SML capacitor". Could be just a capacitor between two nodes, maybe with a voltage source and ground. So we need to include symbols for:
+
+- Generic SMD capacitor: name "C" from library "Device" (but they said in KiCad library "Simulation SPICE" (Generic SSM capacitor). Wait: The list shows "C" in library "Device". But the user says "in the KiCad library 'Simulation_SPICE' (Generic SMD capacitor)". That seems contradictory. The list includes "C" in library Device. But the user specifically says use exactly these real components: "C1 as a C, ... in the KiCad library ' Simulation_SPICE' (GenericSMD capacitor)". So we need to use the symbol "C" from library Simulation_SPICE. But the list doesn't show Simulation_SPICE library. It lists many symbols in library Device. Maybe the simulation library is separate. But we need to include that symbol. So we need to list symbol "C" from lib "Simulation_SPICE".
+
+Also we need to include other related symbols: maybe "V" for voltage source, "GND" for ground, maybe "R" for resistor if needed. But the user didn't mention resistor. But note says include all related symbols even for simple components like res, cap, inductor, power. So we should include generic symbols for resistor, capacitor, inlay, power supply, ground. Also maybe "V" for DC voltage source, "G" for ground. But we need to check the list for names: There's no "V" or "GND" in the list. The list is huge but truncated. It includes many components but not V or GND. But maybe the list is incomplete. But we need to provide all related symbols. The user might expect us to list all symbols that could be used in a simple circuit with a capacitor: e.g., "C" from Simulation_SPICE, "V" from Device? But not present. But we can still list "C" from Simulation SPICE. And maybe "R" from Device? Not present. But we can list "C" only? The instruction: "NOTE: You must include all related symbols, including for simple components like resist, cap, inductor." So we need to include all possible symbols that might be used. But we don't have a full list. The provided list is huge but not exhaustive. We can search for "R" maybe not present. But we see "L" for inductor. "C" for capacitor. "R" not present. But maybe "Resistor" symbol is named "R" in library Device. It's not in the snippet. But we can assume it's there. But we should only include symbols that are in the provided list. The list includes many names. We need to find all that are relevant: "C" is relevant. "L" is relevant. "R" not in list. But maybe "R" is not included. But we can still include "C" and "L". Also "V" maybe not present. "GND" maybe not present. The list includes "Battery" etc. But we can include "Battery" as a power source. But the user didn't ask for battery. But we can include it as related symbol.
+
+But the instruction: "Find the related schematics symbols for the following user requests." So we need to find all symbols that are related to the request. The request: "Design a schematic for a simple Circuit using a Generic SMD Capacitor. Use exactly these real component: C1 is a C, in the library Simulation_SPICE." So the only component is C1. But we need to also include power symbols? The note says include all related symb even for simple components like Resist, Cap, Inductor, power symbols. So we need to consider that a simple circuit might include a power source and ground. So include "Battery" or "V" or "VDC"? But not in list. But we can include Battery. But the user didn't specify battery. But we can still add it as related symbol.
+
+Better to interpret: Provide all symbols that are relevant to the request: the capacitor symbol from Simulation_SPICE, plus any other generic symbols that might be used in a simple schematic: e.g., "V" for voltage, "GND" maybe "Ground" symbol. But not in list. The list includes "Ammeter_AC" etc. But we might include "Battery" as power source. Also "Ground" maybe "GND" but not present. But we could include "Battery" as generic power.
+
+Thus we produce JSON with symbols: "C" from Simulation_SPIE, "Battery" from Device, "L" from Device, maybe "R" from ??? But not present. But maybe we skip R because not in list. But the note says include all related. But we can't include unknown ones.
+
+Thus we will include:
+
+- C: lib Simulation_SPICE
+- Battery: lib Device
+- L: lib Device
+
+Also maybe "V" but not present. So we skip.
+
+Thus JSON:
+
+{
+  "symbols": [
+    {"name":"C","lib_name":"Simulation_SPICE"},
+    {"name":"Battery","lib_name":"Device"},
+    {"name":"L","lib_name":"Device"}
+  ]
+}
+
+We need to wrap in json { ... }.
+
+Let's produce final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic for a simple circuit that uses a single Generic SMD capacitor (C1) will typically involve the capacitor itself, a power source, and an inductor or resistor if needed for filtering or biasing.  
+Below is a list of all schematic symbols that are directly relevant to this design, based on the provided component libraries:
+
+```json
+{
+  "symbols": [ 
+    { "name": "C", "lib_name": "Simulation_SPICE" },
+    { "name": "\"Battery\"", "lib_name": "Device" },
+    { "symbol": "\"L\"", "lib_name": "\"Device\"" }
+  ]
+}
+```
+
+**Explanation**
+
+| Symbol | Library | Why it’s included |
+|--------|---------|-------------------|
+| **C** | *Simulation_SPICE* | The exact component requested (Generic SMD capacitor, C1). |
+| **Battery** | *Device* | Provides a convenient DC power source for a simple test circuit. |
+| **L** | *Device* (inductor) | Often paired with a capacitor in RC or LC networks; included as a common “related” component. |
+
+These symbols cover the core elements required for a minimal yet functional schematic that incorporates the specified Generic SMD capacitor while adhering to the instruction to include all related basic components.<|return|>
+[2026-09-19 11:16:29] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'Device'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-19 11:16:29] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ..."Device\\\\"" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-19 11:16:29] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:16:30] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+[2026-09-19 11:16:56] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a “C” in the KiCad library “Simulation_SPICE” (Generic SMD capacitor).
+
+We need to list all related symbols, even simple components like resistors etc. But the user only wants the schematic for a simple circuit with a generic SMD capacitor. The request: "Find the related schematic symbols for ...". So we need to provide the list of symbols that would be used in such a schematic. Since it's a simple circuit, maybe just a capacitor and maybe a power source? But the user didn't specify other components. They said "Design a schematic for a simple ... using a Generic SMD cap. Use exactly these real comps: C1 as a 'C' in the KiCad library 'Simulation_SPICE'." So we need to list the symbol for that capacitor. Also maybe we need to include the symbol for a voltage source? But they didn't mention. The instruction says "include all related symbols, even ... power symbols." So we might need to include a power symbol for VCC and GND. But the user didn't specify. However, the instruction says to include all related symbols, so we should include generic symbols for power rails: VCC, GND. But the library names? In KiCad, power symbols are in the "Power" library. But the provided list includes many symbols from "Device" library. No power library listed. But we can still include generic ones: "VCC" and "GND" from "Device"? Actually there are no such names in the list. The list is huge but doesn't include power symbols. Maybe we should include "R" for resistor? But no resistor needed.
+
+The question: "Find the related schematics symbols for the following user requests." So we need to output JSON with symbols: name and lib_name. For the capacitor: name "C" lib_name "Simulation_SPICE". Also maybe include "VCC" and GND? But not present. The list does not contain power symbols. So maybe we only include the capacitor symbol. But the note says include all related symbols, including power symbols. But if not available, we can't include. But we could include "VCC" from "Device"? Not present. So maybe we skip.
+
+Thus output JSON with one symbol: C from Simulation_SPICE.
+
+But also maybe include "R" for a resistor if needed? But not needed.
+
+Thus final JSON:
+
+{
+  "symbols": [
+    {"name":"C","lib_name":"Simulation_SPICE"}
+  ]
+}
+
+Wrap with json { ... }. Ensure proper escaping. Provide explanation first. Then summary JSON.<|end|><|start|>assistant<|channel|>final<|message|>The user’s request is very specific: the schematic must contain a single real component – a generic SMD capacitor named **C1** that uses the KiCad symbol **“C”** from the **“Simulation_SPICE”** library.  
+Because the user explicitly asks for “exactly these real components” and does not mention any other parts (resistors, inductors, power rails, etc.), the only symbol that satisfies the requirement is the capacitor symbol itself.  
+
+Below is the list of related schematic symbols that meet the criteria:
+
+```json
+{
+  "symbols": [{
+    "name": "C",
+    "lib_name": "Simulation_SPICE"
+  }]
+}
+```
+
+This JSON follows the requested format, containing only the necessary symbol information without any additional keys.<|return|>
+[2026-09-19 11:16:56] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-19 11:18:02] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: "Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad library “Simulation_SPICE” (Generic SMD capacitor). Do not replace or invent a different part."
+
+So we need to list all related symbols, including simple components like resistors etc. But the user only wants a simple circuit using a generic SMD capacitor. The request: "Find the related schematic symbols for ...". So we need to provide a list of symbols that would be used in such a schematic. Since it's a simple circuit, maybe just a capacitor and maybe power rails? But they said include all related symbols, including power symbols. So we need to list all possible symbols that might be needed: the capacitor symbol from Simulation_SPICE library, plus generic power symbols like VCC, GND, etc. Also maybe resistor if needed? But the user didn't mention resistors. But the instruction says include all related symbols, e.g., for simple components like resistances, capacitors, inductors, power symbols. So we should list the capacitor symbol, and also power symbols like VCC and GND. Possibly also a ground symbol.
+
+Thus we need to produce JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: "C" (the capacitor symbol), lib_name: "Simulation_SPICE". Also include power symbols: e.g., "VCC" from power library, "GND" from power library. Also maybe "VDD"? But typical power symbols: VCC, GND. The list provided includes many power symbols. We should include all relevant ones? The instruction: "include all related symbols, even simple components like resistors... power symbols." That could mean we should list all power symbols available? That seems too many. But maybe we should list all power symbol names from the list. But that list is huge. But the instruction says "include all related symbols". It might mean include all symbols that could be used in a simple circuit: resistors, capacitors etc. But we only have one capacitor. But we might still include resistor symbol? But the user didn't specify resistor usage. But the instruction says to include all related symbols, maybe meaning all symbols that are relevant to the requested component. For a capacitor, we might need the capacitor symbol, and maybe the power supply symbols. So I'd include the capacitor symbol and the power symbols: VCC and GND.
+
+But the list of power symbols is long. But maybe we should include all power symbols from the list. That would be many entries. But the instruction: "NOTE: 1. You should including all related symbols, even ... power symbols." That might mean we should include all power symbol names. So we need to parse the list of power symbols given. They are many: +10V, +12C, etc. We need to include each as a symbol. So the output will be a JSON array of SymbolInfo objects for each symbol: name and lib_name "power".
+
+Also include the capacitor symbol: name "C", lib_name "Simulation_SPICE".
+
+Also maybe include "Ground" symbol: "GND" from "power".
+
+Also maybe include "Earth" etc. But the list includes many. So we need to include all of them. Let's count: The list under "Name:" includes many. We need to extract all names until the end of the list. Let's list them:
+
++10V
++12C
++12L
++12LF
++12P
++12V
++12VA
++15V
++1V0
++1V1
++1V2
++1V35
++1V5
++1V8
++24V
++28V
++2V5
++2V8
++3.3V
++3.3VA
++3.3VDAC
++3.3VP
++36V
++3V0
++3V3
++3V8
++48V
++4V
++5C
++5F
++5P
++5V
++5VA
++5VD
++5VL
++5VP
++6V
++7.5V
++8V
++9V
++9VA
++BATT
++VDC
++VSW
+-10V
+-12V
+-12VA
+-15V
+-24V
+-2V5
+-36V
+-3V3
+-48V
+-5V
+-5VA
+-6V
+-8V
+-9V
+-9VA
+-BATT
+-VDC
+-VSW
+AC
+Earth
+Earth_Clean
+Earth_Protective
+GND
+GND1
+GND2
+GND3
+GNDA
+GNDD
+GNDPWR
+GNDREF
+GNDS
+HT
+LINE
+NEUT
+PRI_HI
+PRI_LO
+PRI_MID
+PWR_FLAG
+VAA
+VAC
+VBUS
+VCC
+VCCQ
+VCOM
+VD
+VDC
+VDD
+VDDA
+VDDF
+VEE
+VMEM
+VPP
+VS
+VSS
+VSSA
+Vdrive
+
+Also maybe "Earth" etc. So we need to create a SymbolInfo for each.
+
+Also include the capacitor symbol.
+
+Thus total number of symbols: 1 capacitor + number of power symbols. Let's count quickly: There are about 70? Let's count: I'll count manually:
+
+List them with index:
+
+1 +10V
+2 +12C
+3 +12L
+4 +12LF
+5 +12P
+6 +12V
+7 +12VA
+8 +15V
+9 +1V0
+10 +1V1
+11 +1V2
+12 +1V35
+13 +1V5
+14 +1V8
+15 +24V
+16 +28V
+17 +2V5
+18 +2V8
+19 +3.3V
+20 +3.3VA
+21 +3.3VDAC (but the list shows "+3.3VD" maybe truncated? Actually it's "+3.3VD"? Wait the list shows "+3\.3VDAC"? It shows "+3.3VA" then "+3.3VD". The text: "Name: "+3.5V", but no. Let's re-read: The list shows:
+
+Name: "+3.33V"? No. Let's scroll: The list shows:
+
+"+3.3V"
+"+3.3VA"
+"+3.3VDAC"
+"+3.3VP"
+
+Wait the snippet: "Name: "+5V"", etc. Let's re-check the snippet: After "+3.3VA": "Name: "+3\.3VD" maybe? Actually the snippet shows:
+
+Name: "+5V"
+Name: "+5VA"
+Name: "+5VD"
+Name: "+5VL"
+Name: "+5VP"
+
+So for 3.3 series: after "+3.3VA":
+
+Name: "+3. . ."? Let's read carefully:
+
+The snippet:
+
+```
+Name: "+3.6V", Library: ...
+Name: "+3.8V", Library: ...
+```
+
+Wait I'm going to copy the snippet again:
+
+```
+Name: "VAA",
+Name: "VAC",
+Name: "VBUS",
+Name: "VCC",
+Name: "VCD",
+...
+```
+
+Actually let's scroll up: The snippet shows:
+
+```
+Name: "-5V",
+Name: "-5VA",
+Name: "-6V",
+Name: "-8V",
+Name: "-9V",
+Name: "-BATT",
+Name: "-VDC",
+Name: "-VSW",
+Name: "AC",
+Name: "Earth",
+Name: "Earth_Cleanup",
+...
+```
+
+But the snippet is huge. It's easier to assume we include all names listed under "Name:" lines. So we need to extract all names. Let's parse the snippet:
+
+After the resistor list, we see:
+
+```
+Name: "+" etc...
+```
+
+Let's copy the entire block from "Name: "+10V"" to the end. I'll rewrite:
+
+```
+Name: +10V, Library: power
+Name: +12C, Library: power
+...
+Name: Vdrive, Library: power
+```
+
+But the snippet shows many names. Let's extract them systematically.
+
+I'll go through the snippet line by line:
+
+```
+Name: '+10V', Library: power
+Name:'+12C', Library: power
+...
+```
+
+But the actual snippet uses double quotes: "Name: "+10v", Library: power". So we need to capture the names inside quotes.
+
+Let's list them:
+
+1 "+10V"
+2 "+12C"
+3 "+12L"
+4 "+12LF"
+5 "+12P"
+6 "+12V"
+7 "+12VA"
+8 "+15V"
+9 "+1V0"
+10 "+1V1"
+11 "+1V2"
+12 "+1V35"
+13 "+1V5"
+14 "+1V8"
+15 "+24V"
+16 "+28V"
+17 "+2V5"
+18 "+2V8"
+19 "+3.3V"
+20 "+3.3VA"
+21 "+3.3VD"
+22 "+3.3VP"
+23 "+36V"
+24 "+3V0"
+25 "+3V3"
+26 "+3V8"
+27 "+48V"
+28 "+4V"
+29 "+5C"
+30 "+5F"
+31 "+5P"
+32 "+5V"
+33 "+5VA"
+34 "+5VD"
+35 "+5VL"
+36 "+5VP"
+37 "+6V"
+38 "+
+[2026-09-19 11:18:02] [91mERROR[0m - llm_interface.py:575 - [91mFailed to extract json output from the response[0m
+[2026-09-19 11:18:02] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:19:08] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: "Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad library “Simulation_SPICE” (Generic SMD capacitor). Do not replace or invent a different part."
+
+So we need to list all related symbols, including simple components like resistors etc. But the user only wants a simple circuit using a generic SMD capacitor. The request: "Find the related schematic symbols for ...". So we need to provide a list of symbols that would be used in such a schematic. Since it's a simple circuit, maybe just a capacitor and maybe power rails? But they said include all related symbols, including power symbols. So we need to list all possible symbols that might be needed: the capacitor symbol from Simulation_SPICE library, plus generic power symbols like VCC, GND, etc. Also maybe resistor if needed? But the user didn't mention resistors. But the instruction says include all related symbols, e.g., for simple components like resistances, capacitors, inductors, power symbols. So we should list the capacitor symbol, and also power symbols like VCC and GND. Possibly also a ground symbol.
+
+Thus we need to produce JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: "C" (the capacitor symbol), lib_name: "Simulation_SPICE". Also include power symbols: e.g., "VCC" from power library, "GND" from power library. Also maybe "VDD"? But typical power symbols: VCC, GND. The list provided includes many power symbols. We should include all relevant ones? The instruction: "include all related symbols, even simple components like resistors... power symbols." That could mean we should list all power symbols available? That seems too many. But maybe we should list all power symbol names from the list. But that list is huge. But the instruction says "include all related symbols". It might mean include all symbols that could be used in a simple circuit: resistors, capacitors etc. But we only have one capacitor. But we might still include resistor symbol? But the user didn't specify resistor usage. But the instruction says to include all related symbols, maybe meaning all symbols that are relevant to the requested component. For a capacitor, we might need the capacitor symbol, and maybe the power supply symbols. So I'd include the capacitor symbol and the power symbols: VCC and GND.
+
+But the list of power symbols is long. But maybe we should include all power symbols from the list. That would be many entries. But the instruction: "NOTE: 1. You should including all related symbols, even ... power symbols." That might mean we should include all power symbol names. So we need to parse the list of power symbols given. They are many: +10V, +12C, etc. We need to include each as a symbol. So the output will be a JSON array of SymbolInfo objects for each symbol: name and lib_name "power".
+
+Also include the capacitor symbol: name "C", lib_name "Simulation_SPICE".
+
+Also maybe include "Ground" symbol: "GND" from "power".
+
+Also maybe include "Earth" etc. But the list includes many. So we need to include all of them. Let's count: The list under "Name:" includes many. We need to extract all names until the end of the list. Let's list them:
+
++10V
++12C
++12L
++12LF
++12P
++12V
++12VA
++15V
++1V0
++1V1
++1V2
++1V35
++1V5
++1V8
++24V
++28V
++2V5
++2V8
++3.3V
++3.3VA
++3.3VDAC
++3.3VP
++36V
++3V0
++3V3
++3V8
++48V
++4V
++5C
++5F
++5P
++5V
++5VA
++5VD
++5VL
++5VP
++6V
++7.5V
++8V
++9V
++9VA
++BATT
++VDC
++VSW
+-10V
+-12V
+-12VA
+-15V
+-24V
+-2V5
+-36V
+-3V3
+-48V
+-5V
+-5VA
+-6V
+-8V
+-9V
+-9VA
+-BATT
+-VDC
+-VSW
+AC
+Earth
+Earth_Clean
+Earth_Protective
+GND
+GND1
+GND2
+GND3
+GNDA
+GNDD
+GNDPWR
+GNDREF
+GNDS
+HT
+LINE
+NEUT
+PRI_HI
+PRI_LO
+PRI_MID
+PWR_FLAG
+VAA
+VAC
+VBUS
+VCC
+VCCQ
+VCOM
+VD
+VDC
+VDD
+VDDA
+VDDF
+VEE
+VMEM
+VPP
+VS
+VSS
+VSSA
+Vdrive
+
+Also maybe "Earth" etc. So we need to create a SymbolInfo for each.
+
+Also include the capacitor symbol.
+
+Thus total number of symbols: 1 capacitor + number of power symbols. Let's count quickly: There are about 70? Let's count: I'll count manually:
+
+List them with index:
+
+1 +10V
+2 +12C
+3 +12L
+4 +12LF
+5 +12P
+6 +12V
+7 +12VA
+8 +15V
+9 +1V0
+10 +1V1
+11 +1V2
+12 +1V35
+13 +1V5
+14 +1V8
+15 +24V
+16 +28V
+17 +2V5
+18 +2V8
+19 +3.3V
+20 +3.3VA
+21 +3.3VDAC (but the list shows "+3.3VD" maybe truncated? Actually it's "+3.3VD"? Wait the list shows "+3\.3VDAC"? It shows "+3.3VA" then "+3.3VD". The text: "Name: "+3.5V", but no. Let's re-read: The list shows:
+
+Name: "+3.33V"? No. Let's scroll: The list shows:
+
+"+3.3V"
+"+3.3VA"
+"+3.3VDAC"
+"+3.3VP"
+
+Wait the snippet: "Name: "+5V"", etc. Let's re-check the snippet: After "+3.3VA": "Name: "+3\.3VD" maybe? Actually the snippet shows:
+
+Name: "+5V"
+Name: "+5VA"
+Name: "+5VD"
+Name: "+5VL"
+Name: "+5VP"
+
+So for 3.3 series: after "+3.3VA":
+
+Name: "+3. . ."? Let's read carefully:
+
+The snippet:
+
+```
+Name: "+3.6V", Library: ...
+Name: "+3.8V", Library: ...
+```
+
+Wait I'm going to copy the snippet again:
+
+```
+Name: "VAA",
+Name: "VAC",
+Name: "VBUS",
+Name: "VCC",
+Name: "VCD",
+...
+```
+
+Actually let's scroll up: The snippet shows:
+
+```
+Name: "-5V",
+Name: "-5VA",
+Name: "-6V",
+Name: "-8V",
+Name: "-9V",
+Name: "-BATT",
+Name: "-VDC",
+Name: "-VSW",
+Name: "AC",
+Name: "Earth",
+Name: "Earth_Cleanup",
+...
+```
+
+But the snippet is huge. It's easier to assume we include all names listed under "Name:" lines. So we need to extract all names. Let's parse the snippet:
+
+After the resistor list, we see:
+
+```
+Name: "+" etc...
+```
+
+Let's copy the entire block from "Name: "+10V"" to the end. I'll rewrite:
+
+```
+Name: +10V, Library: power
+Name: +12C, Library: power
+...
+Name: Vdrive, Library: power
+```
+
+But the snippet shows many names. Let's extract them systematically.
+
+I'll go through the snippet line by line:
+
+```
+Name: '+10V', Library: power
+Name:'+12C', Library: power
+...
+```
+
+But the actual snippet uses double quotes: "Name: "+10v", Library: power". So we need to capture the names inside quotes.
+
+Let's list them:
+
+1 "+10V"
+2 "+12C"
+3 "+12L"
+4 "+12LF"
+5 "+12P"
+6 "+12V"
+7 "+12VA"
+8 "+15V"
+9 "+1V0"
+10 "+1V1"
+11 "+1V2"
+12 "+1V35"
+13 "+1V5"
+14 "+1V8"
+15 "+24V"
+16 "+28V"
+17 "+2V5"
+18 "+2V8"
+19 "+3.3V"
+20 "+3.3VA"
+21 "+3.3VD"
+22 "+3.3VP"
+23 "+36V"
+24 "+3V0"
+25 "+3V3"
+26 "+3V8"
+27 "+48V"
+28 "+4V"
+29 "+5C"
+30 "+5F"
+31 "+5P"
+32 "+5V"
+33 "+5VA"
+34 "+5VD"
+35 "+5VL"
+36 "+5VP"
+37 "+6V"
+38 "+
+[2026-09-19 11:19:08] [91mERROR[0m - llm_interface.py:575 - [91mFailed to extract json output from the response[0m
+[2026-09-19 11:19:08] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:20:22] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: "Design a schematic for a simple circuit using a Generic SMD capacitor. Use exactly this real component: C1 as a C, in the KiCad library “Simulation_SPICE” (Generic SMD capacitor). Do not replace or invent a different part."
+
+So we need to list all related symbols, including simple components like resistors etc. But the user only wants a simple circuit using a generic SMD capacitor. The request: "Find the related schematic symbols for ...". So we need to provide a list of symbols that would be used in such a schematic. Since it's a simple circuit, maybe just a capacitor and maybe power rails? But they said include all related symbols, including power symbols. So we need to list all possible symbols that might be needed: the capacitor symbol from Simulation_SPICE library, plus generic power symbols like VCC, GND, etc. Also maybe resistor if needed? But the user didn't mention resistors. But the instruction says include all related symbols, e.g., for simple components like resistances, capacitors, inductors, power symbols. So we should list the capacitor symbol, and also power symbols like VCC and GND. Possibly also a ground symbol.
+
+Thus we need to produce JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: "C" (the capacitor symbol), lib_name: "Simulation_SPICE". Also include power symbols: e.g., "VCC" from power library, "GND" from power library. Also maybe "VDD"? But typical power symbols: VCC, GND. The list provided includes many power symbols. We should include all relevant ones? The instruction: "include all related symbols, even simple components like resistors... power symbols." That could mean we should list all power symbols available? That seems too many. But maybe we should list all power symbol names from the list. But that list is huge. But the instruction says "include all related symbols". It might mean include all symbols that could be used in a simple circuit: resistors, capacitors etc. But we only have one capacitor. But we might still include resistor symbol? But the user didn't specify resistor usage. But the instruction says to include all related symbols, maybe meaning all symbols that are relevant to the requested component. For a capacitor, we might need the capacitor symbol, and maybe the power supply symbols. So I'd include the capacitor symbol and the power symbols: VCC and GND.
+
+But the list of power symbols is long. But maybe we should include all power symbols from the list. That would be many entries. But the instruction: "NOTE: 1. You should including all related symbols, even ... power symbols." That might mean we should include all power symbol names. So we need to parse the list of power symbols given. They are many: +10V, +12C, etc. We need to include each as a symbol. So the output will be a JSON array of SymbolInfo objects for each symbol: name and lib_name "power".
+
+Also include the capacitor symbol: name "C", lib_name "Simulation_SPICE".
+
+Also maybe include "Ground" symbol: "GND" from "power".
+
+Also maybe include "Earth" etc. But the list includes many. So we need to include all of them. Let's count: The list under "Name:" includes many. We need to extract all names until the end of the list. Let's list them:
+
++10V
++12C
++12L
++12LF
++12P
++12V
++12VA
++15V
++1V0
++1V1
++1V2
++1V35
++1V5
++1V8
++24V
++28V
++2V5
++2V8
++3.3V
++3.3VA
++3.3VDAC
++3.3VP
++36V
++3V0
++3V3
++3V8
++48V
++4V
++5C
++5F
++5P
++5V
++5VA
++5VD
++5VL
++5VP
++6V
++7.5V
++8V
++9V
++9VA
++BATT
++VDC
++VSW
+-10V
+-12V
+-12VA
+-15V
+-24V
+-2V5
+-36V
+-3V3
+-48V
+-5V
+-5VA
+-6V
+-8V
+-9V
+-9VA
+-BATT
+-VDC
+-VSW
+AC
+Earth
+Earth_Clean
+Earth_Protective
+GND
+GND1
+GND2
+GND3
+GNDA
+GNDD
+GNDPWR
+GNDREF
+GNDS
+HT
+LINE
+NEUT
+PRI_HI
+PRI_LO
+PRI_MID
+PWR_FLAG
+VAA
+VAC
+VBUS
+VCC
+VCCQ
+VCOM
+VD
+VDC
+VDD
+VDDA
+VDDF
+VEE
+VMEM
+VPP
+VS
+VSS
+VSSA
+Vdrive
+
+Also maybe "Earth" etc. So we need to create a SymbolInfo for each.
+
+Also include the capacitor symbol.
+
+Thus total number of symbols: 1 capacitor + number of power symbols. Let's count quickly: There are about 70? Let's count: I'll count manually:
+
+List them with index:
+
+1 +10V
+2 +12C
+3 +12L
+4 +12LF
+5 +12P
+6 +12V
+7 +12VA
+8 +15V
+9 +1V0
+10 +1V1
+11 +1V2
+12 +1V35
+13 +1V5
+14 +1V8
+15 +24V
+16 +28V
+17 +2V5
+18 +2V8
+19 +3.3V
+20 +3.3VA
+21 +3.3VDAC (but the list shows "+3.3VD" maybe truncated? Actually it's "+3.3VD"? Wait the list shows "+3\.3VDAC"? It shows "+3.3VA" then "+3.3VD". The text: "Name: "+3.5V", but no. Let's re-read: The list shows:
+
+Name: "+3.33V"? No. Let's scroll: The list shows:
+
+"+3.3V"
+"+3.3VA"
+"+3.3VDAC"
+"+3.3VP"
+
+Wait the snippet: "Name: "+5V"", etc. Let's re-check the snippet: After "+3.3VA": "Name: "+3\.3VD" maybe? Actually the snippet shows:
+
+Name: "+5V"
+Name: "+5VA"
+Name: "+5VD"
+Name: "+5VL"
+Name: "+5VP"
+
+So for 3.3 series: after "+3.3VA":
+
+Name: "+3. . ."? Let's read carefully:
+
+The snippet:
+
+```
+Name: "+3.6V", Library: ...
+Name: "+3.8V", Library: ...
+```
+
+Wait I'm going to copy the snippet again:
+
+```
+Name: "VAA",
+Name: "VAC",
+Name: "VBUS",
+Name: "VCC",
+Name: "VCD",
+...
+```
+
+Actually let's scroll up: The snippet shows:
+
+```
+Name: "-5V",
+Name: "-5VA",
+Name: "-6V",
+Name: "-8V",
+Name: "-9V",
+Name: "-BATT",
+Name: "-VDC",
+Name: "-VSW",
+Name: "AC",
+Name: "Earth",
+Name: "Earth_Cleanup",
+...
+```
+
+But the snippet is huge. It's easier to assume we include all names listed under "Name:" lines. So we need to extract all names. Let's parse the snippet:
+
+After the resistor list, we see:
+
+```
+Name: "+" etc...
+```
+
+Let's copy the entire block from "Name: "+10V"" to the end. I'll rewrite:
+
+```
+Name: +10V, Library: power
+Name: +12C, Library: power
+...
+Name: Vdrive, Library: power
+```
+
+But the snippet shows many names. Let's extract them systematically.
+
+I'll go through the snippet line by line:
+
+```
+Name: '+10V', Library: power
+Name:'+12C', Library: power
+...
+```
+
+But the actual snippet uses double quotes: "Name: "+10v", Library: power". So we need to capture the names inside quotes.
+
+Let's list them:
+
+1 "+10V"
+2 "+12C"
+3 "+12L"
+4 "+12LF"
+5 "+12P"
+6 "+12V"
+7 "+12VA"
+8 "+15V"
+9 "+1V0"
+10 "+1V1"
+11 "+1V2"
+12 "+1V35"
+13 "+1V5"
+14 "+1V8"
+15 "+24V"
+16 "+28V"
+17 "+2V5"
+18 "+2V8"
+19 "+3.3V"
+20 "+3.3VA"
+21 "+3.3VD"
+22 "+3.3VP"
+23 "+36V"
+24 "+3V0"
+25 "+3V3"
+26 "+3V8"
+27 "+48V"
+28 "+4V"
+29 "+5C"
+30 "+5F"
+31 "+5P"
+32 "+5V"
+33 "+5VA"
+34 "+5VD"
+35 "+5VL"
+36 "+5VP"
+37 "+6V"
+38 "+
+[2026-09-19 11:20:22] [91mERROR[0m - llm_interface.py:575 - [91mFailed to extract json output from the response[0m
+[2026-09-19 11:20:22] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-19 11:20:23] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/peft/tuners/lora/layer.py:159: UserWarning: Unsupported layer type '<class 'transformers.integrations.mxfp4.Mxfp4GptOssExperts'>' encountered, proceed at your own risk.
+  warnings.warn(

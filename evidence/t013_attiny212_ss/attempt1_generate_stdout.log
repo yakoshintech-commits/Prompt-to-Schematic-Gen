@@ -1,0 +1,441 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the Microchip ATtiny212 8-bit AVR MCU. Use exactly these real components: U1 as a ATtiny212-SS, in the KiCad library "MCU_Microchip_ATtiny" (Microchip ATtiny212 8-bit AVR MCU, SOIC-8. 2KB flash, 128B SRAM, 6 GPIO.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1913])
+[SEQLEN] input_ids shape: torch.Size([1, 1913])
+[SEQLEN] input_ids shape: torch.Size([1, 1913])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4908])
+[SEQLEN] input_ids shape: torch.Size([1, 5129])
+[SEQLEN] input_ids shape: torch.Size([1, 5129])
+[SEQLEN] input_ids shape: torch.Size([1, 5129])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3327])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the components listed in the request – an ATtiny212‑SS MCU (U1) and a set of passive parts (pins, decoupling caps, pull‑ups, etc.).  
+The KiCad interface functions we have are:
+
+| Function | What it does | Key arguments |
+|----------|--------------|---------------|
+| `add_schematic_symbol()` | Places a component on the sheet | `symbol_lib`, `symbol_name`, `pos_x`, `pos_y`, `reference`, `value`, `rotation`, `mirror` |
+| `get_pin_location()` | Gives the absolute (x,y) of a named pin | `symbol_ref`, `pin_name` |
+| `add_label()` | Adds a schematic label that can be wired | `label_pos`, `label_text`, `label_ref`, `label_type`, `text_orient` |
+| `connect_pins()` | Creates a wire between two pins | `sym_a`, `pin_a`, `sym_b`, `pin_b` |
+| `write_out_all_wires()` | Flushes all accumulated wires to the file |
+
+The schematic sheet is 210 × 297 mm (A4).  
+The origin is at the lower‑left corner, so an “anchor” at (150 mm, 110 mm) keeps the drawing centred and gives plenty of space for all symbols.
+
+---
+
+### 1.  Placing the core symbol – the ATtiny212‑SS
+
+```python
+center_x_1, center_y_1 = 150.0, 110.0
+```
+
+- **Why this position?**  
+  The MCU is the visual centre of the circuit. 150 mm from the left edge and 110 mm from the bottom places it roughly in the middle of the sheet while leaving room on all sides for the other parts.
+
+```python
+add_schematic_symbol(
+    symbol_lib="MCU_Microchip_ATtiny",
+    symbol_name="ATtiny212-SS",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="ATtiny212-SS",
+    rotation=0,
+    mirror="None"
+)
+```
+
+- `reference="U1"` – the required reference designator.  
+- `value="ATtiny212-SS"` – a human‑readable value that will appear on the schematic.  
+- `rotation=0` – the symbol is already in the default orientation (pin 1 at the top‑left corner).  
+- `mirror="None"` – no mirroring is needed.
+
+---
+
+### 2.  Adding the passive network around the MCU
+
+The MCU has the following pins that we need to wire:
+
+| Pin | Function (typical) |
+|-----|--------------------|
+| PA0, PA1, …PA5 | GPIO, analog inputs |
+| PPA7, PIO6 … | I/O pins, pull‑ups, decoupling |
+| VCC / AVCC | Supply |
+| GND | Ground |
+
+We create a small “decoupling/hold‑up” network that is common in AVR designs:
+
+| Component | Library | Symbol | Position relative to MCU | Reference | Value |
+|-----------|---------|--------|--------------------------|-----------|-------|
+| Capacitor C1 | Device | C | (‑30, +12) | C1 | 0.1 µF |
+| Capacitor C2 | Device | C | (‑30, +8) | C2 | 0.1 µF |
+| Capacitor C3 | Device | C_Small | (‑30, +5) | C3 | 0.1 µF |
+| Resistor R1 | Device | R | (‑30, +2) | R1 | 100 k |
+| Resistor R2 | Device | R | (‑30, 0) | R2 | 100 k |
+| Resistor R3 | Device | R | (‑30, ‑2) | R3 | 100 k |
+| Resistor R4 | Device | R | (‑30, ‑5) | R4 | 100 k |
+| Resistor R5 | Device | R_Small | (‑15, +17) | R5 | 10 k |
+| Resistor R6 | Device | R_Small | (‑15, 0) | R6 | 10 k |
+| Resistor R7 | Device | R_Small | (‑15, ‑12) | R7 | 10 k |
+| Resonator Xtal | Device | Resonator | (‑3, ‑12) | Xtal | 16 MHz |
+
+All are placed to the left of the MCU so that their pins run horizontally toward the MCU pins.  
+For each component we pick a `pos_x` and `pos_y` that keeps the symbols from overlapping the MCU or each other – a margin of 3‑5 mm between items is sufficient.
+
+---
+
+### 3.  Wire connections – why each wire is needed
+
+#### 3.1 Power network
+- **VCC to C1** – The 0.1 µF cap stabilises the supply at the MCU’s VCC pin.  
+  ```python
+  connect_pins("#PWR_VCC_1", "VCC", "C1", "1")
+  ```
+- **GND to C1‑2** – Ground the other side of C1.  
+  ```python
+  connect_pins("C1", "2", "#PWR_GND_1", "1")
+  ```
+
+#### 3.2 Decoupling network
+- **C2 & C3** are tied together and then to VCC and GND respectively to provide local filtering.  
+  ```python
+  connect_pins(C2, "1", C3, "1")
+  connect_pins(C2, "1", C1, "1")   # tie to the same supply node
+  connect_pins(C3, "2", "#PWR_GND_1", "1")
+  ```
+
+#### 3.3 Pull‑up network for the I/O pins
+- **R1** pulls PA0 high.  
+  ```python
+  connect_pins("R1", "1", "#PWR_VCC_2", "VCC")   # supply to resistor
+  connect_pins("R1", "2", "PA0", "1")            # resistor to pin
+  ```
+
+- **R2** pulls PA1 high.  
+  ```python
+  connect_pins("R2", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R2", "2", "PA1", "1")
+  ```
+
+- **R3** pulls PA2 high.  
+  ```python
+  connect_pins("R3", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R3", "2", "PA2", "1")
+  ```
+
+#### 3.4 Miscellaneous resistors
+- **R4** pulls PA3 high.  
+  ```python
+  connect_pins("R4", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R4", "2", "PA3", "1")
+  ```
+
+- **R5, R6, R7** are pull‑ups for the remaining pins PA4–PA5.  
+  ```python
+  connect_pins("R5", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R5", "2", "PA4", "1")
+  connect_pins("R6", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R6", "2", "PA5", "1")
+  connect_pins("R7", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("R7", "2", "PA6", "1")   # PA6 is the same as PA5 in ATtiny212
+  ```
+
+#### 3.5 Oscillator
+- **Resonator Xtal** is connected between VCC and GND.  
+  ```python
+  connect_pins("Xtal", "1", "#PWR_VCC_2", "VCC")
+  connect_pins("Xtal", "3", "#PWR_GND_1", "1")
+  ```
+
+#### 3.6 Ground references
+- The MCU’s VCC pin is tied to the VCC net that is already defined by the pull‑ups.  
+  ```python
+  connect_pins("U1", "VCC", "#PWR_VCC_2", "VCC")
+  ```
+- The MCU’s GND pin is tied to the GND net.  
+  ```python
+  connect_pins("U1", "10", "#PWR_GND_1", "1")   # pin 10 is GND on ATtiny212-SS
+  ```
+
+#### 3.7 IO pins to the network
+- Each pin (PA0‑PA6) is connected to its corresponding resistor pull‑up.  
+  The actual pin names in the ATtiny212‑SS symbol are `PA0`, `PA1`, … `PA6`.  
+  ```python
+  connect_pins("U1", "PA0", "R1", "2")
+  connect_pins("U1", "PA1", "R2", "2")
+  connect_pins("U1", "PA2", "R3", "2")
+  connect_pins("U1", "PA3", "R4", "2")
+  connect_pins("U1", "PA4", "R5", "2")
+  connect_pins("U1", "PA5", "R6", "2")
+  connect_pins("U1", "PA6", "R7", "2")
+  ```
+
+#### 3.8 Decoupling of AVCC
+- The ATtiny212 has an AVCC pin that must be tied to VCC and an AREF pin that is connected to AVCC.  
+  ```python
+  connect_pins("U1", "AVCC", "#PWR_VCC_2", "VCC")
+  connect_pins("U1", "AREF", "AVCC", "1")
+  ```
+
+#### 3.9 Label creation (optional)
+If we want to expose the pull‑ups as schematic labels (e.g., `VCC_PULLUP`), we can add:
+
+```python
+add_label(label_pos=[center_x_1+10, center_y_1+15], label_text="VCC_PULLUP", label_ref="VCCP_0", label_type="input", text_orient="right")
+connect_pins("VCCP_0", "1", "#PWR_VCC_2", "VAA")
+```
+
+---
+
+### 4.  Final step – write the wires
+
+After all `connect_pins()` calls, we flush the accumulated wire data:
+
+```python
+write_out_all_wires()
+```
+
+This writes the netlist to the KiCad schematic file.
+
+---
+
+### 5.  Why the chosen rotations and mirrors?
+
+- **All components are left‑aligned with the MCU** – the default orientation of the symbols (e.g., capacitors with pin 1 at the bottom) works well.  
+- **No mirroring is necessary** – the symbol pin layout already matches the required connections.  
+- **Rotation = 0** – keeps the schematic tidy and reduces clutter of crossing wires.
+
+---
+
+### 6.  Summary of the logic behind each argument
+
+| Function | Key arguments | Reasoning |
+|----------|---------------|-----------|
+| `add_schematic_symbol()` | `symbol_lib`, `symbol_name`, `pos_x`, `pos_y`, `reference`, `value`, `rotation`, `mirror` | Places the component at the desired coordinate; `reference` is the required name; `value` shows the part number; rotation/mirror keep the symbol readable. |
+| `get_pin_location()` | `symbol_ref`, `pin_name` | Needed only if we want to place a label next to a pin; ensures label is close to the actual pin. |
+| `add_label()` | `label_pos`, `label_text`, `label_ref`, `label_type`, `text_orient` | Adds a schematic label; orientation keeps text readable relative to the wire. |
+| `connect_pins()` | `sym_a`, `pin_a`, `sym_b`, `pin_b` | Draws a wire between two pins; `pin_name` must match the symbol’s pin name (e.g., “VCC”, “PA0”). |
+| `write_out_all_wires()` | none | Finalises the schematic file. |
+
+All connections are chosen to satisfy the electrical function of the ATtiny212: decoupling, pull‑ups, oscillator, and power/ground. The layout keeps related components clustered together, making the schematic easy to read and wire‑tested.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : MCU_Microchip_ATtiny:ATtiny212-SS###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="MCU_Microchip_ATtiny", symbol_name="ATtiny212-SS", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="ATtiny212-SS", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (0), pos_y=center_y_1 + (52), reference="#PWR2", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-53), reference="#PWR1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (10), pos_y=center_y_1 + (19), reference="C1", value="1M", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (25), pos_y=center_y_1 + (19), reference="#PWR3", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (25), pos_y=center_y_1 + (11), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (25), pos_y=center_y_1 + (2), reference="#PWR4", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (29), pos_y=center_y_1 + (11), reference="R2", value="1M", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C_Small", pos_x=center_x_1 + (39), pos_y=center_y_1 + (-31), reference="C2", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (39), pos_y=center_y_1 + (-39), reference="#PWR5", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (45), pos_y=center_y_1 + (-16), reference="R3", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (45), pos_y=center_y_1 + (-22), reference="R4", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (45), pos_y=center_y_1 + (-27), reference="R5", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="Resonator", pos_x=center_x_1 + (48), pos_y=center_y_1 + (-31), reference="Xtal1", value="16MHz", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (53), pos_y=center_y_1 + (11), reference="R6", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-2), reference="#PWR6", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (64), pos_y=center_y_1 + (11), reference="R7", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (64), pos_y=center_y_1 + (-16), reference="R8", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (64), pos_y=center_y_1 + (-22), reference="R9", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C_Small", pos_x=center_x_1 + (76), pos_y=center_y_1 + (-31), reference="C3", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (76), pos_y=center_y_1 + (-39), reference="#PWR7", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (77), pos_y=center_y_1 + (11), reference="R10", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (77), pos_y=center_y_1 + (-16), reference="R11", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R_Small", pos_x=center_x_1 + (77), pos_y=center_y_1 + (-22), reference="R12", value="10K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C_Small", pos_x=center_x_1 + (102), pos_y=center_y_1 + (-31), reference="C4", value="0.1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (102), pos_y=center_y_1 + (-39), reference="#PWR8", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label AUX_DA next to R1 pin 1 
+x_R1_1, y_R1_1 = get_pin_location(symbol_ref="R1", pin_name="1")
+add_label(label_pos=[x_R1_1+(-3), y_R1_1+(0)], label_text="AUX_DA", label_ref="AUX_DA_0", label_type="input", text_orient="left")
+# Connecting Label AUX_DA label_id:0 to R1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("AUX_DA_0", "1", "R1", "1")
+
+# Add label AUX_DA_VIN next to U1 pin PA6 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="PA6")
+add_label(label_pos=[x_U1_4+(0), y_U1_4+(7)], label_text="AUX_DA_VIN", label_ref="AUX_DA_VIN_0", label_type="input", text_orient="up")
+# Connecting Label AUX_DA_VIN label_id:0 to U1 pin PA6 (Pin ID 4 -- Name PA6)
+connect_pins("AUX_DA_VIN_0", "1", "U1", "PA6")
+
+# Add label AUX_CL next to R5 pin 2 
+x_R5_2, y_R5_2 = get_pin_location(symbol_ref="R5", pin_name="2")
+add_label(label_pos=[x_R5_2+(5), y_R5_2+(20)], label_text="AUX_CL", label_ref="AUX_CL_0", label_type="input", text_orient="right")
+# Connecting Label AUX_CL label_id:0 to R5 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("AUX_CL_0", "1", "R5", "2")
+
+# Add label AUX_CL_VIN next to U1 pin PA6 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="PA5")
+add_label(label_pos=[x_U1_5+(0), y_U1_5+(8)], label_text="AUX_CL_VIN", label_ref="AUX_CL_VIN_0", label_type="input", text_orient="up")
+# Connecting Label AUX_CL_VIN label_id:0 to U1 pin PA5 (Pin ID 5 -- Name PA5)
+connect_pins("AUX_CL_VIN_0", "1", "U1", "PA5")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting C3 pin 2 (Pin ID 2 -- Name None) to #PWR7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C3", "2", "#PWR7", "1")
+
+# Connecting Xtal1 pin 2 (Pin ID 2 -- Name 2) to #PWR7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("Xtal1", "2", "#PWR7", "1")
+
+# Connecting C3 pin 1 (Pin ID 1 -- Name None) to #PWR6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C3", "1", "#PWR6", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R2", "1")
+
+# Connecting R5 pin 1 (Pin ID 1 -- Name None) to Xtal1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("R5", "1", "Xtal1", "1")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR2 pin +5V (Pin ID 1 -- Name +5V)
+connect_pins("C1", "2", "#PWR2", "+5V")
+
+# Connecting R10 pin 2 (Pin ID 2 -- Name None) to R11 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R10", "2", "R11", "1")
+
+# Connecting R10 pin 2 (Pin ID 2 -- Name None) to R11 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R10", "2", "R11", "2")
+
+# Connecting R8 pin 1 (Pin ID 1 -- Name None) to #PWR7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R8", "1", "#PWR7", "1")
+
+# Connecting R7 pin 1 (Pin ID 1 -- Name None) to R8 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R7", "1", "R8", "2")
+
+# Connecting R4 pin 1 (Pin ID 1 -- Name None) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R4", "1", "R5", "1")
+
+# Connecting R7 pin 1 (Pin ID 1 -- Name None) to R9 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R7", "1", "R9", "1")
+
+# Connecting C2 pin 1 (Pin ID 1 -- Name None) to C3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "1", "C3", "1")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to #PWR6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R2", "1", "#PWR6", "1")
+
+# Connecting #PWR2 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "+5V", "R1", "1")
+
+# Connecting #PWR6 pin 1 (Pin ID 1 -- Name None) to R7 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR6", "1", "R7", "2")
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to R6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R4", "2", "R6", "1")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R3", "2", "R4", "1")
+
+# Connecting U1 pin AVCC (Pin ID 13 -- Name AVCC) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "AVCC", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R3", "1")
+
+# Connecting C2 pin 2 (Pin ID 2 -- Name None) to R4 pin 2 (Pin ID 2 -- Name None)
+connect_pins("C2", "2", "R4", "2")
+
+# Connecting R6 pin 2 (Pin ID 2 -- Name None) to R7 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R6", "2", "R7", "2")
+
+# Connecting C1 pin 1 (Pin ID 1 -- Name None) to #PWR3 pin +5V (Pin ID 1 -- Name +5V)
+connect_pins("C1", "1", "#PWR3", "+5V")
+
+# Connecting U1 pin E (Pin ID 8 -- Name E) to R10 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "E", "R10", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R2", "2", "R3", "2")
+
+# Connecting U1 pin GND (Pin ID 9 -- Name GND) to #PWR1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR1", "1")
+
+# Connecting Xtal1 pin 2 (Pin ID 2 -- Name 2) to Xtal1 pin 3 (Pin ID 3 -- Name 3)
+connect_pins("Xtal1", "2", "Xtal1", "3")
+
+# Connecting C4 pin 2 (Pin ID 2 -- Name None) to #PWR7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C4", "2", "#PWR7", "1")
+
+# Connecting C2 pin 1 (Pin ID 1 -- Name None) to #PWR6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "1", "#PWR6", "1")
+
+# Connecting #PWR2 pin +5V (Pin ID 1 -- Name +5V) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "+5V", "R5", "1")
+
+# Connecting #PWR3 pin +5V (Pin ID 1 -- Name +5V) to #PWR4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "+5V", "#PWR4", "1")
+
+# Connecting R6 pin 1 (Pin ID 1 -- Name None) to R7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R6", "1", "R7", "1")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to R6 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R3", "1", "R6", "1")
+
+# Connecting R9 pin 2 (Pin ID 2 -- Name None) to R10 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R9", "2", "R10", "2")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R1 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R1", "2", "R1", "2")
+
+# Connecting R6 pin 1 (Pin ID 1 -- Name None) to R7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R6", "1", "R7", "1")
+
+# Connecting R7 pin 1 (Pin ID 1 -- Name None) to R8 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R7", "1", "R8", "2")
+
+# Connecting R8 pin 2 (Pin ID 2 -- Name None) to R9 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R8", "2", "R9", "1")
+
+# Connecting C2 pin 1 (Pin ID 1 -- Name None) to C3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "1", "C3", "1")
+
+# Connecting #PWR2 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "+5V", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R3", "1")
+
+# Connecting C1 pin 1 (Pin ID 1 -- Name None) to #PWR3 pin +5V (Pin ID 1 -- Name +5V)
+connect_pins("C1", "1", "#PWR3", "+5V")
+
+# Connecting C3 pin 1 (Pin ID 1 -- Name None) to #PWR7 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C3", "1", "#PWR7", "1")
+
+# Connecting C2 pin 1 (Pin ID 1 -- Name None) to C3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C2", "1", "C3", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny212_ss_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_attiny212_ss_generated.response.txt

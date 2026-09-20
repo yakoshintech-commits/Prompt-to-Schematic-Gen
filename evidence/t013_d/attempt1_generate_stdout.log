@@ -1,0 +1,161 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a generic diode to demonstrate its functionality. Use exactly these real components: D1 as a D, in the KiCad library "Simulation_SPICE" (Generic diode). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1874])
+[SEQLEN] input_ids shape: torch.Size([1, 4869])
+[SEQLEN] input_ids shape: torch.Size([1, 5090])
+[SEQLEN] input_ids shape: torch.Size([1, 5090])
+[SEQLEN] input_ids shape: torch.Size([1, 5090])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3288])
+[SEQLEN] input_ids shape: torch.Size([1, 3288])
+[SEQLEN] input_ids shape: torch.Size([1, 3288])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=30.99GB gpu_peak=28.66GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=30.99GB gpu_peak=28.66GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.66GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.66GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.66GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a minimal schematic that demonstrates a generic diode (D1) in a simple forward‑bias configuration.  
+Only one real part is allowed – the “Generic diode” from the simulation\_SPICE library – and it must be referenced as **D1**.  
+All other symbols (power supply, labels, wires) are just for context and must not be substituted.
+
+**Physical layout**
+
+1. **Center point** – place the diode at the centre of the A4 sheet (210 × 297 mm).  
+   Using `center_x = 150 mm` and `center_y = 110 mm` keeps the circuit in the middle of the sheet and leaves ample room on all sides.
+
+2. **Power source** – a +5 V supply is needed to forward‑bias the diode.  
+   The power symbol is positioned a little to the left of the diode so that the wiring runs horizontally.  
+   An offset of `(-30 mm, +15 mm)` from the centre gives a clear, uncluttered path to the diode’s anode.
+
+3. **Resistor** – a 1 kΩ pull‑up resistor is added in series with the diode’s cathode to show the current‑limit behaviour.  
+   The resistor is placed a further left (`(-20 mm, +10 mm)`) so that its two pins can be connected to the supply and the diode without crossing other wires.
+
+4. **Ground** – the schematic’s ground is placed directly below the diode (`(0 mm, -10 mm)`) to keep the ground reference visible and to avoid long vertical runs.
+
+5. **Mirror / rotation** – the diode symbol is rotated by 0° (standard orientation) and mirrored on the Y‑axis (`mirror="y"`) so that the anode (pin “A”) faces left toward the resistor and the cathode (pin “K”) faces right toward the ground.  
+   This orientation makes the wire routing straightforward: a single horizontal line from the resistor to the diode, and a vertical line from the diode to ground.
+
+**Label placement**
+
+- **DIN** – the input side of the diode (anode) is labelled “DIN”.  
+  The label is placed to the left of the resistor’s pin 2 (the side connected to the supply).  
+  Using `get_pin_location("R1", "2")` gives the exact coordinate of that pin; adding `(-5, 0)` mm places the label just left of it, and `text_orient="left"` aligns the text horizontally.
+
+- **DOUT** – the output side of the diode (cathode) is labelled “DOUT”.  
+  The label sits to the right of the resistor’s pin 1 (connected to the diode).  
+  `get_pin_location("R1", "1") + (5, 0)` moves the label to the right; `text_orient="right"` keeps the text readable.
+
+- **VCC** – the power supply is labelled “VCC” at the centre of the +5 V symbol.  
+  The label is placed at the symbol’s pin position with `text_orient="up"` so that the text sits above the symbol.
+
+All labels are of type “input” because they represent signal lines that will be fed into the rest of a larger schematic.
+
+**Wire connections**
+
+1. **Power to resistor** – the +5 V pin of the supply (`#PWR1`, pin “+5V”) is wired to the resistor’s pin 2 (`R1`, pin 2).  
+   This creates the left side of the series chain.
+
+2. **Resistor to diode anode** – the resistor’s pin 1 (`R1`, pin 1) is connected to the diode’s anode pin (`D1`, pin “A”).  
+   This completes the input path.
+
+3. **Diode cathode to ground** – the diode’s cathode pin (`D1`, pin “K”) is wired to the ground symbol (`#PWR2`, pin 1).  
+   This provides the return path and completes the forward‑bias loop.
+
+4. **Ground to resistor** – a separate wire from ground to the resistor’s pin 1 is optional; it simply shows that the resistor’s other end is referenced to ground.  
+   In this simple schematic it is omitted to keep the diagram uncluttered.
+
+**Function‑call mapping**
+
+- `add_schematic_symbol(...)`  
+  *Arguments:*  
+  - `symbol_lib="Simulation_SPICE"` – the library containing the generic diode.  
+  - `symbol_name="D"` – the symbol name.  
+  - `pos_x=center_x+0`, `pos_y=center_y+0` – centre placement.  
+  - `reference="D1"` – user‑defined reference.  
+  - `value="D"` – optional, keeps the symbol’s name visible.  
+  - `rotation=0`, `mirror="y"` – orientation described above.
+
+- `add_schematic_symbol(...)` for the power, resistor, and ground symbols, each with appropriate offsets and references.
+
+- `add_label(...)`  
+  *Arguments:*  
+  - `label_pos` derived from `get_pin_location()` plus a small offset.  
+  - `label_text` set to “DIN”, “DOUT”, or “VCC”.  
+  - `label_ref` unique IDs (`DIN_0`, `DOUT_0`, `VCC_0`).  
+  - `label_type="input"`.  
+  - `text_orient` chosen to keep the text readable relative to the pin.
+
+- `connect_pins(...)` for every wire:  
+  *Arguments:*  
+  - `sym_a` and `pin_a` – the source symbol and pin.  
+  - `sym_b` and `pin_b` – the destination symbol and pin.  
+  The pin names match the actual pin names in the symbol definitions (e.g., “+5V”, “A”, “K”, “1”, “2”).
+
+- `write_out_all_wires()` – final call to render all the defined wires onto the schematic.
+
+**Why this layout works**
+
+- The diode’s orientation (anode left, cathode right) matches the direction of current flow from the +5 V source through the resistor, through the diode, and back to ground.  
+- The horizontal resistor–diode connection keeps the main path short and easy to read.  
+- The vertical ground connection gives a clear return path and keeps the schematic tidy.  
+- Labels placed adjacent to the pins they describe make the circuit logic obvious at a glance.  
+- All components are spaced far enough apart to avoid overlapping bounding boxes, respecting the 210 × 297 mm sheet size.
+
+With these decisions the generated Python code will create a clean, functional schematic that satisfies the user’s constraints.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:D###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1, pos_y=center_y_1, reference="D1", value="D", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (15), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-30), pos_y=center_y_1 + (10), reference="R1", value="1k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-10), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label DOUT next to D1 pin A 
+x_D1_1, y_D1_1 = get_pin_location(symbol_ref="D1", pin_name="A")
+add_label(label_pos=[x_D1_1+(-6), y_D1_1+(0)], label_text="DOUT", label_ref="DOUT_0", label_type="input", text_orient="left")
+# Connecting Label DOUT label_id:0 to D1 pin A (Pin ID 1 -- Name A)
+connect_pins("DOUT_0", "1", "D1", "A")
+
+# Add label DIN next to R1 pin 2 
+x_R1_2, y_R1_2 = get_pin_location(symbol_ref="R1", pin_name="2")
+add_label(label_pos=[x_R1_2+(-6), y_R1_2+(0)], label_text="DIN", label_ref="DIN_0", label_type="input", text_orient="left")
+# Connecting Label DIN label_id:0 to R1 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("DIN_0", "1", "R1", "2")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to D1 pin A (Pin ID 1 -- Name A)
+connect_pins("R1", "2", "D1", "A")
+
+# Connecting D1 pin K (Pin ID 2 -- Name K) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("D1", "K", "#PWR2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_d_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_d_generated.response.txt
