@@ -1,0 +1,302 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the InvenSense MPU-6000 6-axis IMU with SPI interface. Use exactly these real components: U1 as a MPU-6000, in the KiCad library "Sensor_Motion" (InvenSense MPU-6000 6-axis IMU (3-axis accel + 3-axis gyro). QFN-24. SPI/I2C interface.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1916])
+[SEQLEN] input_ids shape: torch.Size([1, 4911])
+[SEQLEN] input_ids shape: torch.Size([1, 4911])
+[SEQLEN] input_ids shape: torch.Size([1, 4911])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5132])
+[SEQLEN] input_ids shape: torch.Size([1, 3330])
+[SEQLEN] input_ids shape: torch.Size([1, 3330])
+[SEQLEN] input_ids shape: torch.Size([1, 3330])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the real‑world MPU‑6000 (SPI interface) and the supporting passive components that are required for a basic SPI‑driven interface.  
+No other part may be added, and the schematic must be readable, compact and centred on an A4 sheet (210 × 297 mm).  
+
+The KiCad API functions give us a convenient way to place symbols, read pin coordinates, add labels and connect everything.
+
+
+
+--------------------------------------------------------------------
+### 1.  Identify the components and their pin data
+
+| Reference | Symbol library | Symbol name | Value | Pin order (name → relative y) | Notes |
+|-----------|----------------|-------------|-------|--------------------------------|-------|
+| U1 | `Sensor_Motion` | `MPU-6000` | `MPU-6000` | 1:G, 2:CLK, 3:TXD, 4:RXD, 5:CS, 6:VS1, 7:VS0, 8:~RST, 9:? (unused), 10:VCAP, 11-24: other pins | All 3‑axis accel/gyro pins are present, but for a minimal SPI interface we only need `CLK`, `TXD`, `RXD`, `CS`, `VS1`, and `VS0`. |
+| R1 | `Device` | `R` | `10 k` | 1, 2 | Pull‑up for the reset line  |
+| R2 | `Device` | `R` | `10 k` | 1, 2 | Pull‑up for the MOSI line (TXD) |
+| R3 | `Device` | `R` | `10 k` | 1, 2 | Pull‑up for the MISO line (RXD) |
+| R4 | `Device` | `R` | `10 k` | 1, 2 | Pull‑up for the CS line (VS1) |
+| R5 | `Device` | `R` | `10 k` | 1, 2 | Pull‑up for the VS0 line (VS0) |
+| +1V8 | `power` | `+1V8` | `+1V8` | 1 | Provides the 1.8 V core supply |
+| GND | `power` | `GND` | `GND` | 1 | Ground |
+
+The values are chosen to give a clean 1 kΩ divider between 1.8 V and GND for each pull‑ups (10 k is a common value, and the exact value is not critical for a schematic).
+
+--------------------------------------------------------------------
+### 2.  Layout strategy
+
+* The center of the schematic is the MPU‑6000 at **(150 mm, 110 mm)**.  
+* All other symbols are placed relative to this centre so that the drawing stays in the middle of the A4 sheet and the bounding boxes do not overlap.  
+* The relative offsets are chosen in 10‑mm increments, which is a comfortable distance for wires and keeps the symbols neatly spaced.  
+* The MPU‑6000 is rotated 0°, so its pins face the usual directions: VCC on the top left, GND on the bottom right, etc.  
+* Resistors are left‑rotated 0° (horizontal) so that their two pins line up vertically with the MPU‑6000 pins, making the wires short and straight.  
+* The power symbols are placed to the left of the resistors to keep the 1.8 V rail visible and to avoid clutter in the centre.
+
+--------------------------------------------------------------------
+### 3.  Symbol placement (function arguments)
+
+```python
+add_schematic_symbol(
+    symbol_lib="Sensor_Motion",
+    symbol_name="MPU-6000",
+    pos_x=150.0, pos_y=110.0,
+    reference="U1",
+    value="MPU-6000",
+    rotation=0,
+    mirror="None"
+)
+```
+
+* `symbol_lib` and `symbol_name` match the library entry.  
+* `pos_x`/`pos_y` are absolute coordinates.  
+* `reference="U1"` is the unique identifier used in all connections.  
+* `value="MPU-6000"` appears on the schematic.  
+* `rotation=0` keeps the symbol upright.  
+* `mirror="None"` means no mirroring.
+
+For each resistor and power symbol we repeat the same pattern, changing only the `pos_x`, `pos_y`, `reference`, `value`, and keeping `rotation=0` and `mirror="None"` for clarity.
+
+--------------------------------------------------------------------
+### 4.  Global labels
+
+The user did not request external labels, but we add label symbols to give the interface pins names that are useful when the schematic is used in a board layout.
+
+Example for the reset line:
+
+```python
+x_U1_8, y_U1_8 = get_pin_location("U1", "~{RST}")      # Pin 8
+add_label(
+    label_pos=[x_U1_8-15, y_U1_8],   # place 15 mm to the left
+    label_text="RST",
+    label_ref="RST_0",
+    label_type="input",
+    text_orient="left"
+)
+connect_pins("RST_0", "1", "U1", "~{RST}")
+```
+
+* `get_pin_location` returns the centre of pin 8.  
+* The label is placed 15 mm to the left so it does not overlap the symbol.  
+* `label_type="input"` indicates it is a signal source.  
+* `connect_pins` ties the label to the actual pin.
+
+The same logic is applied for `CS`, `TXD`, `RXD`, `CLK`, `VS1`, and `VS0`.  The orientation (`text_orient`) is chosen so the label text points away from the symbol, keeping the diagram tidy.
+
+--------------------------------------------------------------------
+### 5.  Wire connections
+
+All connections are made with `connect_pins`.  The order of arguments is
+
+```python
+connect_pins(sym_a, pin_a, sym_b, pin_b)
+```
+
+where `sym_a`/`sym_b` are the references (or label references) and `pin_a`/`pin_b` are the pin names or numbers.
+
+#### Power rail
+
+```python
+connect_pins("#PWR1", "+1V8", "R1", "1")   # VCC -> R1
+connect_pins("#PWR3", "+1V8", "R3", "1")   # VCC -> R3
+connect_pins("#PWR1", "+1V8", "R2", "1")   # VCC -> R2
+connect_pins("#PWR1", "+1V8", "R4", "1")   # VCC -> R4
+```
+
+The 1.8 V symbol powers all pull‑up resistors; the resistors themselves feed the MPU‑6000 pins.
+
+#### Ground
+
+The GND symbol connects to the MPU‑6000’s ground pin and to the bottom of each resistor:
+
+```python
+connect_pins("U1", "5", "#PWR2", "1")      # 1.8 V supply pin
+connect_pins(U1, "24", "#PWR2", "1")       # GND pin
+```
+
+(If the sensor has pin 24 as GND, we connect it directly.)
+
+#### Pull‑ups to MPU pins
+
+```python
+# RESET
+connect_pins("RST_0", "1", "U1", "~{RST}")
+
+# SPI MOSI (TXD)
+connect_pins("TXD_0", "1", "U1", "TXD")
+connect_pins("R2", "2", "U1", "TXD")
+
+# SPI MISO (RXD)
+connect_pins("RXD_0", "1", "U1", "RXD")
+connect_pins("R3", "2", "U1", "RXD")
+
+# CS (VS1)
+connect_pins("CS_0", "1", "U1", "CS")
+connect_pins("R4", "2", "U1", "CS")
+
+# VS0
+connect_pins("VS0_0", "1", "U1", "VS0")
+connect_pins("R5", "2", "U1", "VS0")
+```
+
+Each pull‑up resistor connects its other side (pin 2) to the corresponding MCU pin; the resistor’s pin 1 is tied to the VCC rail.
+
+#### Serial clock
+
+```python
+connect_pins("CLK_0", "1", "U1", "CLK")
+```
+
+No resistor is needed for the clock line in a minimal example.
+
+--------------------------------------------------------------------
+### 6.  Finalising the schematic
+
+After all pins are connected, the call
+
+```python
+write_out_all_wires()
+```
+
+writes the wire objects to the KiCad schematic file, producing a clean, connected netlist.
+
+--------------------------------------------------------------------
+### 7.  Why this layout is readable
+
+* **Central MPU** – keeping the core at the centre makes the schematic look symmetrical.  
+* **Horizontal resistor rows** – wires run straight to the sensor, avoiding tangled diagonals.  
+* **Left‑hand power rail** – the 1.8 V supply is visible and does not interfere with the centre.  
+* **Label placement** – labels are offset in the same direction for all pins, so the user can scan the left or right side of the schematic and immediately see the signal names.  
+* **No mirroring** – all symbols use the default orientation defined in the library, which is what most designers expect.  
+* **Consistent pin numbering** – using pin names (e.g., `~{RST}`) rather than numbers guarantees that the script will still work if the library updates the pin order.
+
+With these decisions, the generated schematic will satisfy the user’s constraints, be easy to read, and provide a solid foundation for a board layout.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:R###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1, pos_y=center_y_1, reference="R1", value="10k", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-25), pos_y=center_y_1 + (13), reference="#PWR1", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-17), pos_y=center_y_1 + (-5), reference="R2", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (-5), reference="R3", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (8), pos_y=center_y_1 + (-5), reference="R4", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (17), pos_y=center_y_1 + (-5), reference="R5", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Sensor_Motion", symbol_name="MPU-6000", pos_x=center_x_1 + (19), pos_y=center_y_1 + (-15), reference="U1", value="MPU-6000", rotation=270, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label RST next to U1 pin ~{RST} 
+x_U1_8, y_U1_8 = get_pin_location(symbol_ref="U1", pin_name="~{RST}")
+add_label(label_pos=[x_U1_8+(-12), y_U1_8+(0)], label_text="RST", label_ref="RST_0", label_type="input", text_orient="left")
+# Connecting Label RST label_id:0 to U1 pin ~{RST} (Pin ID 8 -- Name ~{RST})
+connect_pins("RST_0", "1", "U1", "~{RST}")
+
+# Add label SDA next to U1 pin VS0 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="VS0")
+add_label(label_pos=[x_U1_2+(-12), y_U1_2+(0)], label_text="SDA", label_ref="SDA_0", label_type="input", text_orient="left")
+# Connecting Label SDA label_id:0 to U1 pin VS0 (Pin ID 2 -- Name VS0)
+connect_pins("SDA_0", "1", "U1", "VS0")
+
+# Add label SCL next to U1 pin VS1 
+x_U1_7, y_U1_7 = get_pin_location(symbol_ref="U1", pin_name="VS1")
+add_label(label_pos=[x_U1_7+(-11), y_U1_7+(0)], label_text="SCL", label_ref="SCL_0", label_type="input", text_orient="left")
+# Connecting Label SCL label_id:0 to U1 pin VS1 (Pin ID 7 -- Name VS1)
+connect_pins("SCL_0", "1", "U1", "VS1")
+
+# Add label CS next to U1 pin CS 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="CS")
+add_label(label_pos=[x_U1_5+(-10), y_U1_5+(0)], label_text="CS", label_ref="CS_0", label_type="input", text_orient="left")
+# Connecting Label CS label_id:0 to U1 pin CS (Pin ID 5 -- Name CS)
+connect_pins("CS_0", "1", "U1", "CS")
+
+# Add label SCL next to U1 pin CLK 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="CLK")
+add_label(label_pos=[x_U1_3+(-10), y_U1_3+(0)], label_text="SCL", label_ref="SCL_1", label_type="input", text_orient="left")
+# Connecting Label SCL label_id:1 to U1 pin CLK (Pin ID 3 -- Name CLK)
+connect_pins("SCL_1", "1", "U1", "CLK")
+
+# Add label SCL next to U1 pin TXD 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="TXD")
+add_label(label_pos=[x_U1_1+(-10), y_U1_1+(0)], label_text="SCL", label_ref="SCL_2", label_type="input", text_orient="left")
+# Connecting Label SCL label_id:2 to U1 pin TXD (Pin ID 1 -- Name TXD)
+connect_pins("SCL_2", "1", "U1", "TXD")
+
+# Add label SCL next to U1 pin RXD 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="RXD")
+add_label(label_pos=[x_U1_4+(-10), y_U1_4+(0)], label_text="SCL", label_ref="SCL_3", label_type="input", text_orient="left")
+# Connecting Label SCL label_id:3 to U1 pin RXD (Pin ID 4 -- Name RXD)
+connect_pins("SCL_3", "1", "U1", "RXD")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to U1 pin CS (Pin ID 5 -- Name CS)
+connect_pins("R4", "2", "U1", "CS")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin TXD (Pin ID 1 -- Name TXD)
+connect_pins("R2", "2", "U1", "TXD")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to U1 pin VS1 (Pin ID 7 -- Name VS1)
+connect_pins("R3", "2", "U1", "VS1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VS0 (Pin ID 2 -- Name VS0)
+connect_pins("R1", "2", "U1", "VS0")
+
+# Connecting R5 pin 2 (Pin ID 2 -- Name None) to U1 pin RXD (Pin ID 4 -- Name RXD)
+connect_pins("R5", "2", "U1", "RXD")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R1", "1")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R2", "1")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R3", "1")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R4", "1")
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R5 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R5", "1")
+
+# Connecting U1 pin 5 (Pin ID 5 -- Name None) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "5", "#PWR2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_mpu_6000_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_mpu_6000_generated.response.txt

@@ -1,0 +1,191 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a USB ESD protection diode array to protect a USB connector from ESD damage. Use exactly these real components: U1 as a USBLC6-2SC6, in the KiCad library "Power_Protection" (USB ESD protection diode array. I/O1 (pins 1,6) are for one USB data line, I/O2 (pins 3,4) are for the other. VBUS (pin 5) is the supply reference. Place as close to USB connector as possible.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1946])
+[SEQLEN] input_ids shape: torch.Size([1, 4941])
+[SEQLEN] input_ids shape: torch.Size([1, 4941])
+[SEQLEN] input_ids shape: torch.Size([1, 4941])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5162])
+[SEQLEN] input_ids shape: torch.Size([1, 3360])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.29GB gpu_peak=28.87GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.29GB gpu_peak=28.87GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.87GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.87GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.87GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that protects the USB data lines (D+ and D–) with a USB‑ESD diodes chip, the *USBLC6‑2SC6*.  
+Only this part is required – no USB connector, no extra components.  
+The schematic must be centred on the A4 sheet, use logical spacing, and honour the exact pin names and numbers of the symbol.
+
+**Understanding the component**
+
+*Library / symbol* – `Power_Protection:USBLC6‑2SC6`  
+*Pin mapping* (from the library description)
+
+| Pin | Function | Pin number |
+|-----|----------|------------|
+| I/O1 | D+ line  | 1, 6 |
+| I/O2 | D– line  | 3, 4 |
+| VBUS | Supply pin | 5 |
+| GND  | Ground (implicit in the symbol) | – |
+
+The symbol’s centre is at (0, 0).  
+The pin coordinates are relative to that centre; the symbol is already oriented with the VBUS pin pointing up, so no rotation is needed.  
+Because the symbol has no horizontal symmetry we do not mirror it.
+
+**Step‑1 – Place the centre symbol**
+
+```python
+center_x_1, center_y_1 = 150.0, 140.0
+add_schematic_symbol(
+    symbol_lib="Power_Protection",
+    symbol_name="USBLC6-2SC6",
+    pos_x=center_x_1,
+    pos_y=center_y_1,
+    reference="U1",
+    value="USBLC6-2SC6",
+    rotation=0,
+    mirror="None")
+```
+
+*Why these numbers?*  
+`150 mm` on the A4 width (210 mm) and `140 mm` on the height (297 mm) keeps the part roughly in the centre with ample margin on all sides.  
+No rotation or mirroring keeps the pin layout natural and the wires short.
+
+**Step‑2 – (Optional) Add power symbols**
+
+A realistic schematic would connect VBUS to the USB power source and GND to the system ground.  
+If the user explicitly wants only the diode array, we can omit them; otherwise we can place generic power symbols next to the array:
+
+```python
+# VBUS power symbol (optional)
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="VBUS",
+    pos_x=center_x_1 + 25,  # 25 mm to the right
+    pos_y=center_y_1 + 20,  # 20 mm above
+    reference="#PWR_VBUS",
+    value="VBUS",
+    rotation=0,
+    mirror="None")
+
+# GND power symbol (optional)
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="GND",
+    pos_x=center_x_1 + 25,  # same vertical line
+    pos_y=center_y_1 - 20,  # 20 mm below
+    reference="#PWR_GND",
+    value="GND",
+    rotation=0,
+    mirror="None")
+```
+
+These symbols are only for completeness; the user did not request them, so they can be omitted.
+
+**Step‑3 – Add global labels for the data lines**
+
+The array exposes the two data pins as two separate pins (1/6 for D+ and 3/4 for D–).  
+We create a single label per line so that the schematic can be used in a larger design.
+
+```python
+# D+ label
+x_U1_1, y_U1_1 = get_pin_location("U1", "1")
+add_label(
+    label_pos=[x_U1_1 - 5, y_U1_1],   # 5 mm left of pin
+    label_text="D+",
+    label_ref="D+_0",
+    label_type="input",
+    text_orient="left")
+connect_pins("D+_0", "1", "U1", "1")
+
+# D– label
+x_U1_3, y_U1_3 = get_pin_location("U1", "3")
+add_label(
+    label_pos=[x_U1_3 - 5, y_U1_3],   # 5 mm left of pin
+    label_text="D-",
+    label_ref="D-_0",
+    label_type="input",
+    text_orient="left")
+connect_pins("D-_0", "1", "U1", "3")
+```
+
+*Why left offset?*  
+Placing the label to the left keeps the text clear and the wire short.  
+If the array were on the right side of the sheet, the labels could be moved to the right with a positive offset; this is a design‑choice that keeps the schematic tidy.
+
+**Step‑4 – Wire the data lines to the array**
+
+The labels are already connected to the array pins.  
+If we had a USB connector, we would connect its D+ and D– pins to the same labels.  
+Since only the array is required, no further connections are needed for the data lines.
+
+**Step‑5 – Wire VBUS (and GND if present)**
+
+If the power symbols were added, we connect them:
+
+```python
+# VBUS
+connect_pins("#PWR_VBUS", "VBUS", "U1", "5")
+
+# GND
+connect_pins("U1", "GND", "#PWR_GND", "GND")
+```
+
+*Why connect GND to the implicit GND pin?*  
+The Power_Protection symbol usually has an internal GND connection.  
+Connecting it to the sheet’s GND symbol ensures that the ground reference is explicitly shown.
+
+**Step 6 – Finalise the schematic**
+
+After all `connect_pins` calls, we output the wires:
+
+```python
+write_out_all_wires()
+```
+
+This writes the netlist for the schematic and finalises the drawing.
+
+---
+
+### Summary of the reasoning
+
+1. **Component selection** – only the USBLC6‑2SC6 is placed; no substitutes.  
+2. **Placement** – centre of the sheet, no rotation or mirroring, giving clear pin orientation.  
+3. **Power symbols** – optional, but if added they are positioned to the right for easy routing.  
+4. **Labels** – one per data line, placed left of the corresponding pins for readability.  
+5. **Connections** – labels to the array pins; array VBUS to power; array GND to sheet GND.  
+6. **Wires** – short, straight, avoiding overlap by keeping all objects in a compact cluster.
+
+The resulting schematic is a clean, centred representation of the USB ESD protection diode array ready to be incorporated into a larger USB design.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Power_Protection:USBLC6-2SC6###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Power_Protection", symbol_name="USBLC6-2SC6", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="USBLC6-2SC6", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_usblc6_2sc6_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_usblc6_2sc6_generated.response.txt

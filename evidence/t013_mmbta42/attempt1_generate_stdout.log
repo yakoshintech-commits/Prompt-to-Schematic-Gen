@@ -13,9 +13,6 @@ Azure CLI not found on path
 [SEQLEN] input_ids shape: torch.Size([1, 5124])
 Azure CLI not found on path
 [SEQLEN] input_ids shape: torch.Size([1, 3322])
-[SEQLEN] input_ids shape: torch.Size([1, 3322])
-[SEQLEN] input_ids shape: torch.Size([1, 3322])
-Azure CLI not found on path
 [MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.13GB gpu_peak=28.76GB
 [MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.13GB gpu_peak=28.76GB
 [MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.76GB
@@ -24,73 +21,108 @@ Azure CLI not found on path
 Model raw response: <|channel|>analysis<|message|>**High‑level goal**
 
 The user wants a schematic that implements a simple high‑voltage switch using a single MMBTA42 NPN transistor.  
-The MMBTA42 is a very high‑voltage, 300 V, 500 mA, SOT‑23 device that lives in the KiCad library *Transistor_BJT*.  
-The schematic must contain only this real part and no substitution.  
-The layout should be compact, centered on the A4 sheet, and all pins must be wired exactly as the device requires.
+The MMBTA42 is a very‑high‑voltage (300 V, 500 mA) SOT‑23 device, so the schematic must provide:
 
-**Schematic layout**
+* A high‑voltage supply to the collector (usually +5 V in a “low‑side” switch, but we will use a generic +5 V source to keep the net‑list simple).  
+* A bias network that pulls the emitter to ground.  
+* A base‑drive resistor that limits the base current and interfaces with a control signal (labelled **AUX_CL**).  
+* Optional pull‑up resistors so the control signal can be left floating (the user did not request them, so we will leave the base open‑collector style).
 
-1. **Reference symbol** – The MMBTA42 will be the central symbol.  
-   * `reference = "Q1"`  
-   * `value = "MMBTA42"`  
-   * `rotation = 0°` (standard orientation – collector pointing up, base left, emitter right)  
-   * `mirror = None` (no mirroring needed)  
+**Symbol selection**
 
-2. **Power pins** – The device has three pins:  
-   * **Collector (C)** – Pin name “C”, used for the high‑voltage load.  
-   * **Base (B)** – Pin name “B”, used for biasing.  
-   * **Emitter (E)** – Pin name “E”, used for the emitter return to ground (or to the low‑voltage side).  
+| Symbol | Library | Reference | Value | Rotation | Mirror |
+|--------|---------|-----------|-------|----------|--------|
+| MMBTA42 | Transistor_BJT | `Q1` | `MMBTA42` | 0 ° (default) | None |
+| +5 V | power | `#PWR1` | `+5V` | 0 ° | None |
+| GND | power | `#PWR_GND` | `GND` | 0 ° | None |
+| Base resistor (2 kΩ) | Device | `R1` | `2.2k` | 0 ° | None |
 
-3. **Additional symbols** –  
-   * A 10 kΩ resistor (R1) from the power supply to the base to set the base current.  
-   * A 1 kΩ resistor (R2) from ground to the emitter to provide a bias return.  
-   * A 2 kΩ resistor (R3) from the load to ground to form a load resistor (optional, but keeps the schematic complete).  
-   * Two power symbols:  
-     * `+V` – the high‑voltage supply (`reference="#PWR1"`, `value="+V"`).  
-     * `GND` – the low‑voltage reference (`reference="#PWR2"`, `value="GND"`).  
+The bounding boxes from the symbol context are used to keep the symbols from overlapping. The MMBTA42 bounding box is 0 x 0, so we place it at the centre of an A4 sheet (150 mm x 110 mm). All other symbols are offset by integers of 20 mm or more so that their pin pins do not cross over each other.
 
-All symbols are placed with coordinates that give ample space between them.  
-The center of the schematic is at (105 mm, 148.5 mm) – the geometric center of the A4 sheet (210 mm × 297 mm).  
-Each symbol’s center is offset from that point by an integer number of millimetres.
+**Pin assignment (from the symbol context)**
 
-**Pin‑to‑pin connections**
+* **Q1**:  
+  * `B` (base) – right‑hand side
+  * `E` (emitter) – right‑hand side, lower
+  * `C` (collector) – right‑hand side, upper
+* **R1**:  
+  * pin 1 – left side (connected to the control signal)
+  * pin 2 – right side (connected to the base)
+* **+5 V**: pin 1 – the supply
+* **GND**: pin 1 – the ground
 
-| Symbol | Pin | Connected to | Reason |
-|--------|-----|--------------|--------|
-| `#PWR1` (+V) | 1 | `R1` pin 1 | Supply the base resistor |
-| `R1` | 1 | `#PWR1` | Same |
-| `R1` | 2 | `Q1` B | Base of the transistor |
-| `Q1` | B | `R1` pin 2 | Same |
-| `R2` | 1 | `Q1` E | Emit‑return resistor |
-| `Q1` | E | `R2` pin 1 | Same |
-| `R2` | 2 | `#PWR2` (ground) | Ground bias |
-| `#PWR2` | 1 | `R2` pin 2 | Same |
-| `Q1` | C | `R3` pin 2 | Load resistor |
-| `R3` | 2 | `Q1` C | Same |
-| `R3` | 1 | `Q1` C | Same (the other end of the load) |
-| `Q1` | C | `+V` (via `R3`) | Provides the high‑voltage output |
-| `#PWR1` | 1 | `Q1` C | Direct connection for the simplest circuit (no resistor needed at the collector) – but to keep the schematic readable we route through `R3`. |
+**Physical layout**
 
-**Wire routing**
+```
+          +5V
+           |
+           |
+           |
+          R1
+           |
+           |
+          Q1
+           |
+           |
+           GND
+```
 
-The `connect_pins` function is called for every connection.  
-Each call uses the reference of the two symbols and the pin names.  
-Because the MMBTA42’s pins are named “C”, “B”, and “E”, we use those exact strings.
+* The +5 V pad is placed 20 mm above the centre line, left of the transistor.  
+* The resistor R1 sits 15 mm below that pad, still above the transistor, so its pin 1 is close to the +5 V pad and pin 2 is close to the base.  
+* The transistor sits at the centre. Its collector goes straight down to the +5 V pad, its emitter goes straight down to GND, and its base is fed by R1 pin 2.  
+* No mirrors are needed because the default orientation already gives a clean left‑to‑right flow.
 
-**Labels**
+**Label placement**
 
-No additional labels are required beyond the power symbols and the resistor values, so the `add_label` function is not used.  
-If a label were needed, it would use `add_label(label_pos=[x, y], label_text="…", label_ref="…", label_type="input", text_orient="left")`, but here all connections are already clear.
+We add a label **AUX_CL** next to the base pin of Q1 so that a control signal can be wired directly to the base.  
+The label is placed 10 mm left of the base pin to avoid overlapping the pin’s symbol and to keep the wire short.
 
-**Code skeleton (without actual code)**
+* `label_pos = (x_Q1_B - 10, y_Q1_B)`
+* `text_orient = "left"`
 
-1. **Imports** – Add the KiCad schematic interface to the Python path.  
-2. **Center symbol** – `add_schematic_symbol(..., reference="Q1", value="MMBTA42", ...)`.  
-3. **Other symbols** – Each `add_schematic_symbol` call uses the offsets described above, with appropriate references (`R1`, `R2`, `R3`, `#PWR1`, `#PWR2`).  
-4. **Connections** – A sequence of `connect_pins` calls that implement the table above.  
-5. **Finish** – `write_out_all_wires()` to output all wire data to the schematic file.
+**Connections (via `connect_pins`)**
 
-All coordinates, pin names, and references are chosen to match the physical layout and ensure that the schematic is readable, with no overlapping symbols and clear, straight‑line connections.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+1. **+5 V → R1 pin 1**  
+   `connect_pins("#PWR1", "1", "R1", "1")`  
+   This supplies the base resistor.
+
+2. **R1 pin 2 → Q1 base (B)**  
+   `connect_pins("R1", "2", "Q1", "B")`  
+   This is the base‑drive path.
+
+3. **Q1 collector (C) → +5 V**  
+   `connect_pins("Q1", "C", "#PWR1", "1")`  
+   The transistor’s collector is tied to the high‑voltage supply.
+
+4. **Q1 emitter (E) → GND**  
+   `connect_pins("Q1", "E", "#PWR_GND", "1")`  
+   The emitter is pulled to ground.
+
+5. **Label AUX_CL → Q1 base**  
+   `connect_pins("AUX_CL_0", "1", "Q1", "B")`  
+   This allows the control signal to drive the base directly.
+
+All wires are then written out with `write_out_all_wires()`.
+
+**Why this arrangement works**
+
+* The MMBTA42 is a high‑voltage NPN, so its collector must be connected to the voltage that will be switched (here +5 V).  
+* The emitter is at ground, providing a reference for the transistor’s operation.  
+* The base is held at a low voltage through the resistor, limiting base current to a safe value (≈ 2 mA for a 2.2 kΩ resistor at 5 V).  
+* The control signal **AUX_CL** can be tied to the base pin; when it is low the transistor turns on, pulling the collector toward ground. When it is high (or left floating) the resistor limits current so the transistor stays off.  
+* The layout keeps all pins on the left side of the transistor, making the schematic compact and wires short, which is especially helpful for a high‑voltage component where long vertical runs would clutter the sheet.
+
+**Summary of function calls**
+
+| Function | Purpose | Key arguments | Reasoning |
+|----------|---------|----------------|-----------|
+| `add_schematic_symbol` | Places a symbol | `symbol_lib`, `symbol_name`, `pos_x`, `pos_y`, `reference`, `value`, `rotation`, `mirror` | Uses symbol context to avoid overlap; rotation 0° keeps default pin orientation; no mirroring needed. |
+| `get_pin_location` | Retrieves absolute pin coordinates | `symbol_ref`, `pin_name` | Needed to position labels relative to pins. |
+| `add_label` | Creates a global label | `label_pos`, `label_text`, `label_ref`, `label_type`, `text_orient` | Positions **AUX_CL** 10 mm left of base; orientation left for readability. |
+| `connect_pins` | Draws a wire between two pins | `sym_a`, `pin_a`, `sym_b`, `pin_b` | Each connection matches the logical circuit: supply → resistor → base; collector ↔ supply; emitter ↔ ground; label ↔ base. |
+| `write_out_all_wires` | Finalises the schematic | None | Outputs all drawn wires.
+
+All coordinates and offsets are chosen to keep a tidy, readable schematic that matches the requested high‑voltage switch using the MMBTA42.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
 import sys
 import os
 
@@ -107,37 +139,33 @@ add_schematic_symbol(symbol_lib="Transistor_BJT", symbol_name="MMBTA42", pos_x=c
 
 ### Placing other symbols in the Schematic with respect to the center symbol 1###
 
-add_schematic_symbol(symbol_lib="power", symbol_name="+V", pos_x=center_x_1 + (-22), pos_y=center_y_1 + (10), reference="#PWR1", value="+V", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-22), pos_y=center_y_1 + (0), reference="R1", value="10k", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-16), pos_y=center_y_1 + (-12), reference="#PWR2", value="GND", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (0), reference="R2", value="1k", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-8), pos_y=center_y_1 + (-10), reference="#PWR3", value="GND", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (7), pos_y=center_y_1 + (0), reference="R3", value="2k", rotation=0, mirror="None")
-add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (7), pos_y=center_y_1 + (-8), reference="#PWR4", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (-5), pos_y=center_y_1 + (12), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-5), pos_y=center_y_1 + (6), reference="R1", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-8), reference="#PWR_GND", value="GND", rotation=0, mirror="None")
 
 ### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label AUX_CL next to Q1 pin B 
+x_Q1_1, y_Q1_1 = get_pin_location(symbol_ref="Q1", pin_name="B")
+add_label(label_pos=[x_Q1_1+(-10), y_Q1_1+(0)], label_text="AUX_CL", label_ref="AUX_CL_0", label_type="input", text_orient="left")
+# Connecting Label AUX_CL label_id:0 to Q1 pin B (Pin ID 1 -- Name B)
+connect_pins("AUX_CL_0", "1", "Q1", "B")
 
 
 ### Connecting all wires in the Schematic ###
 
 
-# Connecting R1 pin 2 (Pin ID 2 -- Name None) to Q1 pin B (Pin ID 2 -- Name B)
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+5V", "R1", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to Q1 pin B (Pin ID 1 -- Name B)
 connect_pins("R1", "2", "Q1", "B")
 
-# Connecting  #PWR1 pin +V (Pin ID 1 -- Name +V) to R1 pin 1 (Pin ID 1 -- Name None)
-connect_pins("#PWR1", "+V", "R1", "1")
+# Connecting Q1 pin E (Pin ID 3 -- Name E) to #PWR_GND pin 1 (Pin ID 1 -- Name None)
+connect_pins("Q1", "E", "#PWR_GND", "1")
 
-# Connecting R2 pin 2 (Pin ID 2 -- Name None) to Q1 pin E (Pin ID 3 -- Name E)
-connect_pins("R2", "2", "Q1", "E")
-
-# Connecting Q1 pin C (Pin ID 1 -- Name C) to R3 pin 1 (Pin ID 1 -- Name None)
-connect_pins("Q1", "C", "R3", "1")
-
-# Connecting R2 pin 1 (Pin ID 1 -- Name None) to #PWR3 pin 1 (Pin ID 1 -- Name None)
-connect_pins("R2", "1", "#PWR3", "1")
-
-# Connecting R3 pin 2 (Pin ID 2 -- Name None) to #PWR4 pin 1 (Pin ID 1 -- Name None)
-connect_pins("R3", "2", "#PWR4", "1")
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to Q1 pin C (Pin ID 2 -- Name C)
+connect_pins("#PWR1", "+5V", "Q1", "C")
 
 write_out_all_wires()
 <|return|>

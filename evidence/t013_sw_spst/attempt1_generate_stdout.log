@@ -1,0 +1,141 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a single-pole single-throw switch to control a load. Use exactly these real components: SW1 as a SW_SPST, in the KiCad library "Switch" (Single-pole single-throw switch). Do not substitute or invent a different part for any of them. Wire it up as follows: connect SW1's A pin (pin 1) to SW1's B pin (pin 2).
+[SEQLEN] input_ids shape: torch.Size([1, 1912])
+[SEQLEN] input_ids shape: torch.Size([1, 4907])
+[SEQLEN] input_ids shape: torch.Size([1, 5128])
+[SEQLEN] input_ids shape: torch.Size([1, 5128])
+[SEQLEN] input_ids shape: torch.Size([1, 5128])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3326])
+[SEQLEN] input_ids shape: torch.Size([1, 3326])
+[SEQLEN] input_ids shape: torch.Size([1, 3326])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.77GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.77GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.77GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.77GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.77GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only one device – a single‑pole single‑throw (SPST) switch – and the two pins of that switch must be wired together (pin A to pin B).  
+No other components, labels or power nets are required.  
+Because the schematic size is 210 × 297 mm (A4) we place the switch roughly in the centre of the sheet so that it is easily visible and there is no clutter.
+
+---
+
+### 1.  Choosing the symbol
+
+| Symbol | Library | Description |
+|--------|---------|-------------|
+| SW_SPST | Switch | Standard SPST switch symbol |
+
+The user explicitly specifies that this exact part must be used, so no substitution is allowed.
+
+The symbol’s pin data (from the context) is:
+
+```
+Pin A : x = –5.08 mm, y = 0.0 mm,  orientation = Right
+Pin B : x = +5.08 mm, y = 0.0 mm,  orientation = Left
+```
+
+The bounding box of the symbol is tiny (≈3 mm × 3 mm), so we have ample room to move it.
+
+---
+
+### 2.  Position, rotation and mirror
+
+* **Position** – We use a centre point of the schematic as a reference.  
+  `center_x = 150.0 mm, center_y = 110.0 mm` places the switch comfortably in the middle of the 210 mm wide sheet.  
+  The coordinate system starts at the bottom‑left of the page, so (150, 110) is roughly one‑third of the height from the bottom, giving a balanced look.
+
+* **Rotation** – The default orientation of the SPST symbol has pin A on the left and pin B on the right.  
+  Rotating 180° flips the symbol so that both pins are on the same horizontal line but still at the extremes of the symbol.  
+  This orientation (180°) is convenient: it keeps the wire short and straight, and it matches the user’s request “connect pin A to pin B”.
+
+* **Mirror** – No mirroring is required; the default orientation is already correct after the 180° rotation.
+
+---
+
+### 3.  Adding the symbol
+
+We call `add_schematic_symbol` with the following arguments:
+
+* `symbol_lib="Switch"` – the library name supplied by the user.
+* `symbol_name="SW_SPST"` – the exact symbol name.
+* `pos_x=center_x_1, pos_y=center_y_1` – centre coordinates.
+* `reference="SW1"` – the unique reference designator for the switch.
+* `value="SW_SPST"` – the value field is optional; we set it to the symbol name for clarity.
+* `rotation=180` – as explained above.
+* `mirror="None"` – no mirroring.
+
+---
+
+### 4.  Wiring the switch
+
+The requirement is a single wire that joins pin A to pin B.  
+We obtain the absolute positions of these pins by calling `get_pin_location`:
+
+```
+x_A, y_A = get_pin_location("SW1", "A")
+x_B, y_B = get_pin_location("SW1", "B")
+```
+
+Because the pins are on the same horizontal line (y = 0 mm relative to the symbol centre), the wire will be a straight horizontal line segment.
+
+We then use `connect_pins`:
+
+```
+connect_pins("SW1", "A", "SW1", "B")
+```
+
+This function internally calculates the geometry of the wire between the two pin locations and draws it on the schematic.
+
+---
+
+### 5.  Finalising the schematic
+
+After all connections are declared, we call `write_out_all_wires()` to flush the wire data into the KiCad schematic file.  
+No labels or power nets are needed, so the schematic will contain only the switch and the single connecting wire.
+
+---
+
+### 6.  Summary of the script logic
+
+1. **Import** the KiCad schematic interface module.
+2. **Define** the centre point of the schematic.
+3. **Add** the SPST switch at that centre point with rotation 180°.
+4. **Retrieve** the coordinates of pins A and B.
+5. **Connect** pin A to pin B with a single wire.
+6. **Write** out all wires to finalize the schematic.
+
+All function arguments are chosen to respect the user’s constraints (exact part, no additional components) and to produce a clean, centred layout that easily satisfies the “pin A to pin B” connection requirement.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Switch:SW_SPST###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Switch", symbol_name="SW_SPST", pos_x=center_x_1, pos_y=center_y_1, reference="SW1", value="SW_SPST", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_spst_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_spst_generated.response.txt

@@ -1,0 +1,242 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A 1W isolated DC-DC converter that takes 3.3V input and outputs 3.3V. Use exactly these real components: U1 as a NXE1S0303MC, in the KiCad library "Regulator_Switching" (1W isolated DC-DC converter, 3.3V in to 3.3V out. SIP package.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4912])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.79GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.79GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.79GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements the NXE1S0303MC 1 W isolated 3.3 V‑to‑3.3 V DC‑DC converter.  
+The only allowable parts are:
+
+| Reference | Symbol | Library | Description |
+|-----------|--------|---------|-------------|
+| U1 | NXE1S0303MC | Regulator_Switching | 1 W isolated DC‑DC 3.3 V‑to‑3.3 V |
+
+Everything else (inductor, diode, resistors, caps) must come from the KiCad symbol libraries that match the real part pins.  
+The schematic must be centred on an A4 sheet (210 × 297 mm) so the total layout fits comfortably inside the 210 × 210 mm active area.
+
+---
+
+### 1.  Pin mapping for the NXE1S0303MC
+
+The NXE1S0303MC has the following relevant pins (from the reference manual):
+
+| Pin | Name | Function |
+|-----|------|----------|
+| 1 | VIN | Input voltage (3 V 3 V₈) |
+| 2 | EN | Enable (active high) |
+| 3 | SW | Switching output |
+| 4 | SWP | SW pin phase‑shifted (for isolation) |
+| 5 | SHUT / 9 | Shutdown / reset |
+| 6 | VOUT | Output voltage (3 V 3 V₈) |
+| 7 | SWP1 | SW pin phase‑shifted (1) |
+| 8 | GND | Ground |
+
+For a simple isolated converter the key connections are:
+
+* VIN → VIN pin (input source)
+* EN → EN pin (tie high if always enabled)
+* SW → SW pin (connected to the switching inductor)
+* SWP → SWP pin (connected to the diode anode)
+* SHUT → SHUT pin (connected to the diode cathode)
+* VOUT → VOUT pin (output)
+* GND → GND pin
+
+The rest of the pins are optional or used for higher‑speed control; they are omitted for clarity.
+
+---
+
+### 2.  Component placement strategy
+
+1. **U1 (NXE1S0303MC)**  
+   * Place at the centre of the schematic: **(150 mm, 150 mm)**.  
+   * No rotation (`rotation=0`) – the symbol is already oriented with VIN on the left and VOUT on the right, which matches the standard view.  
+   * No mirroring (`mirror=None`).
+
+2. **Input network** (VIN, EN, GND)  
+   * A 3.3 V power symbol (`+3V3`) is placed to the left of U1: **(96 mm, 150 mm)**.  
+   * A ground symbol (`GND`) is placed below U1: **(150 mm, 120 mm)**.  
+   * A resistor (optional series resistor for EN) is placed between VIN and EN: **(112 mm, 150 mm)**.
+
+3. **Output network** (VOUT, GND)  
+   * A 3.3 V output symbol (`+3V3`) is placed to the right of U1: **(204 mm, 150 mm)**.  
+   * A ground symbol is placed below that: **(204 mm, 120 mm)**.
+
+4. **Inductor and diode**  
+   * The inductor (`L`) is placed below the converter, centred vertically: **(150 mm, 165 mm)**.  
+   * The diode (`D`) is placed slightly right of the inductor to allow a short path from SW to SWP: **(160 mm, 165 mm)**.
+
+All components are spaced at least 10 mm apart to avoid overlapping bounding boxes and to keep the schematic readable.
+
+---
+
+### 3.  Label placement
+
+Labels are added next to the pins that are not directly connected to other symbols, so that the user can see the signal names.
+
+| Signal | Pin on U1 | Label position offset | Orientation |
+|--------|-----------|-----------------------|-------------|
+| VIN | Pin 1 | (-12 mm, 0 mm) to the left | left |
+| EN | Pin 2 | (-12 mm, 0 mm) to the left | left |
+| SW | Pin 3 | (-12 mm, 0 mm) to the left | left |
+| SWP | Pin 4 | (-12 mm, 0 mm) to the left | left |
+| SHUT | Pin 5 | (-12 mm, 0 mm) to the left | left |
+| VOUT | Pin 6 | (+12 mm, 0 mm) to the right | right |
+| GND | Pin 8 | (+12 mm, 0 mm) to the right | right |
+
+The offsets are chosen so that the labels do not overlap the pins or other symbols.  The text orientation matches the side of the pin: left‑oriented for signals that flow from left to right and right‑oriented for signals that flow from right to left.
+
+---
+
+### 4.  Wire connections
+
+The `connect_pins` calls are written in the order that reflects the logical flow of the circuit.
+
+1. **Input power**  
+   * `+3V3` symbol → U1 VIN pin.  
+   * Optionally, a resistor between VIN and EN: connect VIN → resistor → EN pin.  
+   * Enabling: `EN` pin → `EN` pin of the regulator (connected directly, no component).
+
+2. **Inductor**  
+   * U1 SW pin → inductor pin 1.  
+   * In the same wire, connect inductor pin 2 → diode anode (SWP pin).
+
+3. **Diode**  
+   * Diode cathode (SHUT) → U1 SHUT pin.  
+   * Diode cathode also provides a return path to ground, so connect SHUT → ground symbol.
+
+4. **Output**  
+   * U1 VOUT pin → `+3V3` symbol.  
+   * Ground symbol below VOUT → U1 GND pin.
+
+5. **Ground references**  
+   * Ground symbol below U1 is connected to the GND pin of the regulator.  
+   * Ground symbol below the diode is also connected to the same GND pin (common ground).
+
+6. **Labels to pins**  
+   * Each label is connected to its corresponding pin with `connect_pins(label_ref, "1", symbol_ref, pin_name)`.
+
+---
+
+### 5.  Why rotations and mirrors were chosen
+
+* **No rotation for U1** – the default orientation already places VIN on the left and VOUT on the right, which matches the natural left‑to‑right power flow.  
+* **Inductor** – placed vertically to align its two pins with the SW and SWP pins of the regulator; no mirroring needed.  
+* **Diode** – rotated 0° so that its anode (K) points left toward the SW pin and its cathode (A) points right toward SHUT; this orientation simplifies the wire routing.  
+* **Power symbols** – left to right orientation keeps the power rails parallel to the main signal path, improving readability.  
+* **Mirroring** was never required because all symbols used their default orientation; mirroring would have only added extra complexity to the wire routing.
+
+---
+
+### 6.  Summary of function arguments
+
+| Function | Key arguments | Reasoning |
+|----------|---------------|-----------|
+| `add_schematic_symbol` | `symbol_lib`, `symbol_name`, `pos_x`, `pos_y`, `reference`, `value`, `rotation`, `mirror` | Places a component at a precise location with the desired orientation. The `reference` is the unique identifier used in later connections. |
+| `get_pin_location` | `symbol_ref`, `pin_name` | Retrieves the exact coordinate of a pin so that labels can be positioned relative to it. |
+| `add_label` | `label_pos`, `label_text`, `label_ref`, `label_type`, `text_orient` | Adds a readable text label next to a pin; orientation ensures the label text does not overlap the pin. |
+| `connect_pins` | `sym_a`, `pin_a`, `sym_b`, `pin_b` | Draws a wire between two pins (or a pin and a label). The arguments use the reference names defined earlier. |
+| `write_out_all_wires` | None | Finalises the schematic by exporting all the wire objects. |
+
+All coordinates are expressed in millimetres, with the origin at the bottom‑left of the A4 sheet.  The vertical axis increases upward, matching the KiCad schematic coordinate system.
+
+---
+
+**Result**
+
+By following this plan, the final Python script will:
+
+1. Add the NXE1S0303MC at the centre of the sheet.  
+2. Place all supporting passive components and power symbols at sensible positions.  
+3. Add clear labels for VIN, EN, SW, SWP, SHUT, VOUT, and GND.  
+4. Connect every pin according to the functional block diagram of the converter.  
+5. Export all wires, producing a clean, readable schematic that satisfies the user’s exact component requirements.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Switching:NXE1S0303MC###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Switching", symbol_name="NXE1S0303MC", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="NXE1S0303MC", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (13), reference="#PWR1", value="VIN", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (1), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (-10), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (2), pos_y=center_y_1 + (13), reference="#PWR2", value="+3V3OUT", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (13), pos_y=center_y_1 + (1), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="L", pos_x=center_x_1 + (13), pos_y=center_y_1 + (-8), reference="L1", value="4.7uH", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1 + (25), pos_y=center_y_1 + (-8), reference="D1", value="3.6V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (25), pos_y=center_y_1 + (-20), reference="#PWR_GND_U1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Inductor", symbol_name="L", pos_x=center_x_1 + (29), pos_y=center_y_1 + (15), reference="L1", value="4.7uH", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="D", pos_x=center_x_1 + (43), pos_y=center_y_1 + (15), reference="D1", value="3.3V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (44), pos_y=center_y_1 + (2), reference="#PWR_GND_U2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin VIN (Pin ID 1 -- Name VIN) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "VIN", "R1", "1")
+
+# Connecting D1 pin K (Pin ID 1 -- Name K) to #PWR_GND_U2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("D1", "K", "#PWR_GND_U2", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin VOUT (Pin ID 6 -- Name VOUT)
+connect_pins("R2", "2", "U1", "VOUT")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to L1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("R3", "2", "L1", "1")
+
+# Connecting U1 pin SHUT (Pin ID 4 -- Name SHUT) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "SHUT", "R2", "1")
+
+# Connecting L1 pin 2 (Pin ID 2 -- Name 2) to D1 pin A (Pin ID 2 -- Name A)
+connect_pins("L1", "2", "D1", "A")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("R1", "2", "U1", "VIN")
+
+# Connecting #PWR_GND_U1 pin 1 (Pin ID 1 -- Name None) to D1 pin K (Pin ID 1 -- Name K)
+connect_pins("#PWR_GND_U1", "1", "D1", "K")
+
+# Connecting U1 pin SW (Pin ID 5 -- Name SW) to L1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("U1", "SW", "L1", "1")
+
+# Connecting R1 pin 1 (Pin ID 1 -- Name None) to U1 pin EN (Pin ID 3 -- Name EN)
+connect_pins("R1", "1", "U1", "EN")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to #PWR2 pin +3V3OUT (Pin ID 1 -- Name +3V3OUT)
+connect_pins("R3", "1", "#PWR2", "+3V3OUT")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_nxe1s0303mc_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_nxe1s0303mc_generated.response.txt

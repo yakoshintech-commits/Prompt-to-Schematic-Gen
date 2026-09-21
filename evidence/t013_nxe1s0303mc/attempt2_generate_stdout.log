@@ -1,0 +1,170 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=3541)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A 1W isolated DC-DC converter that takes 3.3V input and outputs 3.3V. Use exactly these real components: U1 as a NXE1S0303MC, in the KiCad library "Regulator_Switching" (1W isolated DC-DC converter, 3.3V in to 3.3V out. SIP package.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+[SEQLEN] input_ids shape: torch.Size([1, 1917])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4912])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+[SEQLEN] input_ids shape: torch.Size([1, 5133])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+[SEQLEN] input_ids shape: torch.Size([1, 3331])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.17GB gpu_peak=28.79GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.79GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.79GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.79GB
+Model raw response: <|channel|>analysis<|message|>The user’s request is to generate a KiCad schematic that implements a 1‑W isolated DC‑DC converter using the exact part **NXE1S0303MC** (3.3 V in → 3.3 V out) from the *Regulator_Switching* library.  
+The schematic must contain only real components – no substitutes – and must be laid out so that no symbol overlaps and all pins are connected correctly.
+
+**Why the original code failed**
+
+* The code tried to place many generic components (resistors, inductors, diodes, power symbols) that are not part of a minimal isolated converter.  
+* When the script ran, KiCad could not find the symbols “NXE1S0303MC”, “VAA”, “R”, “L”, “D” or the “Inductor” library, so the symbols were not loaded and the script aborted.  
+* The placement logic (offsets of –53 mm, +13 mm etc.) caused the newly added symbols to overlap the NXE1S0303MC footprint, which is why the “bounding box overlap” errors were raised.
+
+**Correct approach**
+
+1. **Only the converter** – the schematic should just contain:
+   * The NXE1S0303MC regulator (u‑pin and y‑pin are the power pins, the other pins are control pins).  
+   * The input power symbol (+3.3 V) and an output power symbol (+3.3 V out).  
+   * A few passive components that the datasheet recommends for an isolated DC‑DC converter (input capacitor, output capacitor, an inductor for the feedback loop, a diode for the flyback path, and a resistor network for the control loop).  
+   * Ground symbols for the device’s ground and the flyback diode.
+
+2. **Symbol placement** – keep the regulator in the centre of the sheet (150 mm × 110 mm).  
+   * Place the input power symbol a short distance to the left (≈ –30 mm) so the wire to the regulator’s VIN pin is short.  
+   * Place the output power symbol to the right (≈ +30 mm).  
+   * Place the feedback resistor network and inductor to the left of the regulator (–20 mm).  
+   * Place the output capacitor, flyback diode and resistor to the right (≈ +10 mm).  
+   * All symbols use the default rotation (0°) and no mirroring.  
+   * The coordinates are chosen so that the bounding boxes do not overlap – the NXE1S0303MC footprint is roughly 25 mm × 15 mm, so a 10 mm clearance on each side is plenty.
+
+3. **Pin connections** – the NXE1S0303MC pinout is:
+   * **VIN** – 3.3 V input.  
+   * **VOUT** – 3.3 V output.  
+   * **ENABLE** – logic control (high to enable).  
+   * **SHUTDOWN** – logic control (high to shutdown).  
+   * **FB** – feedback pin (to a resistor divider).  
+   * **NC** – not connected.  
+
+   The schematic connects:
+   * Input +3.3 V → regulator VIN.  
+   * Regulator VOUT → output +3.3 V symbol and a feedback resistor divider that feeds the FB pin.  
+   * An enable resistor network (2.2 kΩ and 2.2 kΩ) that pulls ENABLE high when the input is present.  
+   * A shutdown resistor (2.2 kΩ) that pulls SHUTDOWN low.  
+   * The inductor and flyback diode form a simple flyback loop for the isolated converter.  
+   * Ground symbols are connected to the regulator GND pin and the diode cathode.
+
+4. **Why this layout is readable**  
+   * All power symbols are on the periphery, so the power rails are obvious.  
+   * The resistor divider sits left of the regulator, making the feedback path clear.  
+   * The flyback loop is drawn to the right, so the loop direction is obvious.  
+   * No overlapping bounding boxes – each component has at least a 10 mm clearance.
+
+**Mapping to the API**
+
+* `add_schematic_symbol(symbol_lib, symbol_name, pos_x, pos_y, reference, value, rotation, mirror)`  
+  – `symbol_lib` and `symbol_name` must match the libraries present in the KiCad installation.  
+  – `pos_x` and `pos_y` are absolute coordinates.  
+  – `reference` is the component’s unique identifier (e.g., “U1”, “R1”).  
+  – `value` is optional; for the regulator we set it to “NXE1S0303MC”, for resistors “2.2K”.  
+  – `rotation` is 0°; if a symbol needs to be flipped for better wiring we could use 180° or 90°.  
+  – `mirror="None"` keeps the default orientation.
+
+* `connect_pins(sym_a, pin_a, sym_b, pin_b)`  
+  – `sym_a` and `sym_b` are the reference strings.  
+  – `pin_a` and `pin_b` are the pin names as defined in the symbol’s pin_info.  
+  – For power symbols we use the “+3V3” or “GND” pin name; for the regulator we use the actual pin names (VIN, VOUT, ENABLE, SHUTDOWN, FB).  
+
+* `write_out_all_wires()` – finalises the schematic by emitting all the wire definitions.
+
+**Final corrected script (conceptual, not the full code block)**
+
+The script starts by importing the KiCad interface, then places the NXE1S0303MC at the centre.  
+It then places the input and output power symbols, the resistors for the enable/shutdown network, the inductor, the flyback diode, and the output capacitor.  
+All coordinates are chosen to avoid overlap.  
+After the symbols are in place, the script uses `connect_pins` to wire the regulator’s VIN to the input, VOUT to the output, the FB pin through the resistor divider, the enable pin through the enable resistor, the shutdown pin through the shutdown resistor, the inductor to the flyback diode, and finally grounds for the regulator and the diode.  
+Finally, `write_out_all_wires()` is called to output the schematic.
+
+This reasoning shows why the original script failed (missing symbols, overlap) and how the corrected script will satisfy the user’s request for a clean, correctly wired 1 W isolated 3.3 V → 3.3 V converter using the exact NXE1S0303MC component.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Switching:NXE1S0303MC###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Switching", symbol_name="NXE1S0303MC", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="NXE1S0303MC", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+3V3", pos_x=center_x_1 + (-35), pos_y=center_y_1 + (11), reference="#PWR1", value="+3V3", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-35), pos_y=center_y_1 + (-6), reference="R1", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-35), pos_y=center_y_1 + (-12), reference="#PWR_GND1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-25), pos_y=center_y_1 + (-6), reference="R2", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-25), pos_y=center_y_1 + (-12), reference="#PWR_GND2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+3V3", pos_x=center_x_1 + (24), pos_y=center_y_1 + (11), reference="#PWR2", value="+3V3OUT", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (24), pos_y=center_y_1 + (-6), reference="R3", value="2.2k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (24), pos_y=center_y_1 + (-12), reference="#PWR_GND3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin FB (Pin ID 2 -- Name FB) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "FB", "R2", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R1", "2", "R2", "2")
+
+# Connecting R3 pin 1 (Pin ID 1 -- Name None) to U1 pin EN (Pin ID 3 -- Name EN)
+connect_pins("R3", "1", "U1", "EN")
+
+# Connecting R1 pin 1 (Pin ID 1 -- Name None) to U1 pin EN (Pin ID 3 -- Name EN)
+connect_pins("R1", "1", "U1", "EN")
+
+# Connecting #PWR2 pin +3V3OUT (Pin ID 1 -- Name +3V3OUT) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR2", "+3V3OUT", "R3", "2")
+
+# Connecting #PWR1 pin +3V3 (Pin ID 1 -- Name +3V3) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+3V3", "R1", "1")
+
+# Connecting U1 pin VOUT (Pin ID 6 -- Name VOUT) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("U1", "VOUT", "R3", "2")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin SHUTDOWN (Pin ID 4 -- Name SHUTDOWN)
+connect_pins("R1", "2", "U1", "SHUTDOWN")
+
+# Connecting #PWR_GND1 pin 1 (Pin ID 1 -- Name None) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR_GND1", "1", "R1", "1")
+
+# Connecting U1 pin SHUTDOWN (Pin ID 4 -- Name SHUTDOWN) to #PWR_GND2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "SHUTDOWN", "#PWR_GND2", "1")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("R2", "2", "U1", "VIN")
+
+# Connecting #PWR_GND2 pin 1 (Pin ID 1 -- Name None) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("#PWR_GND2", "1", "U1", "VIN")
+
+# Connecting U1 pin VIN (Pin ID 1 -- Name VIN) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "VIN", "R2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_nxe1s0303mc_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_nxe1s0303mc_generated.response.txt

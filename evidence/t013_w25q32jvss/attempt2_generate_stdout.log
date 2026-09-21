@@ -1,0 +1,149 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: True (len=2709)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using 32Mbit SPI NOR flash memory with standard SPI and Dual/Quad SPI modes. Use exactly these real components: U1 as a W25Q32JVSS, in the KiCad library "Memory_Flash" (32Mbit SPI NOR flash memory. Standard SPI and Dual/Quad SPI modes. CS is active low. IO2 and IO3 should be pulled high if not using Quad SPI mode.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1923])
+[SEQLEN] input_ids shape: torch.Size([1, 4918])
+[SEQLEN] input_ids shape: torch.Size([1, 4918])
+[SEQLEN] input_ids shape: torch.Size([1, 4918])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5139])
+[SEQLEN] input_ids shape: torch.Size([1, 5139])
+[SEQLEN] input_ids shape: torch.Size([1, 5139])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3337])
+[SEQLEN] input_ids shape: torch.Size([1, 3337])
+[SEQLEN] input_ids shape: torch.Size([1, 3337])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.19GB gpu_peak=28.81GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.19GB gpu_peak=28.81GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.81GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.81GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.81GB
+Model raw response: <|channel|>analysis<|message|>The user’s request is to generate a KiCad schematic that contains only the W25Q32JVSS flash memory chip, with the pins wired for standard SPI, and optional pull‑up resistors on IO2 and IO3.  
+The earlier auto‑generated script failed because it tried to reference pin names that do not exist in the symbol.  
+The correct pin names for the W25Q32JVSS are:
+
+| Symbol pin | KiCad pin name (as used by the interface) |
+|------------|---------------------------------------------|
+| 1          | `~{CS}` (chip‑select, active low) |
+| 2          | `DO (IO1)` – output from the flash |
+| 3          | `IO2` – used as an input that must be pulled high |
+| 4          | `GND` – ground pin |
+| 5          | `DI (IO0)` – data input to the flash |
+| 6          | `CLK` – clock |
+| 7          | `IO3` – used as an input that must be pulled high |
+| 8          | `VCC` – supply pin (usually 1.8 V for this part) |
+
+Because the user explicitly asked **not** to substitute any other part, the only component that will appear on the schematic is the flash chip itself.  
+A minimal, fully correct schematic therefore only needs:
+
+1. The flash symbol centered on the sheet.  
+2. Labels for each pin that the user may need to connect to the board.  
+3. Optional pull‑up resistors for IO2 and IO3 – these are not mandatory for the schematic but are useful for an unused pin; the user can decide whether to add them.  
+4. A power connection for VCC (1.8 V) and ground.  
+5. No additional wiring because the user will connect the pins to the board later.
+
+Below is the reasoning behind the corrected code that will be produced:
+
+* **Import statements** – Standard boiler‑plate to load the KiCad interface.  
+* **Add the flash symbol** – `add_schematic_symbol()` is called with the
+  library `Memory_Flash` and symbol `W25Q32JVSS`.  The centre of the
+  symbol is at (150 mm, 110 mm) so it sits well inside the A4 sheet
+  (210 × 297 mm).  A rotation of 0° keeps the pin layout readable, and
+  no mirroring is required.  
+* **Add global power symbol** – A power symbol `VAA` is placed a
+  short distance to the left of the flash so that the VCC pin can be
+  wired directly.  The pin name used by the interface for this
+  power symbol is `VCC`.  
+* **Add ground symbol** – The ground pin is wired directly to the
+  GND symbol of the flash.  No label is needed because KiCad will
+  automatically connect the GND pin to the board.  
+* **Create labels** – For each pin that the user might want to
+  identify, `add_label()` is called.  The label position is offset
+  slightly from the pin location (`get_pin_location()`) so that the
+  text does not overlap the pin.  Example: the label for the clock
+  pin is placed 10 mm to the right of the pin.  The text orientation
+  (`text_orient`) matches the direction of the offset.  
+* **Connect pins** – `connect_pins()` is used only for the power
+  and ground connections.  All other pins are left floating because
+  the user will later connect them to the PCB.  
+* **Write wires** – Finally `write_out_all_wires()` is called
+  so that the KiCad interface emits the netlist for all created
+  connections.
+
+The resulting script is concise, free of the earlier pin‑name
+mismatch, and contains only the mandatory symbols and connections
+required by the user’s specification.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Memory_Flash:W25Q32JVSS###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Memory_Flash", symbol_name="W25Q32JVSS", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="W25Q32JVSS", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-22), pos_y=center_y_1 + (24), reference="#PWR1", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-20), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label IO0_CLK next to U1 pin CLK 
+x_U1_6, y_U1_6 = get_pin_location(symbol_ref="U1", pin_name="CLK")
+add_label(label_pos=[x_U1_6+(10), y_U1_6+(0)], label_text="IO0_CLK", label_ref="IO0_CLK_0", label_type="input", text_orient="right")
+# Connecting Label IO0_CLK label_id:0 to U1 pin CLK (Pin ID 6 -- Name CLK)
+connect_pins("IO0_CLK_0", "1", "U1", "CLK")
+
+# Add label IO1_CS next to U1 pin ~{CS}
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="~{CS}")
+add_label(label_pos=[x_U1_1+(10), y_U1_1+(0)], label_text="IO1_CS", label_ref="IO1_CS_0", label_type="input", text_orient="right")
+# Connecting Label IO1_CS label_id:0 to U1 pin ~{CS} (Pin ID 1 -- Name ~{CS})
+connect_pins("IO1_CS_0", "1", "U1", "~{CS}")
+
+# Add label IO2 next to U1 pin IO2 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="IO2")
+add_label(label_pos=[x_U1_3+(10), y_U1_3+(0)], label_text="IO2", label_ref="IO2_0", label_type="input", text_orient="right")
+# Connecting Label IO2 label_id:0 to U1 pin IO2 (Pin ID 3 -- Name IO2)
+connect_pins("IO2_0", "1", "U1", "IO2")
+
+# Add label IO3 next to U1 pin IO3 
+x_U1_7, y_U1_7 = get_pin_location(symbol_ref="U1", pin_name="IO3")
+add_label(label_pos=[x_U1_7+(10), y_U1_7+(0)], label_text="IO3", label_ref="IO3_0", label_type="input", text_orient="right")
+# Connecting Label IO3 label_id:0 to U1 pin IO3 (Pin ID 7 -- Name IO3)
+connect_pins("IO3_0", "1", "U1", "IO3")
+
+# Add label D1 next to U1 pin DI 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="DI")
+add_label(label_pos=[x_U1_5+(10), y_U1_5+(0)], label_text="D1", label_ref="D1_0", label_type="input", text_orient="right")
+# Connecting Label D1 label_id:0 to U1 pin DI (Pin ID 5 -- Name DI)
+connect_pins("D1_0", "1", "U1", "DI")
+
+# Add label D0 next to U1 pin DO 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="DO")
+add_label(label_pos=[x_U1_2+(10), y_U1_2+(0)], label_text="D0", label_ref="D0_0", label_type="input", text_orient="right")
+# Connecting Label D0 label_id:0 to U1 pin DO (Pin ID 2 -- Name DO)
+connect_pins("D0_0", "1", "U1", "DO")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin VCC (Pin ID 1 -- Name VCC) to U1 pin VCC (Pin ID 8 -- Name VCC)
+connect_pins("#PWR1", "VCC", "U1", "VCC")
+
+# Connecting U1 pin GND (Pin ID 4 -- Name GND) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "GND", "#PWR2", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_w25q32jvss_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_w25q32jvss_generated.response.txt

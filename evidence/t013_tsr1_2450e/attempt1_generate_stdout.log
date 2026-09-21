@@ -1,0 +1,148 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple 5V output DC-DC converter module using the TSR1-2450E chip. Use exactly these real components: U1 as a TSR1-2450E, in the KiCad library "Regulator_Switching" (5V output DC-DC converter module (non-isolated), 1A, SIP-3. Drop-in replacement for 7805. Input range 6.5V-36V. No external components required.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1932])
+[SEQLEN] input_ids shape: torch.Size([1, 1932])
+[SEQLEN] input_ids shape: torch.Size([1, 1932])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4927])
+[SEQLEN] input_ids shape: torch.Size([1, 5148])
+[SEQLEN] input_ids shape: torch.Size([1, 3346])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.23GB gpu_peak=28.83GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.23GB gpu_peak=28.83GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.83GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.83GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.83GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a 5 V output DC‑DC converter using the TSR1‑2450E device (a non‑isolated, 1 A, SIP‑3 regulator).  
+Only the referenced components may be used:  
+
+* U1 – TSR1‑2450E (Regulator_Switching)  
+* A battery symbol (Device) – provides the DC input  
+* Two power symbols – +5 V and GND – to drive the regulator and provide its ground reference.  
+
+No external components are to be added; the regulator has built‑in feedback and compensation. The schematic therefore consists of a single power rail, the regulator, and two ground points.  
+
+**Spatial layout**
+
+The KiCad sheet is 210 × 297 mm (A4). To keep the drawing centred and to give enough room for the three symbols, the regulator is placed at (150 mm, 110 mm).  
+* The battery is offset left‑up from the regulator by roughly –63 mm in X and +22 mm in Y.  
+* The +5 V power symbol sits further left‑up by –73 mm in X and +31 mm in Y, to line up with the battery’s positive terminal.  
+* The GND symbol is placed directly below the regulator at the same X coordinate, +8 mm in Y, so that the regulator’s ground pin can be connected vertically.  
+
+These offsets ensure the bounding boxes of the symbols do not overlap and the wires run straight horizontally or vertically wherever possible, improving readability.
+
+**Symbol parameters**
+
+| Symbol | Library | Reference | Value | Rot | Mirror |
+|--------|---------|-----------|-------|-----|--------|
+| TSR1‑2450E | Regulator_Switching | U1 | “TSR1‑2450E” | 0° | None |
+| Battery | Device | BT | “Battery” | 0° | None |
+| +5 V | power | #PWR1 | “+5V” | 0° | None |
+| GND | power | #PWR2 | “GND” | 0° | None |
+
+*The “#PWR” notation is a KiCad convention for power symbols; it tells the netlist generator that these are dedicated power nets.*
+
+**Connecting the pins**
+
+Each symbol has a single pin (or two for the battery).  
+* The battery’s “+” pin is connected to the +5 V power symbol.  
+* The battery’s “–” pin is connected to the GND symbol.  
+* The regulator’s VIN pin receives the +5 V net, its VOUT pin is the output (no explicit wire needed as the user did not ask for an output label), and its GND pin is tied to the GND net.  
+
+The regulator’s pin names (as defined in the KiCad library) are:  
+
+* VIN – input voltage (pin 1)  
+* VOUT – output voltage (pin 2)  
+* GND – ground (pin 3)  
+
+The battery symbol’s pins are:  
+
+* “+” – positive terminal (pin 1)  
+* “–” – negative terminal (pin 2)  
+
+The power symbols have a single pin named “+5V” (for #PWR1) and “GND” (for #PWR2).
+
+**Wire connections**
+
+Using the helper function `connect_pins(sym_ref, pin_name, sym_ref, pin_name)` the following connections are made:
+
+1. **+5 V rail**  
+   `connect_pins("#PWR1", "+5V", "BT", "+")`  
+   *The +5 V power symbol is linked to the battery’s positive terminal.*
+
+2. **Ground rail**  
+   `connect_pins("BT", "-", "#PWR2", "GND")`  
+   *The battery’s negative terminal is tied to the GND net.*
+
+3. **Regulator input**  
+   `connect_pins("#PWR1", "+5V", "U1", "VIN")`  
+   *The regulator’s VIN pin receives the +5 V supply.*
+
+4. **Regulator ground**  
+   `connect_pins("#PWR2", "GND", "U1", "GND")`  
+   *The regulator’s GND pin is tied to the GND net.*
+
+**Why these choices**
+
+* **Rotation 0°** – All symbols are oriented such that their pins face the expected direction (e.g., VIN on the left, VOUT on the right, GND on the bottom). This keeps the wires straight and avoids unnecessary bends.  
+* **No mirroring** – The symbols are symmetric enough that mirroring is unnecessary; keeping them in their default orientation preserves the standard pin order.  
+* **Clear power labels** – Using the “#PWR” convention makes it obvious which nets are power rails, which aids in later netlist verification.  
+* **Minimal components** – The regulator alone implements the conversion, so adding resistors or capacitors would contradict the “no external components” requirement.
+
+**Final step**
+
+After all `connect_pins` calls, the function `write_out_all_wires()` is invoked. This writes the wire geometry into the schematic file, ensuring that the visual connections match the logical ones described above.
+
+**Summary of the logic flow**
+
+1. Identify the required components and their libraries.  
+2. Place the regulator at the centre of the sheet.  
+3. Position the battery, +5 V, and GND symbols relative to the regulator using integer offsets that keep the layout tidy.  
+4. Connect the battery’s terminals to the power nets.  
+5. Wire the regulator’s VIN to the +5 V net and its GND to the GND net.  
+6. Write out all wires.
+
+This reasoning directly maps to the Python code that would be generated for the KiCad schematic, ensuring the final drawing is functional, readable, and adheres strictly to the user’s component constraints.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Regulator_Switching:TSR1-2450E###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Regulator_Switching", symbol_name="TSR1-2450E", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="TSR1-2450E", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+5V", pos_x=center_x_1 + (-73), pos_y=center_y_1 + (31), reference="#PWR1", value="+5V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="Battery", pos_x=center_x_1 + (-63), pos_y=center_y_1 + (16), reference="BT", value="Battery", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-10), reference="#PWR2", value="GND", rotation=0, mirror="None")
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting BT pin - (Pin ID 2 -- Name -) to #PWR2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("BT", "-", "#PWR2", "1")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to BT pin + (Pin ID 1 -- Name +)
+connect_pins("#PWR1", "+5V", "BT", "+")
+
+# Connecting BT pin - (Pin ID 2 -- Name -) to U1 pin GND (Pin ID 2 -- Name GND)
+connect_pins("BT", "-", "U1", "GND")
+
+# Connecting #PWR1 pin +5V (Pin ID 1 -- Name +5V) to U1 pin VIN (Pin ID 1 -- Name VIN)
+connect_pins("#PWR1", "+5V", "U1", "VIN")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_tsr1_2450e_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_tsr1_2450e_generated.response.txt

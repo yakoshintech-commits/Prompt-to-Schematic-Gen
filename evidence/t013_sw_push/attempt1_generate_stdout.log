@@ -1,0 +1,95 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit that uses a generic momentary push-button switch to control a load. Use exactly these real components: SW1 as a SW_Push, in the KiCad library "Switch" (Generic momentary push-button switch). Do not substitute or invent a different part for any of them. Wire it up as follows: connect SW1's 1 pin (pin 1) to SW1's 2 pin (pin 2).
+[SEQLEN] input_ids shape: torch.Size([1, 1913])
+[SEQLEN] input_ids shape: torch.Size([1, 4908])
+[SEQLEN] input_ids shape: torch.Size([1, 5129])
+[SEQLEN] input_ids shape: torch.Size([1, 3327])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.15GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a minimal schematic that just shows a generic momentary push‑button (SW_Push) with its two pins tied together.  
+The only symbols we may use are the three that the user has supplied:
+
+1. `SW_Push` (Library Switch) – two pins: “1” (right‑facing) and “2” (left‑facing).  
+2. `VCC` (Library power) – one pin “VCC” pointing up.  
+3. `GND` (Library power) – one pin “GND” pointing down.  
+
+Because the push‑button is supposed to be a simple “short” when pressed, the logical choice is to connect pins 1 and 2 together with a wire. No other circuitry (pull‑ups, pull‑downs, external power, or load) is required, so the VCC and GND symbols can be omitted entirely.  
+The user’s request states *“Do not substitute or invent a different part for any of them.”* Therefore we will **not** add any extra components or labels.
+
+**Symbol placement**
+
+The schematic sheet is 210 × 297 mm (A4).  
+We place the push‑button at the centre of the sheet to keep the drawing tidy and to make wire routing trivial.
+
+- **Push‑button (SW1)**  
+  - Library: `"Switch"`  
+  - Symbol: `"SW_Push"`  
+  - Reference: `"SW1"`  
+  - Position: centre of the sheet, e.g. `(105 mm, 148.5 mm)` (half of 210 × 297).  
+  - Rotation: `0°` – the symbol is already oriented with its pins left/right; no rotation required.  
+  - Mirror: `None` – no mirroring is needed.  
+
+Because we are only connecting the two pins of the push‑button, the VCC and GND symbols are **not** placed. If we wanted to show power connections, we could add them, but the user’s instruction makes them unnecessary.
+
+**Wire connections**
+
+The only connection is between pin 1 and pin 2 of SW1.  
+We obtain the coordinates of the two pins with the helper `get_pin_location`.  
+The `connect_pins` function then draws a wire between these two pin locations.
+
+```python
+# Get pin locations
+x_SWI_1, y_SWI_1 = get_pin_location(symbol_ref="SW1", pin_name="1")
+x_SWI_2, y_SWI_2 = get_pin_location(symbol_ref="SW1", pin_name="2")
+
+# Connect the two pins
+connect_pins("SW1", "1", "SW1", "2")
+```
+
+Because both pins sit on the same symbol, the wire will be a short straight line, and the schematic will look clean.
+
+**Why the rotation/mirror choices were made**
+
+- The SW_Push symbol comes in a standard orientation with pin 1 on the right side and pin 2 on the left side.  
+- Rotating it would simply swap the positions of the pins, forcing the wire to cross the symbol and clutter the drawing.  
+- Mirroring it would flip the left/right assignment, again complicating the wire path.  
+- Therefore rotation = 0° and mirror = None give the simplest layout.
+
+**Final schematic script (conceptual)**
+
+1. Import the KiCad schematic interface.  
+2. Add the SW_Push symbol at the centre.  
+3. Retrieve pin coordinates.  
+4. Connect pin 1 to pin 2.  
+5. Write out all wires.
+
+The only objects on the schematic are the push‑button and the wire between its pins; no labels or other symbols are added. This satisfies the user’s requirement of a “simple circuit that uses a generic momentary push‑button switch to control a load” – in this case the load is just a short from the button’s own pins.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Switch:SW_Push###
+
+center_x_1, center_y_1 = 105.0, 148.5
+
+add_schematic_symbol(symbol_lib="Switch", symbol_name="SW_Push", pos_x=center_x_1, pos_y=center_y_1, reference="SW1", value="SW_Push", rotation=0, mirror="None")
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_push_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_push_generated.response.txt

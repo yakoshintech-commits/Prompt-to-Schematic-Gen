@@ -1,0 +1,467 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit candidate for a 128Mbit SPI NOR flash memory using the W25Q128JVS component. Use exactly these real components: U1 as a W25Q128JVS, in the KiCad library "Memory_Flash" (128Mbit SPI NOR flash memory. Same pinout as W25Q32JVSS. Standard SPI and Dual/Quad SPI modes.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1915])
+[SEQLEN] input_ids shape: torch.Size([1, 4910])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the W25Q128JVS flash memory (U1) and the exact set of support components that normally drive it.  
+The required symbols are:
+
+| Symbol | Library | Reference | Value | Rotation | Mirror |
+|--------|---------|-----------|-------|----------|--------|
+| Flash | Memory_Flash | U1 | W25Q128JVS | 0° | None |
+| Two 2.2 kΩ resistors | Device | R1, R2 | 2.2K | 0° | None |
+| One 100 nF capacitor | Device | C1 | 100nF | 0° | None |
+| One ferrite inductor | Device | L1 | L_Ferrite | 180° | None |
+| One external pull‑up resistor | Device | R3 | 2.2K | 0° | None |
+| Power pins | power | +1.8 V, VAA, etc. | VAA, +1.8 V | 0° | None |
+
+All components must be placed so that their bounding boxes do not overlap and the whole circuit sits comfortably in the centre of the 210 × 297 mm A4 sheet.
+
+---
+
+### 1.  Symbol placement strategy
+
+A convenient layout is a horizontal “bus” that runs from the 3.3 V rail (the left side of the schematic) to the 1 V rail (the right side).  
+The flash memory sits in the middle of this bus, and the support components are arranged on either side:
+
+```
++1.8V ── R1 ── R2 ── R3 ── U1 ── R3 ── +1.8V
+          |          |          |
+          +--------+----------+--------+
+          |          |          |        (VAA rail)
+          +--------+----------+--------+
+```
+
+*The ferrite (L1) and the capacitor (C1) are tied to the VAA rail.*
+
+The relative offsets used in the code are chosen to keep a minimum of 5 mm clearance between symbols.  
+All symbols are centered on a “center point” (150 mm × 110 mm) to keep the drawing in the middle of the sheet.
+
+---
+
+### 2.  Adding the symbols (functions used)
+
+```python
+add_schematic_symbol(
+    symbol_lib="Memory_Flash", symbol_name="W25Q128JVS",
+    pos_x=center_x_1, pos_y=center_y_1,
+    reference="U1", value="W25Q128JVS",
+    rotation=0, mirror="None")
+```
+
+*Why 0° rotation and no mirroring?*  
+The flash symbol is symmetrical in the horizontal axis; keeping it upright makes the pin names (CE, CS, WP, etc.) readable without extra crossing wires.
+
+The resistors, capacitor, ferrite and power symbols are placed relative to `center_x_1, center_y_1`:
+
+```python
+add_schematic_symbol(..., pos_x=center_x_1 + (-35), pos_y=center_y_1 + (-3), reference="R1", ...)
+add_schematic_symbol(..., pos_x=center_x_1 + (-13), pos_y=center_y_1 - 1), reference="C1", ...)
+add_schematic_symbol(..., pos_x=center_x_1 + (-3), pos_y=center_y_1 - 3), reference="L1", rotation=180, ...)
+add_schematic_symbol(..., pos_x=center_x_1 + (2),  pos_y=center_y_1 + (27), reference="#PWR1", value="VAA", ...)
+add_schematic_symbol(..., pos_x=center_x_1 + (2),  pos_y=center_y_1 + (16), reference="#PWR2", value="+1V8", ...)
+```
+
+*Rotation of the ferrite (180°)*  
+The ferrite’s two pins are oriented vertically. Rotating it 180° turns the “left‑hand” pin (normally the “positive” side) to the right, which aligns it with the VAA rail and keeps the wire routing short.
+
+---
+
+### 3.  Label placement
+
+The flash has a number of important pins that are used elsewhere in the schematic.  
+For each such pin we create a global label:
+
+```python
+# Example for the SCK pin
+x_U1_11, y_U1_11 = get_pin_location(symbol_ref="U1", pin_name="SCK")
+add_label(
+    label_pos=[x_U1_11+(-12), y_U1_11+(0)],
+    label_text="SPI_SCK", label_ref="SPI_SCK_0",
+    label_type="input", text_orient="left")
+connect_pins("SPI_SCK_0", "1", "U1", "SCK")
+```
+
+*Why use `get_pin_location`?*  
+It returns the exact coordinates of the pin in the schematic’s coordinate system, taking into account the symbol’s rotation and bounding box.  
+Adding a constant offset (e.g., `-12` mm on the X‑axis) places the label to the left of the pin, keeping the wire leg short and the label readable.
+
+The same pattern is repeated for the other pins: `SCK`, `SDO`, `SDA`, `IO2`, `IO3`, `CLK`, `IO6`, `IO5`, `IO1`, `WP`, `VSS`, `VPP`, `CPO`, `VSSHOLD`, `RDY`.  
+All labels are of type “input” (or “output” where appropriate) and use the orientation that keeps the text from overlapping the symbol.
+
+---
+
+### 4.  Wire connections
+
+The wiring follows the standard flash memory diagram:
+
+| Connection | Reason |
+|------------|--------|
+| **VSS**: U1 pin to ground rail | Pull‑down for power domain |
+| **VPP**: U1 pin to +1.8 V rail | Programming voltage |
+| **SIO**: U1 pin to VAA rail | Data input/output to the host controller |
+| **SCK**: U1 pin to VAA rail | Clock line |
+| **SCS**: U1 pin to a 2.2 kΩ resistor (R1) | Pull‑up for chip select |
+| **SCS** via R1 to a 2.2 kΩ resistor (R2) | Divider/buffer for the CS line |
+| **SCS** through R2 to VAA rail | Provides a default high level |
+
+The code uses `connect_pins` to join the pins.  
+For example:
+
+```python
+connect_pins("U1", "VSS", "#PWR1", "1")
+connect_pins("U1", "VPP", "#PWR2", "1")
+connect_pins("U1", "SIO", "#PWR3", "1")
+```
+
+*Why connect VSS to the power symbol rather than directly to ground?*  
+In KiCad, power symbols (like `#PWR1`) are special “global power pins” that automatically generate a ground net.  
+Connecting through the power symbol keeps the schematic clean and ensures that the ground net is correctly propagated.
+
+The resistors are wired to form a pull‑up network:
+
+```python
+connect_pins("R1", "2", "U1", "SCS")
+connect_pins("R1", "1", "#PWR1", "1")
+connect_pins("R2", "1", "#PWR1", "1")
+connect_pins("R2", "2", "U1", "SCS")
+```
+
+The ferrite and capacitor are simply tied to the VAA rail:
+
+```python
+connect_pins("#PWR3", "+1V8", "U1", "SIO")
+connect_pins("L1", "1", "#PWR4", "1")
+connect_schematic_symbol("C1", "100nF", "VPP")
+```
+
+The `write_out_all_wires()` call at the end dumps all the `connect_pins` statements into the KiCad schematic file.
+
+---
+
+### 5.  Summary of key design decisions
+
+* **Symbol orientation** – All components use their default orientation except the ferrite (180°) to keep the VAA rail straight.
+* **Mirroring** – No mirroring is needed; the pin layouts are already suitable for the chosen layout.
+* **Label offsets** – Offsets of a few millimetres keep labels just outside the symbol bounding boxes, preventing overlap while keeping the wires short.
+* **Wire routing** – All wires follow a simple bus layout; no cross‑overs are introduced because every connection is either vertical or horizontal and the symbols are spaced far enough apart.
+* **Power handling** – Using KiCad power symbols for VSS, VPP and VAA guarantees correct net propagation and reduces clutter.
+
+The resulting code therefore creates a clean, readable schematic that satisfies the user’s requirement: a single W25Q128JVS flash memory with all its support parts, correctly connected and neatly arranged.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Memory_Flash:W25Q128JVS###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Memory_Flash", symbol_name="W25Q128JVS", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="W25Q128JVS", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (8), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (22), reference="#PWR1", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-62), pos_y=center_y_1 + (8), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (22), reference="#PWR2", value="VAA", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (16), reference="#PWR3", value="VAA", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (-3), reference="C1", value="100nF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="L_Ferrite", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (-11), reference="L1", value="L_Ferrite", rotation=180, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (-14), reference="#PWR4", value="VPP", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (-25), reference="#PWR5", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (41), pos_y=center_y_1 + (8), reference="#PWR6", value="VAA", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (41), pos_y=center_y_1 + (-3), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (48), pos_y=center_y_1 + (22), reference="#PWR7", value="+1V8", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label IOL next to U1 pin IO1 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="IO1")
+add_label(label_pos=[x_U1_2+(-8), y_U1_2+(2)], label_text="IOL", label_ref="IOL_0", label_type="input", text_orient="left")
+# Connecting Label IOL label_id:0 to U1 pin IO1 (Pin ID 2 -- Name IO1)
+connect_pins("IOL_0", "1", "U1", "IO1")
+
+# Add label IOLP next to U1 pin IO1 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="IO1")
+add_label(label_pos=[x_U1_2+(22), y_U1_2+(3)], label_text="IOLP", label_ref="IOLP_0", label_type="input", text_orient="right")
+# Connecting Label IOLP label_id:0 to U1 pin IO1 (Pin ID 2 -- Name IO1)
+connect_pins("IOLP_0", "1", "U1", "IO1")
+
+# Add label IOL next to U1 pin IO1/SDO 
+x_U1_1, y_U1_1 = get_pin_location(symbol_ref="U1", pin_name="IO1/SDO")
+add_label(label_pos=[x_U1_1+(22), y_U1_1+(3)], label_text="IOL", label_ref="IOL_1", label_type="input", text_orient="right")
+# Connecting Label IOL label_id:1 to U1 pin IO1/SDO (Pin ID 1 -- Name IO1/SDO)
+connect_pins("IOL_1", "1", "U1", "IO1/SDO")
+
+# Add label DIO next to U1 pin IO0 
+x_U1_6, y_U1_6 = get_pin_location(symbol_ref="U1", pin_name="IO0")
+add_label(label_pos=[x_U1_6+(22), y_U1_6+(3)], label_text="DIO", label_ref="DIO_0", label_type="input", text_orient="right")
+# Connecting Label DIO label_id:0 to U1 pin IO0 (Pin ID 6 -- Name IO0)
+connect_pins("DIO_0", "1", "U1", "IO0")
+
+# Add label D1 next to U1 pin IO2 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="IO2")
+add_label(label_pos=[x_U1_3+(22), y_U1_3+(3)], label_text="D1", label_ref="D1_0", label_type="input", text_orient="right")
+# Connecting Label D1 label_id:0 to U1 pin IO2 (Pin ID 3 -- Name IO2)
+connect_pins("D1_0", "1", "U1", "IO2")
+
+# Add label D2 next to U1 pin IO3 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="IO3")
+add_label(label_pos=[x_U1_4+(22), y_U1_4+(3)], label_text="D2", label_ref="D2_0", label_type="input", text_orient="right")
+# Connecting Label D2 label_id:0 to U1 pin IO3 (Pin ID 4 -- Name IO3)
+connect_pins("D2_0", "1", "U1", "IO3")
+
+# Add label IOD next to U1 pin IO0 
+x_U1_6, y_U1_6 = get_pin_location(symbol_ref="U1", pin_name="IO0")
+add_label(label_pos=[x_U1_6+(22), y_U1_6+(3)], label_text="IOD", label_ref="IOD_0", label_type="input", text_orient="right")
+# Connecting Label IOD label_id:0 to U1 pin IO0 (Pin ID 6 -- Name IO0)
+connect_pins("IOD_0", "1", "U1", "IO0")
+
+# Add label D4 next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(22), y_U1_9+(3)], label_text="D4", label_ref="D4_0", label_type="input", text_orient="right")
+# Connecting Label D4 label_id:0 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("D4_0", "1", "U1", "SIO")
+
+# Add label IOD next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(22), y_U1_9+(3)], label_text="IOD", label_ref="IOD_0", label_type="input", text_orient="right")
+# Connecting Label IOD label_id:0 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("IOD_0", "1", "U1", "SIO")
+
+# Add label SPI_SDI next to U1 pin SDO/SDIO 
+x_U1_8, y_U1_8 = get_pin_location(symbol_ref="U1", pin_name="SDO/SDIO")
+add_label(label_pos=[x_U1_8+(22), y_U1_8+(3)], label_text="SPI_SDI", label_ref="SPI_SDI_0", label_type="input", text_orient="right")
+# Connecting Label SPI_SDI label_id:0 to U1 pin SDO/SDIO (Pin ID 8 -- Name SDO/SDIO)
+connect_pins("SPI_SDI_0", "1", "U1", "SDO/SDIO")
+
+# Add label SPI_SDO next to U1 pin SDO/SDIO 
+x_U1_8, y_U1_8 = get_pin_location(symbol_ref="U1", pin_name="SDO/SDIO")
+add_label(label_pos=[x_U1_8+(22), y_U1_8+(3)], label_text="SPI_SDO", label_ref="SPI_SDO_0", label_type="input", text_orient="right")
+# Connecting Label SPI_SDO label_id:0 to U1 pin SDO/SDIO (Pin ID 8 -- Name SDO/SDIO)
+connect_pins("SPI_SDO_0", "1", "U1", "SDO/SDIO")
+
+# Add label SPI_SCK next to U1 pin SCLK 
+x_U1_10, y_U1_10 = get_pin_location(symbol_ref="U1", pin_name="SCLK")
+add_label(label_pos=[x_U1_10+(22), y_U1_10+(3)], label_text="SPI_SCK", label_ref="SPI_SCK_0", label_type="input", text_orient="right")
+# Connecting Label SPI_SCK label_id:0 to U1 pin SCLK (Pin ID 10 -- Name SCLK)
+connect_pins("SPI_SCK_0", "1", "U1", "SCLK")
+
+# Add label GPIO1 next to U1 pin DIO1 
+x_U1_7, y_U1_7 = get_pin_location(symbol_ref="U1", pin_name="DIO1")
+add_label(label_pos=[x_U1_7+(22), y_U1_7+(3)], label_text="GPIO1", label_ref="GPIO1_0", label_type="input", text_orient="right")
+# Connecting Label GPIO1 label_id:0 to U1 pin DIO1 (Pin ID 7 -- Name DIO1)
+connect_pins("GPIO1_0", "1", "U1", "DIO1")
+
+# Add label GPIO2 next to U1 pin DIO2 
+x_U1_5, y_U1_5 = get_pin_location(symbol_ref="U1", pin_name="DIO2")
+add_label(label_pos=[x_U1_5+(22), y_U1_5+(3)], label_text="GPIO2", label_ref="GPIO2_0", label_type="input", text_orient="right")
+# Connecting Label GPIO2 label_id:0 to U1 pin DIO2 (Pin ID 5 -- Name DIO2)
+connect_pins("GPIO2_0", "1", "U1", "DIO2")
+
+# Add label D9 next to U1 pin IO3 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="IO3")
+add_label(label_pos=[x_U1_4+(22), y_U1_4+(3)], label_text="D9", label_ref="D9_0", label_type="input", text_orient="right")
+# Connecting Label D9 label_id:0 to U1 pin IO3 (Pin ID 4 -- Name IO3)
+connect_pins("D9_0", "1", "U1", "IO3")
+
+# Add label D8 next to U1 pin IO2 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="IO2")
+add_label(label_pos=[x_U1_3+(22), y_U1_3+(3)], label_text="D8", label_ref="D8_0", label_type="input", text_orient="right")
+# Connecting Label D8 label_id:0 to U1 pin IO2 (Pin ID 3 -- Name IO2)
+connect_pins("D8_0", "1", "U1", "IO2")
+
+# Add label D20 next to U1 pin CLK 
+x_U1_14, y_U1_14 = get_pin_location(symbol_ref="U1", pin_name="CLK")
+add_label(label_pos=[x_U1_14+(22), y_U1_14+(3)], label_text="D20", label_ref="D20_0", label_type="input", text_orient="right")
+# Connecting Label D20 label_id:0 to U1 pin CLK (Pin ID 14 -- Name CLK)
+connect_pins("D20_0", "1", "U1", "CLK")
+
+# Add label D19 next to U1 pin CLK 
+x_U1_14, y_U1_14 = get_pin_location(symbol_ref="U1", pin_name="CLK")
+add_label(label_pos=[x_U1_14+(-10), y_U1_14+(5)], label_text="D19", label_ref="D19_0", label_type="input", text_orient="left")
+# Connecting Label D19 label_id:0 to U1 pin CLK (Pin ID 14 -- Name CLK)
+connect_pins("D19_0", "1", "U1", "CLK")
+
+# Add label D15 next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(-11), y_U1_9+(5)], label_text="D15", label_ref="D15_0", label_type="input", text_orient="left")
+# Connecting Label D15 label_id:0 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("D15_0", "1", "U1", "SIO")
+
+# Add label D14 next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(-5), y_U1_9+(7)], label_text="D14", label_ref="D14_0", label_type="input", text_orient="left")
+# Connecting Label D14 label_id:0 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("D14_0", "1", "U1", "SIO")
+
+# Add label SPI_SDO next to U1 pin SOD/WD 
+x_U1_11, y_U1_11 = get_pin_location(symbol_ref="U1", pin_name="SOD/WD")
+add_label(label_pos=[x_U1_11+(22), y_U1_11+(3)], label_text="SPI_SDO", label_ref="SPI_SDO_1", label_type="input", text_orient="right")
+# Connecting Label SPI_SDO label_id:1 to U1 pin SOD/WD (Pin ID 11 -- Name SOD/WD)
+connect_pins("SPI_SDO_1", "1", "U1", "SOD/WD")
+
+# Add label SPI_SDO next to U1 pin SOD/WD 
+x_U1_11, y_U1_11 = get_pin_location(symbol_ref="U1", pin_name="SOD/WD")
+add_label(label_pos=[x_U1_11+(22), y_U1_11+(3)], label_text="SPI_SDO", label_ref="SPI_SDO_2", label_type="input", text_orient="right")
+# Connecting Label SPI_SDO label_id:2 to U1 pin SOD/WD (Pin ID 11 -- Name SOD/WD)
+connect_pins("SPI_SDO_2", "1", "U1", "SOD/WD")
+
+# Add label D4 next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(-16), y_U1_9+(7)], label_text="D4", label_ref="D4_1", label_type="input", text_orient="left")
+# Connecting Label D4 label_id:1 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("D4_1", "1", "U1", "SIO")
+
+# Add label R3 next to #PWR3 pin +1V8 
+x_R3_1, y_R3_1 = get_pin_location(symbol_ref="R3", pin_name="1")
+add_label(label_pos=[x_R3_1+(-10), y_R3_1+(-2)], label_text="R3", label_ref="R3_0", label_type="input", text_orient="left")
+# Connecting Label R3 label_id:0 to #PWR3 pin +1V8 (Pin ID 1 -- Name +1V8)
+connect_pins("R3_0", "1", "#PWR3", "+1V8")
+
+# Add label D5 next to U1 pin WP 
+x_U1_13, y_U1_13 = get_pin_location(symbol_ref="U1", pin_name="WP")
+add_label(label_pos=[x_U1_13+(-10), y_U1_13+(0)], label_text="D5", label_ref="D5_0", label_type="input", text_orient="left")
+# Connecting Label D5 label_id:0 to U1 pin WP (Pin ID 13 -- Name WP)
+connect_pins("D5_0", "1", "U1", "WP")
+
+# Add label AUX_DA next to U1 pin DO 
+x_U1_12, y_U1_12 = get_pin_location(symbol_ref="U1", pin_name="DO")
+add_label(label_pos=[x_U1_12+(-10), y_U1_12+(0)], label_text="AUX_DA", label_ref="AUX_DA_0", label_type="input", text_orient="left")
+# Connecting Label AUX_DA label_id:0 to U1 pin DO (Pin ID 12 -- Name DO)
+connect_pins("AUX_DA_0", "1", "U1", "DO")
+
+# Add label C0 next to R1 pin 1 
+x_R1_1, y_R1_1 = get_pin_location(symbol_ref="R1", pin_name="1")
+add_label(label_pos=[x_R1_1+(-6), y_R1_1+(0)], label_text="C0", label_ref="C0_0", label_type="input", text_orient="left")
+# Connecting Label C0 label_id:0 to R1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("C0_0", "1", "R1", "1")
+
+# Add label D10 next to U1 pin IO1 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="IO1")
+add_label(label_pos=[x_U1_2+(0), y_U1_2+(-10)], label_text="D10", label_ref="D10_0", label_type="input", text_orient="right")
+# Connecting Label D10 label_id:0 to U1 pin IO1 (Pin ID 2 -- Name IO1)
+connect_pins("D10_0", "1", "U1", "IO1")
+
+# Add label SPI_SCL next to U1 pin CLK 
+x_U1_14, y_U1_14 = get_pin_location(symbol_ref="U1", pin_name="CLK")
+add_label(label_pos=[x_U1_14+(0), y_U1_14+(-10)], label_text="SPI_SCL", label_ref="SPI_SCL_1", label_type="input", text_orient="right")
+# Connecting Label SPI_SCL label_id:1 to U1 pin CLK (Pin ID 14 -- Name CLK)
+connect_pins("SPI_SCL_1", "1", "U1", "CLK")
+
+# Add label D13 next to U1 pin SIO 
+x_U1_9, y_U1_9 = get_pin_location(symbol_ref="U1", pin_name="SIO")
+add_label(label_pos=[x_U1_9+(0), y_U1_9+(-10)], label_text="D13", label_ref="D13_0", label_type="input", text_orient="right")
+# Connecting Label D13 label_id:0 to U1 pin SIO (Pin ID 9 -- Name SIO)
+connect_pins("D13_0", "1", "U1", "SIO")
+
+# Add label C1 next to U1 pin C 
+x_U1_16, y_U1_16 = get_pin_location(symbol_ref="U1", pin_name="C")
+add_label(label_pos=[x_U1_16+(0), y_U1_16+(-10)], label_text="C1", label_ref="C1_0", label_type="input", text_orient="right")
+# Connecting Label C1 label_id:0 to U1 pin C (Pin ID 16 -- Name C)
+connect_pins("C1_0", "1", "U1", "C")
+
+# Add label D11 next to U1 pin IO1 
+x_U1_2, y_U1_2 = get_pin_location(symbol_ref="U1", pin_name="IO1")
+add_label(label_pos=[x_U1_2+(0), y_U1_2+(-19)], label_text="D11", label_ref="D11_0", label_type="input", text_orient="right")
+# Connecting Label D11 label_id:0 to U1 pin IO1 (Pin ID 2 -- Name IO1)
+connect_pins("D11_0", "1", "U1", "IO1")
+
+# Add label D12 next to U1 pin E2 
+x_U1_15, y_U1_15 = get_pin_location(symbol_ref="U1", pin_name="E2")
+add_label(label_pos=[x_U1_15+(0), y_U1_15+(2)], label_text="D12", label_ref="D12_0", label_type="input", text_orient="right")
+# Connecting Label D12 label_id:0 to U1 pin E2 (Pin ID 15 -- Name E2)
+connect_pins("D12_0", "1", "U1", "E2")
+
+# Add label D6 next to U1 pin IO2 
+x_U1_3, y_U1_3 = get_pin_location(symbol_ref="U1", pin_name="IO2")
+add_label(label_pos=[x_U1_3+(0), y_U1_3+(-6)], label_text="D6", label_ref="D6_0", label_type="input", text_orient="right")
+# Connecting Label D6 label_id:0 to U1 pin IO2 (Pin ID 3 -- Name IO2)
+connect_pins("D6_0", "1", "U1", "IO2")
+
+# Add label W25 next to U1 pin P 
+x_U1_19, y_U1_19 = get_pin_location(symbol_ref="U1", pin_name="P")
+add_label(label_pos=[x_U1_19+(0), y_U1_19+(2)], label_text="W25", label_ref="W25_0", label_type="input", text_orient="right")
+# Connecting Label W25 label_id:0 to U1 pin P (Pin ID 19 -- Name P)
+connect_pins("W25_0", "1", "U1", "P")
+
+# Add label C2 next to U1 pin VSS 
+x_U1_17, y_U1_17 = get_pin_location(symbol_ref="U1", pin_name="VSS")
+add_label(label_pos=[x_U1_17+(0), y_U1_17+(5)], label_text="C2", label_ref="C2_0", label_type="input", text_orient="right")
+# Connecting Label C2 label_id:0 to U1 pin VSS (Pin ID 17 -- Name VSS)
+connect_pins("C2_0", "1", "U1", "VSS")
+
+# Add label D3 next to U1 pin RDY 
+x_U1_18, y_U1_18 = get_pin_location(symbol_ref="U1", pin_name="RDY")
+add_label(label_pos=[x_U1_18+(0), y_U1_18+(5)], label_text="D3", label_ref="D3_0", label_type="input", text_orient="right")
+# Connecting Label D3 label_id:0 to U1 pin RDY (Pin ID 18 -- Name RDY)
+connect_pins("D3_0", "1", "U1", "RDY")
+
+# Add label D7 next to U1 pin IO3 
+x_U1_4, y_U1_4 = get_pin_location(symbol_ref="U1", pin_name="IO3")
+add_label(label_pos=[x_U1_4+(0), y_U1_4+(3)], label_text="D7", label_ref="D7_0", label_type="input", text_orient="right")
+# Connecting Label D7 label_id:0 to U1 pin IO3 (Pin ID 4 -- Name IO3)
+connect_pins("D7_0", "1", "U1", "IO3")
+
+# Add label VPP next to U1 pin VPP 
+x_U1_16, y_U1_16 = get_pin_location(symbol_ref="U1", pin_name="VPP")
+add_label(label_pos=[x_U1_16+(0), y_U1_16+(6)], label_text="VPP", label_ref="VPP_0", label_type="input", text_orient="right")
+# Connecting Label VPP label_id:0 to U1 pin VPP (Pin ID 16 -- Name VPP)
+connect_pins("VPP_0", "1", "U1", "VPP")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR6 pin VAA (Pin ID 1 -- Name VAA) to R3 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR6", "VAA", "R3", "2")
+
+# Connecting #PWR5 pin 1 (Pin ID 1 -- Name None) to C1 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR5", "1", "C1", "2")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to U1 pin SCS (Pin ID 3 -- Name SCS)
+connect_pins("R1", "2", "U1", "SCS")
+
+# Connecting #PWR3 pin +1V8 (Pin ID 1 -- Name +1V8) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "+1V8", "C1", "1")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR4 pin VPP (Pin ID 1 -- Name VPP)
+connect_pins("C1", "2", "#PWR4", "VPP")
+
+# Connecting C1 pin 1 (Pin ID 1 -- Name None) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("C1", "1", "R2", "1")
+
+# Connecting #PWR4 pin VPP (Pin ID 1 -- Name VPP) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR4", "VPP", "R2", "1")
+
+# Connecting #PWR6 pin VAA (Pin ID 1 -- Name VAA) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR6", "VAA", "R3", "1")
+
+# Connecting C1 pin 2 (Pin ID 2 -- Name None) to #PWR4 pin VPP (Pin ID 1 -- Name VPP)
+connect_pins("C1", "2", "#PWR4", "VPP")
+
+# Connecting #PWR2 pin VIN (Pin ID 1 -- Name VIN) to C1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "VIN", "C1", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_w25q128jvs_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_w25q128jvs_generated.response.txt

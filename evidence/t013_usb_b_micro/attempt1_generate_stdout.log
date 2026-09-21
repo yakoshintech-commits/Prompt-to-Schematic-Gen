@@ -1,0 +1,121 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple USB Micro-B receptacle circuit that can be used in device mode or OTG host mode. Use exactly these real components: U1 as a USB_B_Micro, in the KiCad library "Connector" (USB Micro-B receptacle. ID pin (pin 4) is typically left floating for device mode or grounded for OTG host mode.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1909])
+[SEQLEN] input_ids shape: torch.Size([1, 4904])
+[SEQLEN] input_ids shape: torch.Size([1, 4904])
+[SEQLEN] input_ids shape: torch.Size([1, 4904])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+[SEQLEN] input_ids shape: torch.Size([1, 5125])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3323])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.76GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.14GB gpu_peak=28.76GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.76GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.76GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.76GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a USB‑Micro‑B receptacle (label U1) that can operate in either **device** mode or **OTG‑host** mode. The only real parts that may be used are the Micro‑B connector and the two standard power symbols (VBUS and GND) from the “power” library. No other ICs are required – the “open” behaviour of the ID pin will be handled in firmware, so the schematic simply connects the connector pins to the supply rails.
+
+**Physical layout**
+
+The schematic is drawn on an A4 sheet (210 × 297 mm). The centre of the sheet is at (105, 148.5).  
+The USB‑Micro‑B connector is placed at (150, 150) – a convenient position that keeps the drawing centred and leaves enough room on all sides for the power symbols. The GND symbol is put directly to the left of the connector, and the VBUS symbol is placed to the right.  The Y‑offsets are chosen so that the pins of the power symbols line up with the nearest pins of the connector without requiring long, diagonal wires.
+
+```
++-----------------+        +-----+          +-----+
+|  USB_B_Micro   |        | VBUS|          | GND |
+|     U1         |        +-----+          +-----+
+|  (Pins 1‑4)    |         |    |            |    |
+|                |        | 1  |            | 1  |
+|                |        |    |            |    |
+|                |        +-----+          +-----+
++-----------------+
+```
+
+**Connector pin mapping**
+
+The Micro‑B connector has four relevant pins:
+
+| Pin | Label | Function                                |
+|-----|-------|----------------------------------------|
+| 1   | B12   | VBUS (VBUS)                            |
+| 2   | A12   | GND (ground)                           |
+| 3   | (datasheet) | ID pin (left open for device, grounded for OTG) |
+| 4   | B12   | VBUS (normally duplicated, but only one VBUS pin is used) |
+
+The ID pin (pin 2 in many schematic libraries) is the one that must be left floating for device mode and tied to ground for OTG host mode.  In the schematic we simply leave it open – the user will connect it in the PCB layout or in firmware.
+
+**Symbol placement and orientation**
+
+* **USB_B_Micro (U1)** – placed at (150, 150) with rotation 0°.  No mirroring is required because the pin order is already correct for the schematic view.
+* **VBUS power symbol** – placed at (163, 160) (12 mm to the right and 10 mm above the connector).  Rotation 0° so the pin points up, matching the VBUS pin of the connector.
+* **GND power symbol** – placed at (138, 140) (12 mm to the left and 10 mm below the connector).  Rotation 0° so the pin points down, aligning with the GND pin of the connector.
+
+**Connections**
+
+1. **VBUS** – connect pin 1 of the VBUS symbol to pin 1 (VBUS) of U1.  
+   `connect_pins("#PWR_VBUS", "VBUS", "U1", "VBUS")`
+
+2. **GND** – connect pin 1 of the GND symbol to pin 2 (GND) of U1.  
+   `connect_pins("#PWR_GND", "1", "U1", "GND")`
+
+3. **ID pin** – left unconnected.  The schematic simply shows the pin but does not tie it to any net.  The user will decide at board‑level whether to leave it floating or short it to ground.
+
+**Labeling**
+
+The only labels required are the generic power names.  The power symbols already carry the “VBUS” and “GND” texts, so no additional labels are added.
+
+**Wire generation**
+
+All wires are created explicitly with `connect_pins`.  After all connections are defined, `write_out_all_wires()` flushes the wire list to the schematic file.
+
+**Summary of the code logic**
+
+1. Import the KiCad schematic interface.  
+2. Define the centre point of the connector and add it with `add_schematic_symbol`.  
+3. Add the VBUS and GND symbols at the calculated offsets using the same function.  
+4. For each connection, call `connect_pins` with the correct symbol references and pin names.  
+5. Call `write_out_all_wires()` to finalize the schematic.
+
+This reasoning ensures that the schematic uses only the requested parts, places them ergonomically, and connects the USB‑Micro‑B pins to the appropriate supply rails while leaving the ID pin open for the user’s choice between device and OTG host mode.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Connector:USB_B_Micro###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Connector", symbol_name="USB_B_Micro", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="USB_B_Micro", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VBUS", pos_x=center_x_1 + (12), pos_y=center_y_1 + (10), reference="#PWR1_VBUS", value="VBUS", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-12), pos_y=center_y_1 + (-10), reference="#PWR1_GND", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1_GND pin 1 (Pin ID 1 -- Name None) to U1 pin 2 (Pin ID 2 -- Name None)
+connect_pins("#PWR1_GND", "1", "U1", "2")
+
+# Connecting #PWR1_VBUS pin VBUS (Pin ID 1 -- Name VBUS) to U1 pin VBUS (Pin ID 1 -- Name VBUS)
+connect_pins("#PWR1_VBUS", "VBUS", "U1", "VBUS")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_usb_b_micro_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_usb_b_micro_generated.response.txt

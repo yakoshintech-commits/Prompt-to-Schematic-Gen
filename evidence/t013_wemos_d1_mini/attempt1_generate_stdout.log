@@ -1,0 +1,223 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using the WeMos D1 Mini ESP8266 development board. Use exactly these real components: U1 as a WeMos_D1_mini, in the KiCad library "MCU_Module" (WeMos D1 Mini ESP8266 development board, 16-pin). Do not substitute or invent a different part for any of them. This circuit assumes the WeMos D1 Mini ESP8266 development board is powered and configured properly.
+[SEQLEN] input_ids shape: torch.Size([1, 1915])
+[SEQLEN] input_ids shape: torch.Size([1, 1915])
+[SEQLEN] input_ids shape: torch.Size([1, 1915])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4910])
+[SEQLEN] input_ids shape: torch.Size([1, 4910])
+[SEQLEN] input_ids shape: torch.Size([1, 4910])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+[SEQLEN] input_ids shape: torch.Size([1, 5131])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3329])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.16GB gpu_peak=28.78GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.78GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.78GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.78GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only the WeMos D1‑Mini ESP8266 board (symbol U1) and the power rails that the board requires.  
+Because the board is already a complete module, all of its pins are internally connected.  
+Therefore the only external connections we need to model are the power rails that feed the board:
+
+* **+3.3 V** – supplies the module’s core voltage.  
+* **GND** – common ground.  
+* **VIN** – optional 5 V rail that some users connect to the module; we will keep a placeholder for it.
+
+No other components (resistors, LEDs, etc.) are required, so the schematic will be very small.
+
+---
+
+### 1.  Choosing symbol positions
+
+The KiCad schematic is 210 mm × 297 mm (A4).  
+We place the board roughly in the centre of the sheet:
+
+```
+center_x = 105.0   # half of 210
+center_y = 148.5   # half of 297
+```
+
+The board symbol is added at this coordinate with no rotation (`rotation=0`).  
+The board’s own pins are already defined in the library; we do not need to rotate it.
+
+The power symbols are placed to the right of the board so that the wires run horizontally, making the layout tidy and readable.
+
+* **+3.3 V** – 20 mm to the right, 10 mm above the board.  
+* **GND** – 20 mm to the right, 10 mm below the board.  
+* **VIN** – 20 mm to the right, 10 mm above the board (same vertical level as +3.3 V, but we keep it separate for clarity).
+
+These offsets keep the symbols well spaced and avoid overlapping bounding boxes.
+
+---
+
+### 2.  Adding the symbols
+
+```python
+add_schematic_symbol(
+    symbol_lib="MCU_Module",
+    symbol_name="WeMos_D1_mini",
+    pos_x=center_x,
+    pos_y=center_y,
+    reference="U1",
+    value="WeMos_D1_mini",
+    rotation=0,
+    mirror="None"
+)
+```
+
+* **symbol_lib / symbol_name** – exact library and symbol requested.  
+* **pos_x / pos_y** – centre of the board.  
+* **reference** – `U1` as specified.  
+* **value** – we duplicate the part name for clarity.  
+* **rotation/mirror** – no transformation.
+
+For the power symbols:
+
+```python
+# +3.3 V
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="+3.3V",
+    pos_x=center_x + 20,
+    pos_y=center_y + 10,
+    reference="#PWR3",
+    value="+3.3V",
+    rotation=0,
+    mirror="None"
+)
+
+# GND
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="GND",
+    pos_x=center_x + 20,
+    pos_y=center_y - 10,
+    reference="#PWR_GND",
+    value="GND",
+    rotation=0,
+    mirror="None"
+)
+
+# VIN
+add_schematic_symbol(
+    symbol_lib="power",
+    symbol_name="VAA",          # typical symbol name for a generic VIN in KiCad
+    pos_x=center_x + 20,
+    pos_y=center_y + 10,        # same vertical level as +3.3 V
+    reference="#PWR_VIN",
+    value="VIN",
+    rotation=0,
+    mirror="None"
+)
+```
+
+The `mirror="None"` tells KiCad to keep the default orientation.  
+The references start with `#PWR` to remind us that they are power nets.
+
+---
+
+### 3.  Connecting the wires
+
+The only external nets that must be present are:
+
+* **VIN** – connected to the board’s VIN pin (pin 4 in the 16‑pin WeMos header).  
+* **+3.3 V** – connected to the board’s 3.3 V pin (pin 16).  
+* **GND** – connected to all ground pins (pins 6 and 13).  
+  It is sufficient to connect the ground symbol to one of the board’s ground pins; the rest are internally tied.
+
+**Connections**
+
+1. **VIN → U1 VIN**  
+   ```python
+   connect_pins("#PWR_VIN", "VIN", "U1", "VIN")
+   ```
+   The VIN pin name in the symbol is usually `VIN`.  
+
+2. **+3.3 V → U1 VCC**  
+   ```python
+   connect_pins("#PWR3", "+3.3V", "U1", "3V3")
+   ```
+   The 3.3 V pin on the board is typically labelled `3V3`.  
+
+3. **GND → U1 GND (pin 6)**  
+   ```python
+   connect_pins("#PWR_GND", "GND", "U1", "6")
+   ```
+   Pin 6 is the primary ground pin; the secondary ground pin (13) is internally connected.  
+
+If the board has a separate ground pin that must be connected explicitly, an additional `connect_pins(..., "13")` call can be added, but it is redundant.
+
+After all `connect_pins` calls, we finish with:
+
+```python
+write_out_all_wires()
+```
+
+which tells the KiCad interface to render the wires in the schematic file.
+
+---
+
+### 4.  Summary of the logic
+
+* **Placement** – centre the board, shift power symbols rightwards, keep vertical separation.  
+* **Rotation / mirror** – all symbols use the default orientation (`0°`, `None`) because the current layout is already readable.  
+* **References** – `U1` for the board, `#PWR_*` for power nets.  
+* **Connections** – only the necessary power pins are wired; all other pins of the board are internal.  
+* **Wire drawing** – `write_out_all_wires()` finalises the schematic.
+
+This minimal schematic satisfies the user’s requirement: it contains exactly the requested symbol, places it nicely on the sheet, and supplies the required power rails without adding extraneous components.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : MCU_Module:WeMos_D1_mini###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="MCU_Module", symbol_name="WeMos_D1_mini", pos_x=center_x_1, pos_y=center_y_1, reference="U1", value="WeMos_D1_mini", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+3.3V", pos_x=center_x_1 + (3), pos_y=center_y_1 + (24), reference="#PWR1", value="+3.3V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (3), pos_y=center_y_1 + (-24), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+3.3V", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-8), reference="#PWR3", value="+3.3V", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-12), reference="#PWR4", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VCC", pos_x=center_x_1 + (16), pos_y=center_y_1 + (16), reference="#PWR5", value="VCC", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting U1 pin 6 (Pin ID 6 -- Name None) to #PWR4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("U1", "6", "#PWR4", "1")
+
+# Connecting U1 pin VIN (Pin ID 4 -- Name VIN) to #PWR5 pin VCC (Pin ID 1 -- Name VCC)
+connect_pins("U1", "VIN", "#PWR5", "VCC")
+
+# Connecting #PWR3 pin +3.3V (Pin ID 1 -- Name +3.3V) to U1 pin 5V (Pin ID 4 -- Name 5V)
+connect_pins("#PWR3", "+3.3V", "U1", "5V")
+
+# Connecting #PWR2 pin 0 (Pin ID 1 -- Name 0) to U1 pin 3V3 (Pin ID 4 -- Name 3V3)
+connect_pins("#PWR2", "0", "U1", "3V3")
+
+# Connecting U1 pin 16 (Pin ID 16 -- Name None) to #PWR3 pin +3.3V (Pin ID 1 -- Name +3.3V)
+connect_pins("U1", "16", "#PWR3", "+3.3V")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_wemos_d1_mini_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_wemos_d1_mini_generated.response.txt

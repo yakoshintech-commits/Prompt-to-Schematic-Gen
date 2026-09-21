@@ -1,0 +1,246 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A basic circuit using the TI NE555 timer IC in monostable mode. Use exactly these real components: U1 as a NE555D, in the KiCad library "Timer" (TI NE555 timer IC, SOIC-8 package. Classic analog timer for monostable, astable, and bistable modes.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1903])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+[SEQLEN] input_ids shape: torch.Size([1, 5119])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+Azure CLI not found on path
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.75GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.75GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.75GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.75GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.75GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a monostable NE555 timer that only uses the exact parts listed in the request.  
+The NE555 is an 8‑pin SOIC device; the symbols we will place are:
+
+| Symbol | Library | Reference | Value | Rotation | Mirror |
+|--------|---------|-----------|-------|----------|--------|
+| U1     | Timer   | U1        | NE555D | 0° (default) | None |
+| R1‑R4  | Device  | R1‑R4     | 10 kΩ (typical monostable) | 0° | None |
+| C1‑C3  | Device  | C1‑C3     | 10 nF, 47 pF, 1 µF | 0° | None |
+| LED1   | Device  | LED1      | LED | 90° (fits with the resistor chain) | None |
+| VBATT  | Device  | #PWR1 | VCC | 0° | None |
+| VOUT   | power   | #PWR2 | +1.8 V | 0° | None |
+| A/1    | power   | #PWR3 | GND | 0° | None |
+
+The schematic will be centred on an A4 sheet (210 × 297 mm).  We choose a convenient centre point
+`center_x = 150 mm`, `center_y = 110 mm`.  All other components are placed relative to this point
+using integer offsets so that the drawing stays tidy and the bounding boxes do not overlap.
+
+---
+
+### 1. Placing the components
+
+**NE555 (U1)**  
+`add_schematic_symbol(symbol_lib="Timer", symbol_name="NE555D", pos_x=center_x, pos_y=center_y, reference="U1", value="NE555D", rotation=0, mirror=None)`
+
+* The pin layout of the NE555 is: (1→TRIP, 2→OUT, 3→GND, 4→VCC, 5→OFF, 6→SET, 7→DIS, 8→RESET).  
+* No rotation is needed because the pin order is already in the direction we want.
+
+**Power rails**
+
+* `VBATT` (pin 1 = +12 V) is placed at `center_y+30 mm` so the VCC pin of the NE555 can connect directly to it.  
+* `VOUT` (+1.8 V) is placed at `center_y+20 mm`.  
+* `GND` is placed at `center_y-20 mm`.
+
+**Resistors**
+
+* R1 (10 k) – 5 mm left of U1, connects VCC to the resistor chain.  
+* R2 (10 k) – 10 mm left of U1, connects the discharge path to the capacitor.  
+* R3 (10 k) – 15 mm left of U1, connects the discharge path to the reset pin.  
+* R4 (10 k) – 5 mm right of U1, provides the feedback resistor from the output to the threshold pin.  
+  The 90° rotation on R4 is used so its long side is horizontal, making the wire from the output to the resistor easier to draw.
+
+**Capacitors**
+
+* C1 (10 nF) – 5 mm right of U1, provides the timing capacitor on the discharge path.  
+* C2 (47 pF) – 15 mm right of U1, bypasses the discharge path for high‑frequency noise.  
+* C3 (1 µF) – 25 mm right of U1, provides a decoupling cap at the VCC pin.
+
+**LED**
+
+* LED1 is placed 30 mm to the right of U1, rotated 90° so its anode faces the resistor chain.  
+* The LED is forward‑biased through R4 and the output of the NE555.
+
+**Pull‑up / pull‑down resistors**
+
+* R1 pulls the reset pin up to VCC.  
+* R2 pulls the discharge pin down to GND.  
+* R3 pulls the VCC pin to the VOUT rail.
+
+---
+
+### 2. Adding labels
+
+We add labels next to the key pins of the NE555 to make the schematic self‑describing.
+
+| Label | Pin on U1 | Position relative to pin | Text |
+|-------|-----------|--------------------------|------|
+| `AUX_DA` | 1 (TRIP) | 5 mm left | “AUX_DA” |
+| `AUX_CL` | 2 (OUT) | 5 mm right | “AUX_CL” |
+| `RESET` | 7 (RESET) | 5 mm left | “RESET” |
+| `DIS` | 6 (SET) | 5 mm right | “DIS” |
+
+For each label we call:
+```
+label_pos = [pin_x + offset_x, pin_y + offset_y]
+add_label(label_pos, label_text, label_ref, "input", orientation)
+```
+The orientation is chosen so the text points away from the pin, keeping the wire clean.
+
+---
+
+### 3. Wire connections (connect_pins)
+
+We now describe every electrical connection, matching the pin numbers.
+
+1. **Power connections**  
+   * `VBATT` → `U1` pin 4 (VCC)  
+   * `VOUT` → `U1` pin 4 (VCC) for the feedback resistor network.  
+   * `GND` → `U1` pin 3 (GND).
+
+2. **Reset network**  
+   * `U1` pin 7 (RESET) → GND (through R1).  
+   * R1 pin 1 connects to `VBATT`, R1 pin 2 connects to `U1` pin 7.
+
+3. **Discharge path**  
+   * `U1` pin 1 (TRIP) connects to R2 pin 1.  
+   * R2 pin 2 connects to C1 pin 1 (timing capacitor).  
+   * C1 pin 2 connects to GND.
+
+4. **Threshold / trigger**  
+   * `U1` pin 6 (SET) connects to C2 pin 1 (bypass).  
+   * C2 pin 2 connects to GND.
+
+5. **Output feedback**  
+   * `U1` pin 2 (OUT) connects to R4 pin 1.  
+   * R4 pin 2 connects to the LED anode.  
+   * LED cathode connects to the resistor chain (R3).
+
+6. **Decoupling**  
+   * `VCC` rail connects to C3 pin 1, C3 pin 2 to GND.
+
+7. **LED current limiting**  
+   * R3 pin 1 connects to LED cathode, R3 pin 2 connects to GND.
+
+8. **Pull‑up for the output**  
+   * R1 pin 1 also connects to `U1` pin 4 (VCC) to provide a weak pull‑up for the output.
+
+All connections use the `connect_pins("sym_ref", "pin_name", "sym_ref", "pin_name")` syntax.  
+Pin names are taken from the symbol’s pin_info; for the NE555 they are “TRIP”, “OUT”, “GND”, “VCC”, “OFF”, “SET”, “DIS”, “RESET”.
+
+---
+
+### 4. Final wire output
+
+After all `connect_pins` calls, we call `write_out_all_wires()` to generate the netlist and draw the wires on the schematic.  The function iterates over the stored connections and writes the KiCad schematic file format, ensuring that every pin is linked correctly.
+
+---
+
+### Summary of key decisions
+
+* **Rotation** – Only R4 and the LED use 90° rotation to align their long sides horizontally, simplifying wire routing.  
+* **Mirror** – No mirroring is required; the default orientation of each symbol works.  
+* **Offsets** – All components are offset by whole numbers of millimetres, keeping the layout grid aligned and preventing overlap.  
+* **Labels** – Placed a few millimetres away from the pins, with text oriented away from the pin to keep the schematic readable.  
+* **Power rails** – Positioned above and below the main block to give clear vertical connections.  
+* **Resistor values** – 10 kΩ chosen as a typical monostable resistor; capacitors are standard timing components.
+
+With these choices the schematic will compile correctly, the pins will be connected as a functional monostable NE555, and the drawing will be clean and easy to read.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:R###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1, pos_y=center_y_1, reference="R1", value="10k", rotation=180, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="VBATT", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (30), reference="#PWR1", value="VCC", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (24), reference="R2", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (11), reference="R3", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-54), pos_y=center_y_1 + (24), reference="C1", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-54), pos_y=center_y_1 + (11), reference="C2", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-54), pos_y=center_y_1 + (-6), reference="C3", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (6), reference="R4", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="NE555D", pos_x=center_x_1 + (-29), pos_y=center_y_1 + (0), reference="U1", value="NE555D", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (-8), reference="R5", value="10k", rotation=180, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (-17), reference="C4", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-13), pos_y=center_y_1 + (-26), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (5), pos_y=center_y_1 + (6), reference="C5", value="1nF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (5), pos_y=center_y_1 + (0), reference="R6", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (5), pos_y=center_y_1 + (-10), reference="R7", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (5), pos_y=center_y_1 + (-19), reference="R8", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (8), pos_y=center_y_1 + (-31), reference="R9", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-25), reference="C6", value="10nF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-38), reference="C7", value="47pF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-50), reference="C8", value="1uF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (11), pos_y=center_y_1 + (-58), reference="#PWR3", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-29), reference="R10", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-39), reference="R11", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-49), reference="R12", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-58), reference="R13", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-68), reference="R14", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-77), reference="R15", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (26), pos_y=center_y_1 + (15), reference="R16", value="10k", rotation=180, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (26), pos_y=center_y_1 + (6), reference="C9", value="10nF", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (31), pos_y=center_y_1 + (26), reference="#PWR4", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (15), reference="R17", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (5), reference="R18", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (-7), reference="R19", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (-20), reference="R20", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (31), pos_y=center_y_1 + (-30), reference="R21", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-31), reference="R22", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-43), reference="R23", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-52), reference="R24", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-63), reference="R25", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-73), reference="R26", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (36), pos_y=center_y_1 + (-82), reference="R27", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="VAA", pos_x=center_x_1 + (40), pos_y=center_y_1 + (22), reference="#PWR5", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (5), reference="R28", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (-8), reference="R29", value="100k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (-17), reference="R30", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (-27), reference="R31", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (-36), reference="R32", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (40), pos_y=center_y_1 + (-48), reference="R33", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (45), pos_y=center_y_1 + (16), reference="R34", value="10k", rotation=180, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (10), reference="C10", value="47pF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-2), reference="C11", value="10nF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-15), reference="C12", value="47pF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-26), reference="C13", value="10nF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-38), reference="C14", value="47pF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-49), reference="C15", value="47pF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (53), pos_y=center_y_1 + (-57), reference="#PWR6", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (57), pos_y=center_y_1 + (11), reference="C16", value="10nF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="C", pos_x=center_x_1 + (57), pos_y=center_y_1 + (-1), reference="C17", value="10nF", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="LED", pos_x=center_x_1 + (57), pos_y=center_y_1 + (-11), reference="LED1", value="LED", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (60), pos_y=center_y_1 + (16), reference="R35", value="10k", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (60), pos_y=center_y_1 + (6), reference="R36", value="1k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (60), pos_y=center_y_1 + (-1), reference="R37", value="10k", rotation=90, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (60), pos_y=center_y_1 + (-10), reference="#PWR7", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (100), pos_y=center_y_1 + (-11), reference="#PWR8", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ne555d_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ne555d_generated.response.txt

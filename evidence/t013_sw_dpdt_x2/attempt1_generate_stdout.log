@@ -1,0 +1,157 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A circuit using a double-pole double-throw switch with two independent SPDT sections. Use exactly these real components: SW1 as a SW_DPDT_x2, in the KiCad library "Switch" (Double-pole double-throw switch (two independent SPDT sections). Each section: pin A is common, B and C are throws.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1907])
+[SEQLEN] input_ids shape: torch.Size([1, 1907])
+[SEQLEN] input_ids shape: torch.Size([1, 1907])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4902])
+[SEQLEN] input_ids shape: torch.Size([1, 5123])
+[SEQLEN] input_ids shape: torch.Size([1, 3321])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.13GB gpu_peak=28.76GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.13GB gpu_peak=28.76GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.76GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.76GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.76GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that contains only one real component – a double‑pole double‑throw switch (SW1) – and that uses it to drive two independent SPDT sections.  
+The symbol is `SW_DPDT_x2` from the `Switch` library.  
+Because the library only supplies that symbol, no other parts (power symbols, resistors, etc.) are required.  
+The schematic will therefore be a very small “plug‑in” block that can be dropped into a larger design.
+
+---
+
+### 1.  Symbol placement
+
+* **Reference** – The symbol must be referenced as `SW1`.  
+* **Position** – Place the centre of the symbol at (150 mm, 110 mm).  
+  This is roughly the middle of an A4 sheet (210 mm × 297 mm), giving plenty of room around the symbol for wires or future additions.  
+  The centre coordinates are the origin for the pin offsets stored in the symbol description.  
+* **Rotation / mirror** – The default orientation of `SW_DPDT_x2` has the two common pins (A) pointing left and the throws (B, C) pointing right.  
+  To keep the two SPDT sections side‑by‑side and to make the wiring straight, we use a 180° rotation and no mirroring.  
+  This flips the whole symbol so the common pins are on the right side of the drawing, which aligns nicely with the usual “left‑to‑right” flow of a schematic.
+
+```python
+add_schematic_symbol(
+    symbol_lib="Switch",
+    symbol_name="SW_DPDT_x2",
+    pos_x=150.0,
+    pos_y=110.0,
+    reference="SW1",
+    value="SW_DPDT_x2",
+    rotation=180,
+    mirror=None
+)
+```
+
+---
+
+### 2.  No extra components
+
+Because the request explicitly forbids substituting any other parts, we do not add power symbols, decoupling caps, or labels.  
+If the user later wants to connect the switch to a supply, they can add the necessary symbols in a separate schematic or in the same sheet.
+
+---
+
+### 3.  Wiring logic
+
+The `connect_pins` function uses the pin *names* that are defined in the symbol’s `pin_info` list.  
+For `SW_DPDT_x2` each pole has three pins:  
+* **A** – common (2 copies, one for each pole)  
+* **B** – one throw of pole 1  
+* **C** – the other throw of pole 1  
+(Poles are repeated, so there are six total pins, but they are grouped into two triples.)
+
+Because the schematic contains only the switch, we do not need to wire any of its pins together – each pin is already part of the symbol’s internal connection.  
+If the user wants to route the common pins to a circuit, they can do so by adding external connections in a later step; the current block does not have to expose those connections.
+
+---
+
+### 4.  (Optional) Labels
+
+If the user wishes to document the function of each pin, they could add labels such as:
+
+| Pin | Label | Purpose |
+|-----|-------|---------|
+| A | “Common” | Common terminal of the SPDT section |
+| B | “Throw‑1” | First throw of pole 1 |
+| C | “Throw‑2” | Second throw of pole 1 |
+
+Because the user asked for a minimal schematic containing only the switch, we omit the label creation.  
+Should the user decide to add them later, the `add_label` function would be used with `label_text` matching the pin name and `text_orient` set to “right” or “left” depending on the desired placement.
+
+---
+
+### 5.  Final code outline
+
+```python
+# Import the KiCad schematic interface
+import sys, os
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+# 1. Place the switch
+add_schematic_symbol(
+    symbol_lib="Switch",
+    symbol_name="SW_DPDT_x2",
+    pos_x=150.0,
+    pos_y=110.0,
+    reference="SW1",
+    value="SW_DPDT_x2",
+    rotation=180,
+    mirror=None
+)
+
+# 2. (No additional symbols)
+
+# 3. (No wiring needed – only the switch)
+
+# 4. Write out wires (empty, but required by the interface)
+write_out_all_wires()
+```
+
+*The code contains only the essential elements: the symbol itself and the function call to emit the wire list.  
+Because no other components are present, `write_out_all_wires()` will produce an empty list, which is acceptable for a minimal schematic block.*
+
+---
+
+**Conclusion**
+
+The resulting schematic is a clean, centered representation of a double‑pole double‑throw switch that can be inserted into larger designs.  
+All arguments to the helper functions have been chosen to satisfy the user’s constraints:  
+* the correct reference and library name,  
+* a logical position and rotation,  
+* no extraneous components or labels,  
+* and a single pass to output the wire list.  
+This keeps the schematic simple, readable, and ready for further expansion.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Switch:SW_DPDT_x2###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Switch", symbol_name="SW_DPDT_x2", pos_x=center_x_1, pos_y=center_y_1, reference="SW1", value="SW_DPDT_x2", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_dpdt_x2_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_dpdt_x2_generated.response.txt

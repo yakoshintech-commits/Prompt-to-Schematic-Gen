@@ -1,0 +1,283 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A low-power voltage reference circuit using the REF3033 IC. Use exactly these real components: U1 as a REF3033, in the KiCad library "Reference_Voltage" (3.3V precision voltage reference, low-power (50uA quiescent). SOT-23-3 package.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1901])
+[SEQLEN] input_ids shape: torch.Size([1, 1901])
+[SEQLEN] input_ids shape: torch.Size([1, 1901])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4896])
+[SEQLEN] input_ids shape: torch.Size([1, 4896])
+[SEQLEN] input_ids shape: torch.Size([1, 4896])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5117])
+[SEQLEN] input_ids shape: torch.Size([1, 3315])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.74GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.74GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.74GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.74GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.74GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements the REF3033 3.3 V precision voltage reference.  
+All symbols must come from the KiCad libraries that already exist – the REF3033
+is in the *Reference_Voltage* library and the other elements (resistor,
+ground etc.) are in *Device* or *power*.  
+The schematic must fit comfortably on an A4 page (210 × 297 mm) and the drawing
+should be tidy: components are spaced, oriented, and wired so that the
+reference voltage is produced and the regulator’s output can be routed
+to downstream circuitry.
+
+---
+
+### 1.  Choosing the centre of the layout
+
+A convenient reference point is the centre of the sheet,
+(105 mm + 105 mm = 210 mm).  
+However, the user’s example places the central component (the transistor
+in the example) at (150 mm, 110 mm).  
+We adopt the same strategy: the REF3033 will be centred at **(150 mm, 110 mm)**.
+All other symbols are then positioned with integer‑offsets relative to this
+centre, which guarantees no accidental overlap and keeps the drawing
+symmetrical.
+
+---
+
+### 2.  Placing the REF3033 (U1)
+
+```python
+add_schematic_symbol(
+    symbol_lib="Reference_Voltage",
+    symbol_name="REF3033",
+    pos_x=150.0, pos_y=110.0,
+    reference="U1",
+    value="REF3033",
+    rotation=0,
+    mirror="None"
+)
+```
+
+* **Library / symbol** – `Reference_Voltage:REF3033` is the exact part the
+  user requested; the value is set to the same string for clarity.
+* **Position** – the centre coordinates make the component the visual
+  anchor of the schematic.
+* **Rotation / mirror** – 0° keeps the pins where the datasheet shows
+  them: VOUT on the left, VIN on the right, GND beneath.  No mirroring is
+  needed.
+
+---
+
+### 3.  Surrounding passive components
+
+The REF3033 needs a resistor divider to set the output voltage if
+required, and a decoupling capacitor to reduce noise.  
+All symbols are placed at integer offsets so that the bounding boxes do
+not collide.
+
+| Symbol | Library | Reference | Value | Offset (x,y) | Rotation | Mirror |
+|--------|---------|-----------|-------|--------------|----------|--------|
+| Resistor (input) | Device | R1 | 2.2 kΩ | (-72, +22) | 0° | None |
+| Ground | power | #PWR1 | GND | (-72, +8) | 0° | None |
+| Resistor (divider) | Device | R2 | 2.2 kΩ | (-62, +0) | 0° | None |
+| Vin power | power | #PWR2 | VIN | (-31, +22) | 0° | None |
+| Jumper (optional pull‑up) | Jumper | JP1 | AUX | (-31, +15) | 0° | X |
+| Ground | power | #PWR3 | GND | (-8, +22) | 0° | None |
+| Resistor (divider) | Device | R3 | 2.2 kΩ | (-8, +8) | 0° | None |
+| Resistor (output) | Device | R4 | 2.2 kΩ | (+10, +8) | 0° | None |
+
+*The negative offsets keep all passive parts to the left of the REF3033,
+while the output resistor sits to the right.  Rotations are 0° so that
+the pins line up horizontally, which simplifies the wiring.*
+
+---
+
+### 4.  Global labels
+
+For each pin that will later be connected to external circuitry we place a
+label.  The label position is calculated by querying the pin location and
+adding a small offset so the text does not overlap the pin.
+
+1. **VIN label** – placed 5 mm above the REF3033’s VIN pin.
+2. **VOUT label** – placed 5 mm to the right of the REF3033’s VOUT pin.
+3. **GND label** – placed 5 mm below the REF3033’s GND pin.
+
+```python
+add_label([X_U1_VIN+0, Y_U1_VIN+5], "VIN", "VIN_0", "output", "top")
+add_label([X_U1_VOUT+5, Y_U1_VOUT+0], "VOUT", "VOUT_0", "output", "right")
+add_label([X_U1_GND+0, Y_U1_GND-5], "GND", "GND_0", "input", "bottom")
+```
+
+The `text_orient` arguments (top, right, bottom) keep the label text
+oriented nicely relative to the pin.
+
+---
+
+### 5.  Wiring the schematic
+
+The goal is to produce a clean, functional voltage reference:
+
+1. **REF3033 VIN** → jumper JP1 (pin A) → R1 → R2 → REF3033 GND.  
+   This creates the optional pull‑up path for the input pin; the jumper
+   can be bridged or left open.
+2. **REF3033 VOUT** → R3 → REF3033 GND.  
+   The divider resistor R3 produces a slight output voltage drop if
+   needed; otherwise it is a simple pull‑down to ground.
+3. **Output path** – R3 connects to R4, which then connects to the
+   external circuit.  R4 is a decoupling resistor that can be
+   bypassed by a small capacitor if needed (not shown here).
+4. **Grounds** – all ground pins (`#PWR1`, `#PWR2`, `#PWR3`) are tied
+   together through the label GND, ensuring a single common reference.
+
+The `connect_pins` calls follow the pin names exactly as they appear
+in the symbol definitions (e.g., `"VIN"`, `"VOUT"`, `"GND"`).  The
+connections are made in the order that mirrors the logical flow
+described above, which keeps the wire list readable.
+
+```python
+# VIN path
+connect_pins("VIN_0", "1", "U1", "VIN")
+connect_pins("VIN_0", "1", "JP1", "A")
+connect_pins("JP1", "A", "R1", "1")
+connect_pins("R1", "2", "R2", "1")
+connect_pins("R2", "1", "U1", "GND")
+
+# VOUT path
+connect_pins("VOUT_0", "1", "U1", "VOUT")
+connect_pins("U1", "VOUT", "R3", "1")
+connect_pins("R3", "2", "U1", "GND")
+
+# Output resistor chain
+connect_pins("R3", "2", "R4", "1")
+connect_pins("R4", "2", "GND_0", "1")
+
+# Ground tie‑in
+connect_pins("#PWR1", "GND", "#PWR2", "GND")
+connect_pins("#PWR1", "GND", "#PWR3", "GND")
+```
+
+Finally, `write_out_all_wires()` writes the wire objects to the schematic
+file.
+
+---
+
+### 6.  Why the chosen rotations, mirrors, and offsets work
+
+* **Rotations of 0°** keep the pins in the conventional orientation, so the
+  wire routing is mostly horizontal or vertical, which is easier to read.
+* **No mirroring** is required because the default symbol orientation
+  already matches the datasheet.  Mirroring would have forced extra
+  wire bends.
+* **Offsets** were chosen in 5 mm increments, giving ample clearance
+  between components and preventing overlap of bounding boxes.
+  The relative positions also follow the logical flow from input to output
+  (left → centre → right), which makes the schematic intuitive.
+
+---
+
+### 7.  Summary of the final design
+
+* **Center** – REF3033 (U1) at (150 mm, 110 mm).  
+* **Input path** – VIN → JP1 → R1 → R2 → GND.  
+* **Output path** – VOUT → R3 → R4 → external circuit.  
+* **Labels** – VIN, VOUT, GND on the corresponding pins.  
+* **Wire layout** – straight horizontal/vertical traces, minimal overlap,
+  clear separation of input and output sections.  
+
+This reasoning directly maps to the Python code that would be generated
+by the KiCad schematic interface, ensuring that the schematic is both
+functionally correct and visually clean.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Device:R###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1, pos_y=center_y_1, reference="R2", value="2.2K", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-7), pos_y=center_y_1 + (3), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-7), pos_y=center_y_1 + (-5), reference="#PWR1", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-3), pos_y=center_y_1 + (11), reference="#PWR2", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="+3V3", pos_x=center_x_1 + (3), pos_y=center_y_1 + (11), reference="#PWR3", value="+3V3", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (15), pos_y=center_y_1 + (3), reference="R3", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (21), pos_y=center_y_1 + (0), reference="R4", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (21), pos_y=center_y_1 + (-5), reference="#PWR4", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+# Add label SDA next to R1 pin 1 
+x_R1_1, y_R1_1 = get_pin_location(symbol_ref="R1", pin_name="1")
+add_label(label_pos=[x_R1_1+(-13), y_R1_1+(3)], label_text="SDA", label_ref="SDA_0", label_type="input", text_orient="left")
+# Connecting Label SDA label_id:0 to R1 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("SDA_0", "1", "R1", "1")
+
+# Add label SCL next to R1 pin 2 
+x_R1_2, y_R1_2 = get_pin_location(symbol_ref="R1", pin_name="2")
+add_label(label_pos=[x_R1_2+(12), y_R1_2+(3)], label_text="SCL", label_ref="SCL_0", label_type="input", text_orient="right")
+# Connecting Label SCL label_id:0 to R1 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("SCL_0", "1", "R1", "2")
+
+# Add label SDA next to R2 pin 2 
+x_R2_2, y_R2_2 = get_pin_location(symbol_ref="R2", pin_name="2")
+add_label(label_pos=[x_R2_2+(12), y_R2_2+(3)], label_text="SDA", label_ref="SDA_1", label_type="input", text_orient="right")
+# Connecting Label SDA label_id:1 to R2 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("SDA_1", "1", "R2", "2")
+
+# Add label AIO_NEXT next to R2 pin 1 
+x_R2_1, y_R2_1 = get_pin_location(symbol_ref="R2", pin_name="1")
+add_label(label_pos=[x_R2_1+(12), y_R2_1+(3)], label_text="AIO_NEXT", label_ref="AIO_NEXT_0", label_type="input", text_orient="right")
+# Connecting Label AIO_NEXT label_id:0 to R2 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("AIO_NEXT_0", "1", "R2", "1")
+
+# Add label SCL next to R3 pin 2 
+x_R3_2, y_R3_2 = get_pin_location(symbol_ref="R3", pin_name="2")
+add_label(label_pos=[x_R3_2+(6), y_R3_2+(3)], label_text="SCL", label_ref="SCL_1", label_type="input", text_orient="right")
+# Connecting Label SCL label_id:1 to R3 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("SCL_1", "1", "R3", "2")
+
+# Add label SDA next to R3 pin 1 
+x_R3_1, y_R3_1 = get_pin_location(symbol_ref="R3", pin_name="1")
+add_label(label_pos=[x_R3_1+(6), y_R3_1+(3)], label_text="SDA", label_ref="SDA_2", label_type="input", text_orient="right")
+# Connecting Label SDA label_id:2 to R3 pin 1 (Pin ID 1 -- Name 1)
+connect_pins("SDA_2", "1", "R3", "1")
+
+# Add label SCL next to R4 pin 2 
+x_R4_2, y_R4_2 = get_pin_location(symbol_ref="R4", pin_name="2")
+add_label(label_pos=[x_R4_2+(0), y_R4_2+(3)], label_text="SCL", label_ref="SCL_2", label_type="input", text_orient="left")
+# Connecting Label SCL label_id:2 to R4 pin 2 (Pin ID 2 -- Name 2)
+connect_pins("SCL_2", "1", "R4", "2")
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR2 pin +1V8 (Pin ID 1 -- Name +1V8) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR2", "+1V8", "R1", "1")
+
+# Connecting #PWR3 pin +3V3 (Pin ID 1 -- Name +3V3) to R3 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR3", "+3V3", "R3", "1")
+
+# Connecting R3 pin 2 (Pin ID 2 -- Name None) to R4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R3", "2", "R4", "1")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 2 (Pin ID 2 -- Name None)
+connect_pins("R1", "2", "R2", "2")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to #PWR1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R2", "1", "#PWR1", "1")
+
+# Connecting R4 pin 2 (Pin ID 2 -- Name None) to #PWR4 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R4", "2", "#PWR4", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ref3033_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_ref3033_generated.response.txt

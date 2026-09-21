@@ -1,0 +1,180 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple switch circuit using an NPN bipolar transistor. Use exactly these real components: Q1 as a PN2222A, in the KiCad library "Transistor_BJT" (NPN bipolar transistor, 40V 600mA, TO-92. General-purpose switching/amplifier.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1898])
+[SEQLEN] input_ids shape: torch.Size([1, 1898])
+[SEQLEN] input_ids shape: torch.Size([1, 1898])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 4893])
+[SEQLEN] input_ids shape: torch.Size([1, 4893])
+[SEQLEN] input_ids shape: torch.Size([1, 4893])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+[SEQLEN] input_ids shape: torch.Size([1, 5114])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 3312])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.73GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.09GB gpu_peak=28.73GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.73GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.73GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.73GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a *single* schematic that implements a simple NPN‑bypass switch.  
+The only device we are allowed to use is a PN2222A transistor (TO‑92, 40 V, 600 mV).  
+All other components must be generic passive parts or power symbols that are already in the KiCad libraries.  
+The schematic must be centered on an A4 page (210 × 297 mm), so the main transistor will sit near the centre of the sheet and all other symbols will be offset from it.  
+
+**Physical layout**
+
+```
+                +1.8 V
+                  |
+                  |
+          +───────+───────+───────+
+          |                    |
+          R1 (2.2 kΩ)            |
+          |                    |
+          Q1 (PN2222A)          |
+          |                    |
+          R2 (2.2 kΩ)            |
+          |                    |
+          GND
+```
+
+The NPN transistor has three pins:
+
+* **E (Collector)** – the output of the switch, tied to the resistor chain that goes to +1.8 V.  
+* **B (Base)** – driven by a pull‑up resistor (R1) that is connected to +1.8 V and to the base of Q1.  
+* **C (Emitter)** – tied to ground through the emitter resistor chain (R2).  
+
+The emitter resistor chain provides the low‑side switching action: when the base receives a signal (AUX_CL), the transistor turns on, pulling its collector (AUX_CL_VIN) towards ground. When the base is high (AUX_CL), the transistor is off and the collector follows the supply through R1.
+
+**Placement of symbols**
+
+We choose a centre point `(150 mm, 110 mm)` for Q1.  
+All other symbols are placed relative to this centre:
+
+| Symbol | Library | Offset from centre | Reference | Value | Rotation | Mirror |
+|--------|---------|--------------------|-----------|-------|----------|--------|
+| Q1 (PN2222A) | Transistor_BJT | (0, 0) | Q1 | PN2222A | 0° | None |
+| +1.8 V power | power | (‑72 mm, +22 mm) | #PWR1 | +1.8 V | 0° | None |
+| R1 (Base‑pullup) | Device | (‑72 mm, +8 mm) | R1 | 2.2 kΩ | 0° | None |
+| Ground (GND) | power | (‑72 mm, ‑10 mm) | #PWR2 | GND | 0° | None |
+| R2 (Emitter‑resistor) | Device | (‑53 mm, +8 mm) | R2 | 2.2 kΩ | 0° | None |
+| GND (second) | power | (+10 mm, ‑10 mm) | #PWR3 | GND | 0° | None |
+
+The offsets ensure that the vertical wire from +1.8 V to the base stays short, the horizontal wire from emitter to ground is clear, and the two resistors are aligned on a common vertical line.  Rotating the transistor 0° keeps its E, B, and C pins in the usual left‑to‑right order, which simplifies wire routing.  No mirroring is required.
+
+**Label placement**
+
+Three global labels are needed to expose the switch signals:
+
+* **AUX_CL** – the base input.  It is placed left of Q1’s B pin.  
+* **AUX_CL_VIN** – the collector output.  It is placed right of Q1’s E pin.  
+* **AUX_CL_GND** – the emitter output (ground reference).  It is placed right of Q1’s C pin.
+
+For each label we:
+
+1. Call `get_pin_location("Q1", "<pin>")` to obtain the exact coordinate of the pin.  
+2. Offset the label by a small amount (e.g., ±13 mm horizontally) so the text does not overlap the symbol.  
+3. Set `text_orient` to “left” for labels that sit left of a pin and “right” for those that sit right.  
+4. Connect the label to the corresponding pin with `connect_pins(label_ref, "1", "Q1", "<pin>")`.
+
+**Wire connections**
+
+All electrical connections are expressed with `connect_pins()`; the first two arguments are the source symbol and pin, the next two are the destination symbol and pin.  The logic of each connection is:
+
+* **Power to base‑pullup**  
+  `#PWR1 (+1.8 V)` → `R1` pin 1 → `Q1` pin B.  
+  This supplies base bias.
+
+* **Emitter to ground**  
+  `Q1` pin C → `GND` (`#PWR2`).  
+  The emitter is tied to ground through the second ground symbol.
+
+* **Collector output**  
+  `Q1` pin E → `AUX_CL_VIN` label (the collector is the switch’s output).  
+  The collector is also connected to the series resistor R2 which then goes to ground.  
+
+* **Series resistor to ground**  
+  `R2` pin 2 → `#PWR3` (ground).  
+  This completes the low‑side resistor.
+
+* **Base‑pullup resistor**  
+  `R1` pin 2 → `Q1` pin B (already described).
+
+* **Labels to pins** – already handled.
+
+After all connections are defined, we call `write_out_all_wires()` to flush the wire list into the schematic file.
+
+**Why this layout works**
+
+* The base‑pullup resistor (R1) ensures the transistor sees a defined high level when AUX_CL is not asserted.  
+* The emitter resistor (R2) provides a small current path when the transistor is on, keeping the collector low.  
+* No additional components are needed; the PN2222A can handle the required voltage and current.  
+* The chosen rotation and offsets keep the schematic tidy: no crossing wires, all pins are adjacent, and the labels sit clearly next to the pins they reference.
+
+**Summary of the code structure**
+
+1. **Imports** – bring in the KiCad helper functions.  
+2. **Add Q1** – centre the PN2222A at (150, 110).  
+3. **Add power and passive symbols** – use the offsets described above, with correct references and values.  
+4. **Add labels** – compute positions from pin locations and connect them.  
+5. **Connect all pins** – describe every electrical relationship.  
+6. **Write wires** – `write_out_all_wires()`.
+
+Each function call is chosen with explicit arguments that match the physical placement and electrical function, ensuring the final schematic accurately models a simple NPN switch using the PN2222A transistor.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Transistor_BJT:PN2222A###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Transistor_BJT", symbol_name="PN2222A", pos_x=center_x_1, pos_y=center_y_1, reference="Q1", value="PN2222A", rotation=0, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="+1V8", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (22), reference="#PWR1", value="+1V8", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (8), reference="R1", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (-72), pos_y=center_y_1 + (-10), reference="#PWR2", value="GND", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="Device", symbol_name="R", pos_x=center_x_1 + (-53), pos_y=center_y_1 + (8), reference="R2", value="2.2K", rotation=0, mirror="None")
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (10), pos_y=center_y_1 + (-10), reference="#PWR3", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting #PWR1 pin +1V8 (Pin ID 1 -- Name +1V8) to R1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("#PWR1", "+1V8", "R1", "1")
+
+# Connecting #PWR3 pin 1 (Pin ID 1 -- Name None) to Q1 pin E (Pin ID 3 -- Name E)
+connect_pins("#PWR3", "1", "Q1", "E")
+
+# Connecting R2 pin 2 (Pin ID 2 -- Name None) to Q1 pin B (Pin ID 2 -- Name B)
+connect_pins("R2", "2", "Q1", "B")
+
+# Connecting R1 pin 2 (Pin ID 2 -- Name None) to R2 pin 1 (Pin ID 1 -- Name None)
+connect_pins("R1", "2", "R2", "1")
+
+# Connecting R2 pin 1 (Pin ID 1 -- Name None) to Q1 pin C (Pin ID 1 -- Name C)
+connect_pins("R2", "1", "Q1", "C")
+
+# Connecting #PWR2 pin 1 (Pin ID 1 -- Name None) to Q1 pin C (Pin ID 1 -- Name C)
+connect_pins("#PWR2", "1", "Q1", "C")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_pn2222a_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_pn2222a_generated.response.txt

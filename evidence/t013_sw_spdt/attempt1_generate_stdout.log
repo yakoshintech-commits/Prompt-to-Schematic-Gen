@@ -1,0 +1,112 @@
+[MEMCHECK] after base_model load + per-expert MXFP4 dequant: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[FEEDBACK CHECK] feedback provided: False (len=0)
+[MEMCHECK] before symbol_selector_llm creation: host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[MEMCHECK] after symbol_selector_llm creation (post eager switch): host_maxrss=7.88GB gpu_alloc=17.36GB gpu_reserved=24.61GB gpu_peak=22.34GB
+[RAW] prompt=Design a schematic for A simple circuit using a single-pole double-throw switch to connect two different signals to a common point. Use exactly these real components: SW1 as a SW_SPDT, in the KiCad library "Switch" (Single-pole double-throw switch. Pin A is the common, B and C are the two throws.). Do not substitute or invent a different part for any of them.
+[SEQLEN] input_ids shape: torch.Size([1, 1903])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+[SEQLEN] input_ids shape: torch.Size([1, 4898])
+Azure CLI not found on path
+[SEQLEN] input_ids shape: torch.Size([1, 5119])
+[SEQLEN] input_ids shape: torch.Size([1, 3317])
+[MEMCHECK] after run_raw_test (post symbol-selection generate() call): host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.75GB
+[MEMCHECK] after switching back to flash_attention_2: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=31.10GB gpu_peak=28.75GB
+[MEMCHECK] after gc.collect + empty_cache: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=18.94GB gpu_peak=28.75GB
+[MEMCHECK] after PeftModel.from_pretrained: host_maxrss=8.77GB gpu_alloc=17.43GB gpu_reserved=18.98GB gpu_peak=28.75GB
+[MEMCHECK] after merge_and_unload: host_maxrss=8.77GB gpu_alloc=17.37GB gpu_reserved=25.35GB gpu_peak=28.75GB
+Model raw response: <|channel|>analysis<|message|>**High‑level goal**
+
+The user wants a schematic that implements a single‑pole double‑throw (SPDT) switch.  
+* One side of the switch (pin A) is the common node that feeds the rest of the circuit.  
+* The two throws (pins B and C) connect this common node to two independent sources or loads.  
+* No extra components are required – only the switch and a ground reference.
+
+Because the switch is a *mechanical* part, we can keep the schematic simple:  
+- Place the switch near the centre of the A4 sheet (≈ 150 mm × 110 mm).  
+- Add a GND symbol a few millimetres below the switch so that the common pin can be tied to ground if desired.  
+- No resistors, capacitors or labels are necessary unless the user explicitly asks for them.
+
+**Symbol selection**  
+- `SW_SPDT` from the “Switch” library (the user’s exact part).  
+- `GND` from the “power” library for a ground reference.
+
+**Spatial placement**  
+The centre of the schematic is at (150 mm, 110 mm).  
+- `SW_SPDT` is placed exactly at this centre: `pos_x=150`, `pos_y=110`.  
+- The GND symbol is offset vertically below the switch by 7 mm (`pos_y = 110 − 7`).  
+  The horizontal offset is 0 mm because the symmetry of the switch does not require a left/right shift.
+
+The switch is rotated 90° so that its pins face left/right rather than up/down.  
+- Raw pin locations in the library:  
+  * A: ( +5.08 mm,  +2.54 mm) → left‑hand side of the symbol.  
+  * B: ( ‑5.08 mm,   0.0 mm) → right‑hand side.  
+  * C: ( +5.08 mm,  ‑2.54 mm).  
+Rotating 90° swaps the vertical/horizontal axes: the common pin (A) becomes the left pin, the throws (B and C) become right‑hand pins.  
+This orientation keeps the wires short and the schematic tidy.  
+No mirroring is required (`mirror="None"`).
+
+**Connecting the pins**  
+We need only one wire:  
+`#PWR1` (the GND symbol) → `SW_SPDT` pin A.  
+The other two pins (B and C) are left unconnected in this minimal schematic, but a user could add external connections later.  
+If the user wishes to tie the common node to ground, the wire is straightforward.
+
+**Labels**  
+The user didn’t ask for any labels or external connections, so we do not add any.  
+If labels were required (e.g., “IN_B” or “IN_C”), we would place them next to the corresponding pins using `add_label()` and then `connect_pins()` them to the pins.
+
+**Wire generation**  
+After all symbols are placed and the single connection is defined, `write_out_all_wires()` is called to output the netlist.
+
+**Summary of function calls**
+
+1. **`add_schematic_symbol()`** –  
+   * Switch: `symbol_lib="Switch"`, `symbol_name="SW_SPDT"`, `pos_x=150`, `pos_y=110`, `reference="SW1"`, `value="SW_SPDT"`, `rotation=90`, `mirror="None"`.  
+   * GND: `symbol_lib="power"`, `symbol_name="GND"`, `pos_x=150`, `pos_y=103`, `reference="#PWR1"`, `value="GND"`, `rotation=0`, `mirror="None"`.
+
+2. **`connect_pins()`** –  
+   `connect_pins("#PWR1", "1", "SW1", "A")`  
+   (uses pin 1 of the GND symbol – the only pin – to pin A of the switch).
+
+3. **`write_out_all_wires()`** – writes the single wire into the schematic file.
+
+**Why this layout is optimal**
+
+- The switch sits near the centre, so the schematic remains balanced.  
+- Rotating the switch to 90° aligns its common pin horizontally, making the wire to ground a straight vertical line.  
+- The GND symbol is placed just below, ensuring the wire is short and the ground reference is visible.  
+- No extra components introduce unnecessary clutter.  
+
+This reasoning directly translates into the concise Python script that uses the KiCad API functions provided.<|end|><|start|>assistant<|channel|>final<|message|># Auto-generated schematic symbols
+import sys
+import os
+
+# Get project path and import kicad schematic interface
+PROJECT_PATH = os.environ['PROJECT_PATH']
+sys.path.append(PROJECT_PATH)
+from modules.kicad_sch_interface import *
+
+### Placing center symbol 1 : Switch:SW_SPDT###
+
+center_x_1, center_y_1 = 150.0, 110.0
+
+add_schematic_symbol(symbol_lib="Switch", symbol_name="SW_SPDT", pos_x=center_x_1, pos_y=center_y_1, reference="SW1", value="SW_SPDT", rotation=90, mirror="None")
+
+### Placing other symbols in the Schematic with respect to the center symbol 1###
+
+add_schematic_symbol(symbol_lib="power", symbol_name="GND", pos_x=center_x_1 + (0), pos_y=center_y_1 + (-7), reference="#PWR1", value="GND", rotation=0, mirror="None")
+
+### Placing all global labels in the Schematic and connect them to the neighbor pin ###
+
+
+### Connecting all wires in the Schematic ###
+
+
+# Connecting SW1 pin A (Pin ID 2 -- Name A) to #PWR1 pin 1 (Pin ID 1 -- Name None)
+connect_pins("SW1", "A", "#PWR1", "1")
+
+write_out_all_wires()
+<|return|>
+Saved generated code to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_spdt_generated.py
+Saved raw response to /scratch/k2983/root-project/pcb-schematic-gen/SchGen/schematic_generation/t013_sw_spdt_generated.response.txt

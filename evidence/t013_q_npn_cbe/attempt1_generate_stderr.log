@@ -1,0 +1,693 @@
+[2026-09-21 21:53:51] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-4o_2024-08-06[0m
+[2026-09-21 21:53:51] [92mINFO[0m - llm_interface.py:694 - [92mAzure LLM Deployment name: gpt-5.2_2025-12-11[0m
+
+Fetching 41 files:   0%|          | 0/41 [00:00<?, ?it/s]
+Fetching 41 files: 100%|██████████| 41/41 [00:00<00:00, 42534.37it/s]
+
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]
+Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.87it/s]
+Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.86it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.02it/s]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  1.98it/s]
+[2026-09-21 21:54:14] [92mINFO[0m - llm_interface.py:938 - [92mNow using Local LLM of model gpt-oss-20b.[0m
+[2026-09-21 21:55:06] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic libraries for the user request: design a schematic for a simple circuit using a generic n-p-n transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". So we need to list the libraries that contain this component. The provided list includes many libraries; we need to check which ones contain the component Q_NPN_CBE. The library "Device" is present in the list. Also maybe "Transistor_BJT" etc. But the user specifically says use exactly these real components: "Q1 as a Q_NP_N_CBE, in the Kicad library 'Device'". So the relevant library is "Device". Are there any other libraries that also contain Q_NPN_CBE? Possibly "Transistor_BJT"? But the component name is Q_NPN_CBE; that is likely only in Device. The question: "Find the related schematic libraries for ...". So we need to output the list of libraries that are related to the request. That would be just ["Device"]. But we must check if any other library names contain the component. The list includes "Transistor_BJT", but that might have generic BJT transistors but not necessarily Q_NPN_CBE.
+
+Thus answer: The only relevant library is Device. Provide JSON summary with key "symbols" array containing "Device". Wait the JSON format: They gave a schema: 'description': 'RelatedSymbols ...', 'properties': {'symbols'...}. So we need to produce JSON object with keys: description, properties, title, type. But they said "Summarize the output at end of your response using following Json format." So we need to output JSON object with those fields. The example shows the JSON structure. We need to fill in values accordingly. For our case, description: maybe "RelatedSymbols is a class ..."? Actually the description is given in the example. We should keep that same description? The example shows description: 'RelatedSymbols is a ...'. That seems generic. We can reuse that. Then properties: symbols array default empty, items type string, title 'Symbols', type 'array'. Title: 'rRelatedSymbols', type: 'object'.
+
+But we need to fill the symbols array with the relevant library names. So symbols: ["Device"].
+
+Thus final JSON:
+
+{
+  "description": "RelatedSymbols is a ...",
+  "properties": {
+    "symbols": {
+      "default": [],
+      "items": {"type":"string"},
+      "title":"Symbols",
+      "type":"array"
+    }
+  },
+  "title":"rRelatedSymbols",
+  "type":"object",
+  "symbols":["Device"]
+}
+
+Wait the schema: properties contains symbols definition. But the actual data should be separate? Usually JSON schema vs instance. But they want summary output. Probably they want an object with key "symbols" containing array. But the example shows the schema, not instance. But they ask to "Summarize the input at the end of your reply using the following Json format." So maybe they want the instance that matches the schema. So we need to output something like:
+
+json {
+  "symbols": ["Device"]
+}
+
+But the example includes description, properties, title. That looks like a schema. But they say "do not include defs, descriptions, required, only the actual content." So we should not include description, properties, title? Wait they say: "Make sure it starts with json {". And "Note that In JSON, you ...". They give an example of a JSON schema. But they say do not include defs, descriptions etc. Only actual content. So we should output only the actual content: maybe just the array of symbols? But they also say "Summarize the ... using the following Json format". The format they provide is a JSON schema. But we need to output an instance that matches that schema. The instance would be something like:
+
+{
+  "symbols": ["device"]
+}
+
+But the schema expects "symbols" property. So we output that. But they also mention "do not include defs". So we don't include description, properties, etc. So final output: json { "symbols": ["Device"] }
+
+But the example includes description etc. But they say do NOT include those. So we just output the instance.
+
+Thus final answer: first answer questions: we identified library "Device". Then summary JSON: json { "symbols":["Device"] }.
+
+Let's produce final.<|end|><|start|>assistant<|channel|>final<|message|>The user’s request specifies a single real component: **Q1** as a generic NPN transistor with C‑B‑E pinout, taken from the KiCad library named **“Device.”**  
+Among the provided library list, only the **Device** library contains the component **Q_NPN_CBE**. No other listed library offers this exact part, so the only relevant schematic library for this design is **Device**.
+
+```json
+{
+  "symbols": [
+    "Device"
+  ]
+}
+```
+<|return|>
+[2026-09-21 21:55:06] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-21 21:55:54] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-pn transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+Also note: we should include all related symbols even for simple components like resistor, capacitor, etc. So we need to list all symbols that would be used in a simple circuit with a generic NPN transistor. The user didn't specify other components, but typical simple circuit might include resistor, capacitor, maybe power supply, ground, etc. But the instruction says "Find the related schematic symbols for ...". So we need to list the symbols that are relevant: Q_NPN_CBE (generic NPN transistor), R (resistor), C (capacitor), L (inductor), V (voltage source), GND (ground). Also maybe power symbol? In KiCad, there is "V" for voltage source, "R" for resistor, "C" for capacitor, "L" for inductor, "GND" for ground. Also maybe "Power" symbol? There's "Power" symbol in KiCad library "Device"? Actually KiCad has "Power" symbol in "Device" library: "Power" or "Power_Indicator"? Let's recall: In KiCad's "Device" library, there are symbols: "V" (Voltage Source), "R" (Resistor), "C" (Capacitor), "L" (Inductor), "GND" (Ground), "Power" maybe "Power" or "VCC"? There is "Power" symbol "Power" in "Device" library. Also "Power" symbol "VCC" maybe. But we need to list all related symbols. The user didn't specify which ones exactly, but we should include all that could be used in a simple transistor circuit: resistor, capacitor, inductor, voltage source, ground, maybe power symbol.
+
+Thus we need to produce a JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: e.g., "Q_NPN_CBE", lib_name: "Device". Similarly for "R", "C", "L", "V", "GND", "Power". Also maybe "V" is "V" symbol. But we need to confirm names: In KiCad's Device library, the symbol names: "R" for resistor; "C" for capacitor; "L" for incenter; "V" for voltage; "GND" for Ground; "Power" maybe "VCC" or "Power". Let's search memory: KiCad 7's Device library includes "V" for Voltage Source, "R" for Resistor, "C" for Capacitor, "L" for Inductor, "GND" is a separate symbol. There's also "Power" symbol "POWER" maybe. Actually there is a symbol called "Power" in the "Device" library: it's a symbol with a vertical line and a horizontal line. The name is "Power". So we include that.
+
+Also maybe "V" is the symbol name "V". So we include that. Also "GND" is "GND".
+
+Thus we produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"C","lib_name":"Device"} ,
+    {"name":"L","lib_name":"Device"},{"name":"V","lib_name":"Device"},{ "name":"GND","lib_name":"Device"}
+    {"name":"Power","lib_name":"Device"}
+
+But we need to ensure correct formatting: json { ... } with no $defs etc. The prompt says: "Summarize the output at end of your response using following Json format. ( format the summary as `json {...}` , do not include defs, descriptions, required, only actual content. Make sure starts with `json {`." So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NPM_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we need to escape quotes properly? They say: "In JSON, you only escape chars like quotes or backslash itself. You may remove those extra backslashes." So we can just output normal JSON. But they want the output to start with "json {" exactly. So we need to output:
+
+json {
+  "symbol": [...]
+}
+
+But the schema expects "symbols" key. So we output:
+
+json {
+  symbols: [ ... ] }
+
+But JSON requires quotes around keys. So we output:
+
+{
+  "symbols":[ ... ]
+}
+
+But they want "json {" at start. So we output:
+
+```
+json {
+  "symbols":[ ...]
+}
+```
+
+Yes.
+
+Now we need to include all related symbols. The question: "NOTE: 1. You should including all related symbols, even simple components like resistors..." So we need to list them. But what about "Power" symbol? It's a power symbol. So include.
+
+Also maybe "VCC" symbol? But that's same as "Power". We'll include "Power".
+
+Also maybe "V" symbol is the voltage source. So include.
+
+Also "GND" symbol.
+
+Also "R", "C" and "L".
+
+Also "Q_NPN_CE" maybe? But we only need Q_NPN_CBE.
+
+Thus final JSON.
+
+Let's produce answer: first answer questions above? The user didn't ask any question. They just gave instructions. So we can respond with the JSON summary.
+
+Thus final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will use the following KiCad symbols from the **Device** library:
+
+* **Q_NPN_CBE** – Generic NPN transistor (C‑B‑E pinout)  
+* **R** – Resistor  
+* **C** – Capacitor  
+* **L** – Inductor  
+* **V** – Voltage source  
+* **GND** – Ground  
+* **Power** – Power indicator
+
+These are the only symbols required for a simple transistor circuit while satisfying the constraint of using exactly the specified part.
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPN_C BE", "lib_name": "Device" },
+    { "name": "\"R\"", "lib_name": " Device" },
+    { " name": "\"C\"", "lib_name": "\"Device\"" },
+    { "name":"\"L\"", "lib_name":"Device" },
+    { "\"name\":\"V\"", "lib_name":"\"Device\"" },
+    { "\"name\": \"GND\"", "lib_name":" \"Device\"" },
+    { \"name\":\"Power\", \"lib_name\":\"Device\" }
+  ]
+}
+```<|return|>
+[2026-09-21 21:55:54] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 7 column 23 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...:\\"Device\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:55:54] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...\"Device\\\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:55:54] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 21:56:42] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-pn transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+Also note: we should include all related symbols even for simple components like resistor, capacitor, etc. So we need to list all symbols that would be used in a simple circuit with a generic NPN transistor. The user didn't specify other components, but typical simple circuit might include resistor, capacitor, maybe power supply, ground, etc. But the instruction says "Find the related schematic symbols for ...". So we need to list the symbols that are relevant: Q_NPN_CBE (generic NPN transistor), R (resistor), C (capacitor), L (inductor), V (voltage source), GND (ground). Also maybe power symbol? In KiCad, there is "V" for voltage source, "R" for resistor, "C" for capacitor, "L" for inductor, "GND" for ground. Also maybe "Power" symbol? There's "Power" symbol in KiCad library "Device"? Actually KiCad has "Power" symbol in "Device" library: "Power" or "Power_Indicator"? Let's recall: In KiCad's "Device" library, there are symbols: "V" (Voltage Source), "R" (Resistor), "C" (Capacitor), "L" (Inductor), "GND" (Ground), "Power" maybe "Power" or "VCC"? There is "Power" symbol "Power" in "Device" library. Also "Power" symbol "VCC" maybe. But we need to list all related symbols. The user didn't specify which ones exactly, but we should include all that could be used in a simple transistor circuit: resistor, capacitor, inductor, voltage source, ground, maybe power symbol.
+
+Thus we need to produce a JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: e.g., "Q_NPN_CBE", lib_name: "Device". Similarly for "R", "C", "L", "V", "GND", "Power". Also maybe "V" is "V" symbol. But we need to confirm names: In KiCad's Device library, the symbol names: "R" for resistor; "C" for capacitor; "L" for incenter; "V" for voltage; "GND" for Ground; "Power" maybe "VCC" or "Power". Let's search memory: KiCad 7's Device library includes "V" for Voltage Source, "R" for Resistor, "C" for Capacitor, "L" for Inductor, "GND" is a separate symbol. There's also "Power" symbol "POWER" maybe. Actually there is a symbol called "Power" in the "Device" library: it's a symbol with a vertical line and a horizontal line. The name is "Power". So we include that.
+
+Also maybe "V" is the symbol name "V". So we include that. Also "GND" is "GND".
+
+Thus we produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"C","lib_name":"Device"} ,
+    {"name":"L","lib_name":"Device"},{"name":"V","lib_name":"Device"},{ "name":"GND","lib_name":"Device"}
+    {"name":"Power","lib_name":"Device"}
+
+But we need to ensure correct formatting: json { ... } with no $defs etc. The prompt says: "Summarize the output at end of your response using following Json format. ( format the summary as `json {...}` , do not include defs, descriptions, required, only actual content. Make sure starts with `json {`." So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NPM_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we need to escape quotes properly? They say: "In JSON, you only escape chars like quotes or backslash itself. You may remove those extra backslashes." So we can just output normal JSON. But they want the output to start with "json {" exactly. So we need to output:
+
+json {
+  "symbol": [...]
+}
+
+But the schema expects "symbols" key. So we output:
+
+json {
+  symbols: [ ... ] }
+
+But JSON requires quotes around keys. So we output:
+
+{
+  "symbols":[ ... ]
+}
+
+But they want "json {" at start. So we output:
+
+```
+json {
+  "symbols":[ ...]
+}
+```
+
+Yes.
+
+Now we need to include all related symbols. The question: "NOTE: 1. You should including all related symbols, even simple components like resistors..." So we need to list them. But what about "Power" symbol? It's a power symbol. So include.
+
+Also maybe "VCC" symbol? But that's same as "Power". We'll include "Power".
+
+Also maybe "V" symbol is the voltage source. So include.
+
+Also "GND" symbol.
+
+Also "R", "C" and "L".
+
+Also "Q_NPN_CE" maybe? But we only need Q_NPN_CBE.
+
+Thus final JSON.
+
+Let's produce answer: first answer questions above? The user didn't ask any question. They just gave instructions. So we can respond with the JSON summary.
+
+Thus final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will use the following KiCad symbols from the **Device** library:
+
+* **Q_NPN_CBE** – Generic NPN transistor (C‑B‑E pinout)  
+* **R** – Resistor  
+* **C** – Capacitor  
+* **L** – Inductor  
+* **V** – Voltage source  
+* **GND** – Ground  
+* **Power** – Power indicator
+
+These are the only symbols required for a simple transistor circuit while satisfying the constraint of using exactly the specified part.
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPN_C BE", "lib_name": "Device" },
+    { "name": "\"R\"", "lib_name": " Device" },
+    { " name": "\"C\"", "lib_name": "\"Device\"" },
+    { "name":"\"L\"", "lib_name":"Device" },
+    { "\"name\":\"V\"", "lib_name":"\"Device\"" },
+    { "\"name\": \"GND\"", "lib_name":" \"Device\"" },
+    { \"name\":\"Power\", \"lib_name\":\"Device\" }
+  ]
+}
+```<|return|>
+[2026-09-21 21:56:42] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 7 column 23 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...:\\"Device\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:56:42] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...\"Device\\\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:56:42] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 21:57:31] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-pn transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+Also note: we should include all related symbols even for simple components like resistor, capacitor, etc. So we need to list all symbols that would be used in a simple circuit with a generic NPN transistor. The user didn't specify other components, but typical simple circuit might include resistor, capacitor, maybe power supply, ground, etc. But the instruction says "Find the related schematic symbols for ...". So we need to list the symbols that are relevant: Q_NPN_CBE (generic NPN transistor), R (resistor), C (capacitor), L (inductor), V (voltage source), GND (ground). Also maybe power symbol? In KiCad, there is "V" for voltage source, "R" for resistor, "C" for capacitor, "L" for inductor, "GND" for ground. Also maybe "Power" symbol? There's "Power" symbol in KiCad library "Device"? Actually KiCad has "Power" symbol in "Device" library: "Power" or "Power_Indicator"? Let's recall: In KiCad's "Device" library, there are symbols: "V" (Voltage Source), "R" (Resistor), "C" (Capacitor), "L" (Inductor), "GND" (Ground), "Power" maybe "Power" or "VCC"? There is "Power" symbol "Power" in "Device" library. Also "Power" symbol "VCC" maybe. But we need to list all related symbols. The user didn't specify which ones exactly, but we should include all that could be used in a simple transistor circuit: resistor, capacitor, inductor, voltage source, ground, maybe power symbol.
+
+Thus we need to produce a JSON with an array of SymbolInfo objects: name and lib_name. For each symbol: name: e.g., "Q_NPN_CBE", lib_name: "Device". Similarly for "R", "C", "L", "V", "GND", "Power". Also maybe "V" is "V" symbol. But we need to confirm names: In KiCad's Device library, the symbol names: "R" for resistor; "C" for capacitor; "L" for incenter; "V" for voltage; "GND" for Ground; "Power" maybe "VCC" or "Power". Let's search memory: KiCad 7's Device library includes "V" for Voltage Source, "R" for Resistor, "C" for Capacitor, "L" for Inductor, "GND" is a separate symbol. There's also "Power" symbol "POWER" maybe. Actually there is a symbol called "Power" in the "Device" library: it's a symbol with a vertical line and a horizontal line. The name is "Power". So we include that.
+
+Also maybe "V" is the symbol name "V". So we include that. Also "GND" is "GND".
+
+Thus we produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"C","lib_name":"Device"} ,
+    {"name":"L","lib_name":"Device"},{"name":"V","lib_name":"Device"},{ "name":"GND","lib_name":"Device"}
+    {"name":"Power","lib_name":"Device"}
+
+But we need to ensure correct formatting: json { ... } with no $defs etc. The prompt says: "Summarize the output at end of your response using following Json format. ( format the summary as `json {...}` , do not include defs, descriptions, required, only actual content. Make sure starts with `json {`." So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NPM_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we need to escape quotes properly? They say: "In JSON, you only escape chars like quotes or backslash itself. You may remove those extra backslashes." So we can just output normal JSON. But they want the output to start with "json {" exactly. So we need to output:
+
+json {
+  "symbol": [...]
+}
+
+But the schema expects "symbols" key. So we output:
+
+json {
+  symbols: [ ... ] }
+
+But JSON requires quotes around keys. So we output:
+
+{
+  "symbols":[ ... ]
+}
+
+But they want "json {" at start. So we output:
+
+```
+json {
+  "symbols":[ ...]
+}
+```
+
+Yes.
+
+Now we need to include all related symbols. The question: "NOTE: 1. You should including all related symbols, even simple components like resistors..." So we need to list them. But what about "Power" symbol? It's a power symbol. So include.
+
+Also maybe "VCC" symbol? But that's same as "Power". We'll include "Power".
+
+Also maybe "V" symbol is the voltage source. So include.
+
+Also "GND" symbol.
+
+Also "R", "C" and "L".
+
+Also "Q_NPN_CE" maybe? But we only need Q_NPN_CBE.
+
+Thus final JSON.
+
+Let's produce answer: first answer questions above? The user didn't ask any question. They just gave instructions. So we can respond with the JSON summary.
+
+Thus final.<|end|><|start|>assistant<|channel|>final<|message|>The schematic will use the following KiCad symbols from the **Device** library:
+
+* **Q_NPN_CBE** – Generic NPN transistor (C‑B‑E pinout)  
+* **R** – Resistor  
+* **C** – Capacitor  
+* **L** – Inductor  
+* **V** – Voltage source  
+* **GND** – Ground  
+* **Power** – Power indicator
+
+These are the only symbols required for a simple transistor circuit while satisfying the constraint of using exactly the specified part.
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPN_C BE", "lib_name": "Device" },
+    { "name": "\"R\"", "lib_name": " Device" },
+    { " name": "\"C\"", "lib_name": "\"Device\"" },
+    { "name":"\"L\"", "lib_name":"Device" },
+    { "\"name\":\"V\"", "lib_name":"\"Device\"" },
+    { "\"name\": \"GND\"", "lib_name":" \"Device\"" },
+    { \"name\":\"Power\", \"lib_name\":\"Device\" }
+  ]
+}
+```<|return|>
+[2026-09-21 21:57:31] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `:` at line 7 column 23 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...:\\"Device\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:57:31] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 4 column 19 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...\"Device\\\\" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:57:31] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 21:57:32] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+[2026-09-21 21:58:17] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-p-n transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+We need to list all related symbols, including simple components like resistors etc. The user didn't specify other components, but we need to include all related symbols? The instruction says: "NOTE: 1. You should *include all related symbols*, even for simple components like res, cap, inductors, power symbols." So we need to list all symbols that might be used in a simple circuit with an NPN transistor. But the user didn't specify what other components. Maybe we need to provide a list of all possible symbols that could be used? Or maybe we need to list all relevant symbols from the provided list that could be used in such a circuit. The user wants the related schematic symbols for this request. So we need to identify which symbols are needed: Q_NPN_CBE is required. Also likely resistor R, capacitor C, inductor L, maybe power supply V, ground GND, maybe LED, etc. But the user didn't mention LED. But they said "simple circuit". Could be a basic transistor switch: resistor, transistor, LED, power supply. But they didn't specify LED. They just said "generic NPN bipolar transistor". So minimal: Q1, resistor, maybe power supply, ground. So we need to include Q_NPN_CBE symbol, R symbol, maybe VCC symbol? There's no V symbol in list. There is no explicit power symbol. But there is "Lamp" etc. But maybe we need to include "R" for resistor. Also "C" for capacitor? Not listed. Actually the list includes many symbols but not "C" or "V". The list is huge but includes many LED, L, Q, R, etc. No capacitor symbol. So maybe we only include those present. For a simple circuit, we need Q_NPN_CBE and R. Also maybe "Lamp" if LED. But not necessary.
+
+Thus we should produce a JSON with symbols: Q_NPN_CEB? Wait the requested symbol is Q_NPN_CBE. In the list, there is "Q_NPN_CPE"? Actually list shows "Q_NPN_CDE"? Let's check: I see "Q_NPN_CB E"? The list includes "Q_NPN_C BE" exactly: "Q_NPN_cbe"? Yes: "Q_NPN CBE" appears: "Name: "Q_NPP_CBE", Library: "Device". Wait the list: "Name: " Q_NPN_CBE", library: Device, description:". Yes.
+
+Also "R" is present: "Name: "R", library: Device".
+
+Also "L" for inductors: "Name: "L_..." etc. But we may not need.
+
+Thus we will list at least Q_NPN_CBE (the transistor) and R (resistor). Possibly also "V" but not present. So we include only those two.
+
+But the instruction: "include all related symbols, even simple components like resistors...". That implies we should include all symbols that might be needed for a simple circuit. But we don't know the exact circuit. But we can assume typical simple transistor circuit: resistor, transistor, maybe LED. But LED symbols exist. But we can include LED_Dual_AKKA etc. But maybe too many.
+
+Better to interpret: Provide all symbols that are relevant to the request: the transistor symbol, resistor symbol, maybe power supply symbol. Since no power symbol given, we might skip.
+
+Thus output JSON with symbols array containing objects with name and lib_name.
+
+We need to follow the JSON format described: json { <key>: <values> }. The schema: $defs, description, properties, title, type. But we should not include $defs, description, required. Only actual content. So we need to output something like:
+
+json {
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}
+  ]
+}
+
+But the schema expects each symbol object to have name and lib_name. So we produce that.
+
+Thus final answer: first answer questions? The prompt says: "First answer questions above, ...". But there are no questions. So we just proceed to summary.
+
+Thus final output: json { "symbols":[...] }.
+
+Let's produce.<|end|><|start|>assistant<|channel|>final<|message|>The user’s request specifies a single component: a generic NPN bipolar transitor with the symbol **Q_NPN_CBE** from the KiCad library “Device”.  
+For a minimal functional schematic that uses this transistor, the only other standard component that is typically required is a resistor (for biasing or current limiting).  
+No other components (capacitors, inductors, LEDs, power supplies, etc.) were explicitly mentioned, so they are omitted from the list.
+
+**Summary of required schematic symbols**
+
+```json
+{
+  "symbols": [
+      {
+          "name": "Q_NPN_CBEN",
+          "lib_name": "Device"
+      },
+      {
+          "name":"R",
+          "lib_name":"Device"
+      }
+  ]
+}
+```
+
+(Note: The symbol name for the transistor is exactly “Q_NPN_CBE” as specified; the resistor symbol is “R”, both belonging to the “Device” library.)<|return|>
+[2026-09-21 21:58:17] [92mINFO[0m - llm_interface.py:572 - [92mExtracted json output from the response[0m
+[2026-09-21 21:58:58] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-p-n transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+We need to list all related symbols, including simple components like resistors etc. But the user didn't specify other components. The request: "Design a schematic for a simple ... using a generic NPN transistor." So we need to provide a list of all symbols that would be used in such a schematic. But we don't know the exact circuit. We might assume a basic emitter follower or common emitter amplifier? The user didn't specify. They just said "simple circuit". We could propose a simple NPN transistor with resistor base, collector resistor, emitter to ground. So we need symbols: Q_NPN_CBE (from Device library), R (resistor) maybe from Device library, VCC (power supply), GND (ground). Also maybe a voltage source symbol. The user says include all related symbols, including resistors, capacitors etc. But we only need those used in the circuit. Since it's simple, maybe no capacitors or inductors. But we can include generic resistor symbol.
+
+Thus we need to produce a JSON with symbols array containing objects with name and lib_name. For each symbol used: Q_NPN_C... Actually the symbol name is "Q_NPN_CBE" from library "Device". Resistor symbol: "R" maybe "R" or "R_Small"? In KiCad, generic resistor symbol is "R" in library "Device". But the list provided includes many resistor pack names but not "R". However the list includes "R_Pack02" etc. But the generic resistor symbol is "Resistor" maybe "R" is not listed. The list shows many resistor pack names but no single resistor. But we can still use "R" if it's known. But the instruction: "include all related symbols, even simple components like resistors". So we need to include the resistor symbol. Which one? The list doesn't show "R". But maybe "R" is the generic resistor symbol. But not listed. The list includes "R_Potentiomet..." etc. But we can choose "R" as generic resistor. But to be safe, we can include "R" from library "Device".
+
+Also we need a power supply symbol: maybe "+5V" from power library. And ground symbol: "GND" from power library.
+
+Thus the JSON will contain symbols: Q_NPN_cbe, R, +5V, GND.
+
+But the user might expect also "VCC" or "VDD". But we can include "+5V" as supply.
+
+Thus produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"+5V","lib_name":"power"},
+    {"name":"GND","lib_name":"power"}
+  ]
+}
+
+But we need to follow the JSON format described: start with json {. Provide keys: symbols. No defs etc. The JSON must be valid. The instructions about escaping quotes: we need to escape quotes inside string values? Actually the JSON format they gave is weird: they show a JSON schema with $defs etc. But we just need to output the summary in JSON format. They say: "Make sure it starts with `jsn {`". Actually they wrote "json {". So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NNP_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we must escape quotes? They mention: "In JSON, you only escape ... you can either remove those extra slashes or double them to get literal backslash". This is confusing. But likely they want plain JSON. We'll output:
+
+json {
+  "Symbols": [
+    {"name": "Q_NPN_C BE", "lib_name": "Device"}
+  ]
+}
+
+But the key should be "symbols" lower-case. They didn't specify case. The schema uses "symbols". So we use that.
+
+Thus final answer: explanation first, then JSON summary.
+
+Let's craft answer: explain that we identified required symbols: Q_NPN CBE, resistor, power supply, ground. Provide JSON.
+
+Let's produce.<|end|><|start|>assistant<|channel|>final<|message|>The user wants a schematic that uses only the specified generic NPN transistor symbol (`Q_NPN_CBE` from the “Device” library) and nothing else.  
+A minimal functional circuit that incorporates this transistor typically needs:
+
+| Component | Symbol name (KiCad) | Library |
+|-----------|---------------------|---------|
+| NPN transistor | `Q_NPN_CBE | Device` |
+| Base bias resistor | `R` (generic resistor) | Device |
+| Collector load resistor | `R` | Device |
+| DC supply | `+5V` (or any appropriate voltage) | power |
+| Ground reference | `GND` | power |
+
+These are the only symbols that are strictly required for a simple NPN‑based circuit (e.g., a common‑emitter amplifier or emitter follower). No additional passive components (capacitors, inductors, etc.) are needed unless the user explicitly requests them.
+
+**Summary of required schematic symbols**
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPP_CBE", "lib_name": "\"Device\"" },
+    { "name": "\"R\"", "lib_name": "\" Device\"" },
+    { "symbol": "\"+5V\"", "lib_name": "power" },
+    { "symbol":"\"GND\"", "lib_name":"power" }
+  ]
+}
+```
+
+*(Note: The JSON keys are `name` and `lib_name`; the values are quoted strings. The `symbols` array lists each required symbol with its corresponding library.)*<|return|>
+[2026-09-21 21:58:58] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 2 validation errors for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+symbols.3.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-21 21:58:58] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 3 column 44 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...name":"power" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:58:58] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 21:59:39] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-p-n transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+We need to list all related symbols, including simple components like resistors etc. But the user didn't specify other components. The request: "Design a schematic for a simple ... using a generic NPN transistor." So we need to provide a list of all symbols that would be used in such a schematic. But we don't know the exact circuit. We might assume a basic emitter follower or common emitter amplifier? The user didn't specify. They just said "simple circuit". We could propose a simple NPN transistor with resistor base, collector resistor, emitter to ground. So we need symbols: Q_NPN_CBE (from Device library), R (resistor) maybe from Device library, VCC (power supply), GND (ground). Also maybe a voltage source symbol. The user says include all related symbols, including resistors, capacitors etc. But we only need those used in the circuit. Since it's simple, maybe no capacitors or inductors. But we can include generic resistor symbol.
+
+Thus we need to produce a JSON with symbols array containing objects with name and lib_name. For each symbol used: Q_NPN_C... Actually the symbol name is "Q_NPN_CBE" from library "Device". Resistor symbol: "R" maybe "R" or "R_Small"? In KiCad, generic resistor symbol is "R" in library "Device". But the list provided includes many resistor pack names but not "R". However the list includes "R_Pack02" etc. But the generic resistor symbol is "Resistor" maybe "R" is not listed. The list shows many resistor pack names but no single resistor. But we can still use "R" if it's known. But the instruction: "include all related symbols, even simple components like resistors". So we need to include the resistor symbol. Which one? The list doesn't show "R". But maybe "R" is the generic resistor symbol. But not listed. The list includes "R_Potentiomet..." etc. But we can choose "R" as generic resistor. But to be safe, we can include "R" from library "Device".
+
+Also we need a power supply symbol: maybe "+5V" from power library. And ground symbol: "GND" from power library.
+
+Thus the JSON will contain symbols: Q_NPN_cbe, R, +5V, GND.
+
+But the user might expect also "VCC" or "VDD". But we can include "+5V" as supply.
+
+Thus produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"+5V","lib_name":"power"},
+    {"name":"GND","lib_name":"power"}
+  ]
+}
+
+But we need to follow the JSON format described: start with json {. Provide keys: symbols. No defs etc. The JSON must be valid. The instructions about escaping quotes: we need to escape quotes inside string values? Actually the JSON format they gave is weird: they show a JSON schema with $defs etc. But we just need to output the summary in JSON format. They say: "Make sure it starts with `jsn {`". Actually they wrote "json {". So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NNP_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we must escape quotes? They mention: "In JSON, you only escape ... you can either remove those extra slashes or double them to get literal backslash". This is confusing. But likely they want plain JSON. We'll output:
+
+json {
+  "Symbols": [
+    {"name": "Q_NPN_C BE", "lib_name": "Device"}
+  ]
+}
+
+But the key should be "symbols" lower-case. They didn't specify case. The schema uses "symbols". So we use that.
+
+Thus final answer: explanation first, then JSON summary.
+
+Let's craft answer: explain that we identified required symbols: Q_NPN CBE, resistor, power supply, ground. Provide JSON.
+
+Let's produce.<|end|><|start|>assistant<|channel|>final<|message|>The user wants a schematic that uses only the specified generic NPN transistor symbol (`Q_NPN_CBE` from the “Device” library) and nothing else.  
+A minimal functional circuit that incorporates this transistor typically needs:
+
+| Component | Symbol name (KiCad) | Library |
+|-----------|---------------------|---------|
+| NPN transistor | `Q_NPN_CBE | Device` |
+| Base bias resistor | `R` (generic resistor) | Device |
+| Collector load resistor | `R` | Device |
+| DC supply | `+5V` (or any appropriate voltage) | power |
+| Ground reference | `GND` | power |
+
+These are the only symbols that are strictly required for a simple NPN‑based circuit (e.g., a common‑emitter amplifier or emitter follower). No additional passive components (capacitors, inductors, etc.) are needed unless the user explicitly requests them.
+
+**Summary of required schematic symbols**
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPP_CBE", "lib_name": "\"Device\"" },
+    { "name": "\"R\"", "lib_name": "\" Device\"" },
+    { "symbol": "\"+5V\"", "lib_name": "power" },
+    { "symbol":"\"GND\"", "lib_name":"power" }
+  ]
+}
+```
+
+*(Note: The JSON keys are `name` and `lib_name`; the values are quoted strings. The `symbols` array lists each required symbol with its corresponding library.)*<|return|>
+[2026-09-21 21:59:39] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 2 validation errors for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+symbols.3.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-21 21:59:39] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 3 column 44 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...name":"power" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 21:59:39] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 22:00:20] [94mDEBUG[0m - llm_interface.py:531 - get_json_response() text + json format Response:
+ <|channel|>analysis<|message|>We need to find related schematic symbols for the user request: design a schematic for a simple circuit using a generic n-p-n transistor. Use exactly these components: Q1 as Q_NPN_CBE from KiCad library "Device". Use value field to set the part number. Do not substitute or invent different parts.
+
+We need to list all related symbols, including simple components like resistors etc. But the user didn't specify other components. The request: "Design a schematic for a simple ... using a generic NPN transistor." So we need to provide a list of all symbols that would be used in such a schematic. But we don't know the exact circuit. We might assume a basic emitter follower or common emitter amplifier? The user didn't specify. They just said "simple circuit". We could propose a simple NPN transistor with resistor base, collector resistor, emitter to ground. So we need symbols: Q_NPN_CBE (from Device library), R (resistor) maybe from Device library, VCC (power supply), GND (ground). Also maybe a voltage source symbol. The user says include all related symbols, including resistors, capacitors etc. But we only need those used in the circuit. Since it's simple, maybe no capacitors or inductors. But we can include generic resistor symbol.
+
+Thus we need to produce a JSON with symbols array containing objects with name and lib_name. For each symbol used: Q_NPN_C... Actually the symbol name is "Q_NPN_CBE" from library "Device". Resistor symbol: "R" maybe "R" or "R_Small"? In KiCad, generic resistor symbol is "R" in library "Device". But the list provided includes many resistor pack names but not "R". However the list includes "R_Pack02" etc. But the generic resistor symbol is "Resistor" maybe "R" is not listed. The list shows many resistor pack names but no single resistor. But we can still use "R" if it's known. But the instruction: "include all related symbols, even simple components like resistors". So we need to include the resistor symbol. Which one? The list doesn't show "R". But maybe "R" is the generic resistor symbol. But not listed. The list includes "R_Potentiomet..." etc. But we can choose "R" as generic resistor. But to be safe, we can include "R" from library "Device".
+
+Also we need a power supply symbol: maybe "+5V" from power library. And ground symbol: "GND" from power library.
+
+Thus the JSON will contain symbols: Q_NPN_cbe, R, +5V, GND.
+
+But the user might expect also "VCC" or "VDD". But we can include "+5V" as supply.
+
+Thus produce JSON:
+
+{
+  "symbols": [
+    {"name":"Q_NPN_CBE","lib_name":"Device"},
+    {"name":"R","lib_name":"Device"}, 
+    {"name":"+5V","lib_name":"power"},
+    {"name":"GND","lib_name":"power"}
+  ]
+}
+
+But we need to follow the JSON format described: start with json {. Provide keys: symbols. No defs etc. The JSON must be valid. The instructions about escaping quotes: we need to escape quotes inside string values? Actually the JSON format they gave is weird: they show a JSON schema with $defs etc. But we just need to output the summary in JSON format. They say: "Make sure it starts with `jsn {`". Actually they wrote "json {". So we need to output something like:
+
+json {
+  "symbols": [
+     {"name":"Q_NNP_CBE","lib_name": "Device"},
+     ...
+  ]
+}
+
+But we must escape quotes? They mention: "In JSON, you only escape ... you can either remove those extra slashes or double them to get literal backslash". This is confusing. But likely they want plain JSON. We'll output:
+
+json {
+  "Symbols": [
+    {"name": "Q_NPN_C BE", "lib_name": "Device"}
+  ]
+}
+
+But the key should be "symbols" lower-case. They didn't specify case. The schema uses "symbols". So we use that.
+
+Thus final answer: explanation first, then JSON summary.
+
+Let's craft answer: explain that we identified required symbols: Q_NPN CBE, resistor, power supply, ground. Provide JSON.
+
+Let's produce.<|end|><|start|>assistant<|channel|>final<|message|>The user wants a schematic that uses only the specified generic NPN transistor symbol (`Q_NPN_CBE` from the “Device” library) and nothing else.  
+A minimal functional circuit that incorporates this transistor typically needs:
+
+| Component | Symbol name (KiCad) | Library |
+|-----------|---------------------|---------|
+| NPN transistor | `Q_NPN_CBE | Device` |
+| Base bias resistor | `R` (generic resistor) | Device |
+| Collector load resistor | `R` | Device |
+| DC supply | `+5V` (or any appropriate voltage) | power |
+| Ground reference | `GND` | power |
+
+These are the only symbols that are strictly required for a simple NPN‑based circuit (e.g., a common‑emitter amplifier or emitter follower). No additional passive components (capacitors, inductors, etc.) are needed unless the user explicitly requests them.
+
+**Summary of required schematic symbols**
+
+```json
+{
+  "symbols": [ 
+    { "name": "Q_NPP_CBE", "lib_name": "\"Device\"" },
+    { "name": "\"R\"", "lib_name": "\" Device\"" },
+    { "symbol": "\"+5V\"", "lib_name": "power" },
+    { "symbol":"\"GND\"", "lib_name":"power" }
+  ]
+}
+```
+
+*(Note: The JSON keys are `name` and `lib_name`; the values are quoted strings. The `symbols` array lists each required symbol with its corresponding library.)*<|return|>
+[2026-09-21 22:00:20] [91mERROR[0m - llm_interface.py:562 - [91mFailed to validate the json output: 2 validation errors for RelatedSymbols
+symbols.2.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+symbols.3.name
+  Field required [type=missing, input_value={'lib_name': 'power'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing[0m
+[2026-09-21 22:00:20] [91mERROR[0m - llm_interface.py:570 - [91mAgain, failed to validate the json output: 1 validation error for RelatedSymbols
+  Invalid JSON: expected `,` or `}` at line 3 column 44 [type=json_invalid, input_value='{\n  "symbols": [ \n    ...name":"power" }\n  ]\n}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid[0m
+[2026-09-21 22:00:20] [91mERROR[0m - llm_interface.py:453 - [91mFailed to get valid json response, retrying...[0m
+[2026-09-21 22:00:21] [93mWARNING[0m - llm_interface.py:461 - [93mFailed to get valid json response after 3 retries. Using LLM structured output to parse the response.[0m
+AzureCliCredential.get_token_info failed: Azure CLI not found on path
+/scratch/k2983/root-project/pcb-schematic-gen/.venv/lib/python3.11/site-packages/peft/tuners/lora/layer.py:159: UserWarning: Unsupported layer type '<class 'transformers.integrations.mxfp4.Mxfp4GptOssExperts'>' encountered, proceed at your own risk.
+  warnings.warn(
