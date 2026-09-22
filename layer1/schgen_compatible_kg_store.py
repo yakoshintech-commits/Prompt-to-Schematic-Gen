@@ -34,6 +34,8 @@ libraries, not a bug; symbol_lib_for() below prefers Device for that case).
 import json
 import os
 
+KICAD_SYMBOL_LIB_PATH = "/usr/share/kicad/symbols"
+
 
 def _normalize_part_id(part_id):
     if not part_id:
@@ -105,3 +107,73 @@ class SchGenCompatibleKGStore:
         if "Device" in libs:
             return "Device"
         return libs[0]
+
+    def real_pins_for(self, part_id):
+        """Pin (number, name) pairs read directly from the real .kicad_sym
+        file for this part_id's symbol - NOT the KG's own `pins[].name`
+        field. Found necessary (2026-09-22, T013): the KG's pin names are
+        datasheet-style ("TRIG", "OUT", "RESET"...) and don't always match
+        the specific stock KiCad symbol's own (often more abbreviated -
+        "TR", "Q", "R"...) pin names - confirmed for NE555D, where trusting
+        the KG's names regressed a previously-passing candidate (the model's
+        own trained knowledge of the real KiCad symbol was more accurate
+        than the mismatched "ground truth" we were handing it). The actual
+        .kicad_sym file SchGen builds against is the only real ground truth
+        for what name it needs - use that directly instead of a second-hand
+        copy that can drift from it. Returns [] if the symbol can't be
+        found or parsed (caller should treat that as "no pin data available",
+        not as an error - same safe fallback as before this existed)."""
+        part_id = _normalize_part_id(part_id)
+        lib = self.symbol_lib_for(part_id)
+        if not lib:
+            return []
+        try:
+            import sexpdata
+        except ImportError:
+            return []
+        path = os.path.join(KICAD_SYMBOL_LIB_PATH, f"{lib}.kicad_sym")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                parsed = sexpdata.loads(f.read())
+        except (OSError, Exception):
+            return []
+
+        def _find_top_level(sexp, name):
+            for child in sexp:
+                if (isinstance(child, list) and len(child) >= 2
+                        and isinstance(child[0], sexpdata.Symbol)
+                        and child[0].value() == "symbol"
+                        and child[1] == name):
+                    return child
+            return None
+
+        symbol = _find_top_level(parsed, part_id)
+        if symbol is None:
+            return []
+        # Resolve `extends` (many parts share a base symbol's pin/unit
+        # graphics - see T014) by reading pins from the base instead.
+        for item in symbol:
+            if (isinstance(item, list) and item and isinstance(item[0], sexpdata.Symbol)
+                    and item[0].value() == "extends"):
+                symbol = _find_top_level(parsed, item[1]) or symbol
+                break
+
+        pins = []
+        for unit in symbol:
+            if not (isinstance(unit, list) and len(unit) > 2
+                    and isinstance(unit[0], sexpdata.Symbol) and unit[0].value() == "symbol"):
+                continue
+            for pin_form in unit[2:]:
+                if not (isinstance(pin_form, list) and pin_form
+                        and isinstance(pin_form[0], sexpdata.Symbol) and pin_form[0].value() == "pin"):
+                    continue
+                num, name = None, None
+                for f in pin_form:
+                    if isinstance(f, list) and f and isinstance(f[0], sexpdata.Symbol):
+                        if f[0].value() == "number":
+                            num = f[1]
+                        elif f[0].value() == "name":
+                            name = f[1]
+                if num is not None:
+                    pins.append((num, name or "~"))
+        return pins

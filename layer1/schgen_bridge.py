@@ -68,40 +68,47 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
         # not that specific connection) - the model then guesses a
         # plausible-sounding name ("DATAOUT" for the real "TXD", "EN" for
         # a pin that doesn't exist on that specific part, "PA0" using a
-        # different chip's naming convention). The real pin table already
-        # sits in the KG, already used for the connections Layer 1 DID
-        # ground (see conn_phrases below) - just not surfaced for the
-        # rest. Same fix shape as the library-name fix above: give SchGen
-        # the real fact instead of making it guess. Pins literally named
-        # "~" (generic/unnamed, e.g. many optocoupler/passive symbols)
-        # are shown by number only, since "~" itself isn't a usable name.
-        # Confirmed necessary (2026-09-22, T013): enumerating every pin of a
-        # large IC (tested: a real 40-pin MCU) measurably lengthens the
-        # prompt enough to push our own already-tight ~31GB/32GB peak GPU
-        # usage into a genuine, reproducible (2/2) CUDA OOM - not
-        # fragmentation (PYTORCH_CUDA_ALLOC_CONF doesn't help; the
-        # reserved-but-unallocated figure was tiny, this is real
-        # exhaustion). Every candidate actually fixed by this pin data had
-        # <=9 pins; large multi-pin parts weren't failing on pin-name
-        # hallucination in the first place (their real failure mode, if
-        # any, was elsewhere and unaffected by omitting this). Cap rather
-        # than enumerate unconditionally - the memory cost is real and
-        # confirmed, the benefit for large parts isn't.
+        # different chip's naming convention). Same fix shape as the
+        # library-name fix above: give SchGen the real fact instead of
+        # making it guess.
+        #
+        # Pin NAMES come from real_pins_for() - the actual .kicad_sym file,
+        # NOT the KG's own pins[].name field. Found necessary (2026-09-22,
+        # T013): the KG's pin names are datasheet-style ("TRIG", "OUT") and
+        # don't always match the specific stock symbol's own (often more
+        # abbreviated - "TR", "Q") names - confirmed for NE555D, where
+        # trusting the KG's names regressed a previously-passing candidate
+        # (the model's own trained knowledge of the real KiCad symbol was
+        # MORE accurate than the mismatched "ground truth" being handed to
+        # it). Only the KG's per-number description text is still used, as
+        # non-authoritative auxiliary context. Pins with no real name
+        # ("~", e.g. many optocoupler/passive symbols) are shown by number
+        # only, since "~" itself isn't a usable name.
+        #
+        # Enumeration is capped at 24 pins - confirmed necessary
+        # (2026-09-22, T013): a large IC's full pin list (tested: a real
+        # 40-pin MCU) measurably lengthens the prompt enough to push our
+        # own already-tight ~31GB/32GB peak GPU usage into a genuine,
+        # reproducible (2/2) CUDA OOM - not fragmentation
+        # (PYTORCH_CUDA_ALLOC_CONF doesn't help; reserved-but-unallocated
+        # was tiny, this is real exhaustion). Every candidate actually
+        # fixed by this pin data had <=9 pins; large multi-pin parts
+        # weren't failing on pin-name hallucination in the first place.
         MAX_PINS_TO_ENUMERATE = 24
-        pins = component.get("pins") or []
-        if len(pins) > MAX_PINS_TO_ENUMERATE:
-            pins = []
+        real_pins = kg_store.real_pins_for(part_id) if hasattr(kg_store, "real_pins_for") else []
+        kg_desc_by_num = {str(p.get("num")): p.get("description", "") for p in (component.get("pins") or [])}
         pin_bits = []
-        for p in pins:
-            num, name, pdesc = p.get("num"), p.get("name", ""), p.get("description", "")
-            # Confirmed necessary (2026-09-22, T013): giving only the
-            # description for an unnamed pin ("pin 2 [LED Cathode]") isn't
-            # enough - the model extracted "C" (for Cathode) out of the
-            # description text as if it were the real name, rather than
-            # using the pin number. Spell out explicitly that the number
-            # IS the identifier to use when there's no real name.
-            label = f'pin {num} ("{name}")' if name and name != "~" else f'pin number {num} (it has no name, use the number)'
-            pin_bits.append(f"{label} [{pdesc}]" if pdesc else label)
+        if 0 < len(real_pins) <= MAX_PINS_TO_ENUMERATE:
+            for num, name in real_pins:
+                pdesc = kg_desc_by_num.get(str(num), "")
+                # Confirmed necessary (2026-09-22, T013): giving only the
+                # description for an unnamed pin ("pin 2 [LED Cathode]")
+                # isn't enough - the model extracted "C" (for Cathode) out
+                # of the description text as if it were the real name,
+                # rather than using the pin number. Spell out explicitly
+                # that the number IS the identifier when there's no name.
+                label = f'pin {num} ("{name}")' if name and name != "~" else f'pin number {num} (it has no name, use the number)'
+                pin_bits.append(f"{label} [{pdesc}]" if pdesc else label)
         pin_hint = f"; its real pins are {', '.join(pin_bits)}" if pin_bits else ""
 
         desc = f"a {part_id}{lib_hint} ({note}){pin_hint}" if note else f"a {part_id}{lib_hint}{pin_hint}"
