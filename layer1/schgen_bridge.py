@@ -97,10 +97,21 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
         MAX_PINS_TO_ENUMERATE = 24
         real_pins = kg_store.real_pins_for(part_id) if hasattr(kg_store, "real_pins_for") else []
         kg_desc_by_num = {str(p.get("num")): p.get("description", "") for p in (component.get("pins") or [])}
+        # Only trust the KG's descriptions when its pin count matches the
+        # real symbol's - confirmed necessary (2026-09-22, T013): the KG
+        # sometimes uses its own abstracted pin numbering that skips
+        # unused/NC pins entirely (ACS711xEXLT-15AB: 8 KG pins vs the real
+        # 10-pin QFN package), so matching by number alone attached wrong
+        # descriptions to real pins (e.g. real pin 3 "GND" incorrectly
+        # showing the KG's pin-3 description "Current sense input -").
+        # Pin NAMES stay authoritative either way (from real_pins_for());
+        # this only gates the non-authoritative auxiliary description text.
+        kg_pins = component.get("pins") or []
+        trust_descriptions = len(kg_pins) == len(real_pins)
         pin_bits = []
         if 0 < len(real_pins) <= MAX_PINS_TO_ENUMERATE:
             for num, name in real_pins:
-                pdesc = kg_desc_by_num.get(str(num), "")
+                pdesc = kg_desc_by_num.get(str(num), "") if trust_descriptions else ""
                 # Confirmed necessary (2026-09-22, T013): giving only the
                 # description for an unnamed pin ("pin 2 [LED Cathode]")
                 # isn't enough - the model extracted "C" (for Cathode) out
