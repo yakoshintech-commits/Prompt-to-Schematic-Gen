@@ -48,7 +48,8 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
     comp_phrases = []
     for part_id in order:
         refs = by_part[part_id]
-        note = (kg_store.get_component(part_id) or {}).get("note", "")
+        component = kg_store.get_component(part_id) or {}
+        note = component.get("note", "")
         # Include the real stock KiCad library name explicitly - confirmed
         # necessary (2026-09-18): without it, SchGen has to guess symbol_lib
         # on its own and can guess a real-sounding but wrong one (e.g.
@@ -58,7 +59,52 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
         # for exactly this purpose - use it instead of leaving it unsaid.
         symbol_lib = kg_store.symbol_lib_for(part_id) if hasattr(kg_store, "symbol_lib_for") else None
         lib_hint = f", in the KiCad library \"{symbol_lib}\"" if symbol_lib else ""
-        desc = f"a {part_id}{lib_hint} ({note})" if note else f"a {part_id}{lib_hint}"
+
+        # Include the real pin list explicitly - confirmed necessary
+        # (2026-09-22, T013): a candidate's OWN grounded part still gets
+        # its pins hallucinated whenever the candidate's nets don't happen
+        # to cover a pin SchGen decides it needs (e.g. wiring up a CAN
+        # transceiver's TX pin when Layer 1 only grounded the part itself,
+        # not that specific connection) - the model then guesses a
+        # plausible-sounding name ("DATAOUT" for the real "TXD", "EN" for
+        # a pin that doesn't exist on that specific part, "PA0" using a
+        # different chip's naming convention). The real pin table already
+        # sits in the KG, already used for the connections Layer 1 DID
+        # ground (see conn_phrases below) - just not surfaced for the
+        # rest. Same fix shape as the library-name fix above: give SchGen
+        # the real fact instead of making it guess. Pins literally named
+        # "~" (generic/unnamed, e.g. many optocoupler/passive symbols)
+        # are shown by number only, since "~" itself isn't a usable name.
+        # Confirmed necessary (2026-09-22, T013): enumerating every pin of a
+        # large IC (tested: a real 40-pin MCU) measurably lengthens the
+        # prompt enough to push our own already-tight ~31GB/32GB peak GPU
+        # usage into a genuine, reproducible (2/2) CUDA OOM - not
+        # fragmentation (PYTORCH_CUDA_ALLOC_CONF doesn't help; the
+        # reserved-but-unallocated figure was tiny, this is real
+        # exhaustion). Every candidate actually fixed by this pin data had
+        # <=9 pins; large multi-pin parts weren't failing on pin-name
+        # hallucination in the first place (their real failure mode, if
+        # any, was elsewhere and unaffected by omitting this). Cap rather
+        # than enumerate unconditionally - the memory cost is real and
+        # confirmed, the benefit for large parts isn't.
+        MAX_PINS_TO_ENUMERATE = 24
+        pins = component.get("pins") or []
+        if len(pins) > MAX_PINS_TO_ENUMERATE:
+            pins = []
+        pin_bits = []
+        for p in pins:
+            num, name, pdesc = p.get("num"), p.get("name", ""), p.get("description", "")
+            # Confirmed necessary (2026-09-22, T013): giving only the
+            # description for an unnamed pin ("pin 2 [LED Cathode]") isn't
+            # enough - the model extracted "C" (for Cathode) out of the
+            # description text as if it were the real name, rather than
+            # using the pin number. Spell out explicitly that the number
+            # IS the identifier to use when there's no real name.
+            label = f'pin {num} ("{name}")' if name and name != "~" else f'pin number {num} (it has no name, use the number)'
+            pin_bits.append(f"{label} [{pdesc}]" if pdesc else label)
+        pin_hint = f"; its real pins are {', '.join(pin_bits)}" if pin_bits else ""
+
+        desc = f"a {part_id}{lib_hint} ({note}){pin_hint}" if note else f"a {part_id}{lib_hint}{pin_hint}"
         if len(refs) == 1:
             comp_phrases.append(f"{refs[0]} as {desc}")
         else:
