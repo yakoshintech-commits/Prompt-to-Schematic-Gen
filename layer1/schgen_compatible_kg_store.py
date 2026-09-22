@@ -16,9 +16,19 @@ the vocabulary BEFORE generation (here) means anything Layer 1 verifies is
 guaranteed placeable in SchGen - the fix belongs at the source, not as a
 correction after the fact.
 
-kicad_symbol_overlap.json (built once via a real grep over the stock
-library, not assumed) maps part_id -> [kicad_sym library filename(s) that
-contain it].
+kicad_symbol_overlap.json (built once by parsing every real .kicad_sym
+library file with sexpdata and recording each file's actual top-level
+(symbol "NAME" ...) definitions - see tools/rebuild_kicad_symbol_overlap.py)
+maps part_id -> [kicad_sym library filename(s) that define it as a real
+top-level symbol]. An earlier version was built with a grep over each
+file's raw text, which matched the substring anywhere (pin names, property
+values, keywords, even other symbols' sub-unit names) instead of a real
+top-level part - that produced long, mostly-wrong candidate lists for
+short generic IDs like "R"/"C"/"L" (T009, found and fixed 2026-09-22:
+rebuilding with a real s-expression walk collapsed all but one of the 133
+known part_ids down to a single, correct library - the sole remaining
+multi-entry case, "D", is a genuine same-name collision between two real
+libraries, not a bug; symbol_lib_for() below prefers Device for that case).
 """
 
 import json
@@ -77,7 +87,21 @@ class SchGenCompatibleKGStore:
         return part_id in self.component_map or part_id in self.kg_component_map
 
     def symbol_lib_for(self, part_id):
-        """SchGen-specific: which stock KiCad library file(s) actually contain
-        this part_id's symbol. Returns the first match, or None."""
+        """SchGen-specific: which stock KiCad library file actually contains
+        this part_id's symbol. kicad_symbol_overlap.json now maps to real,
+        exact top-level symbol names only (parsed via sexpdata - see
+        rebuild instructions in that file's own comment), so a part_id with
+        more than one candidate means it's a genuine same-name collision
+        across two real libraries, not a grep false-positive. The only
+        observed case (2026-09-22) is "D", which exists as a real top-level
+        symbol in both Device.kicad_sym and Simulation_SPICE.kicad_sym.
+        Prefer Device when present - it's KiCad's canonical library for
+        exactly these generic single/double-letter parts (R, C, L, D,
+        LED...) - rather than relying on whatever order the list happens
+        to be in."""
         libs = self.symbol_map.get(_normalize_part_id(part_id))
-        return libs[0] if libs else None
+        if not libs:
+            return None
+        if "Device" in libs:
+            return "Device"
+        return libs[0]
