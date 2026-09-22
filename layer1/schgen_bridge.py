@@ -96,22 +96,27 @@ def candidate_to_detailed_prompt(candidate: dict, kg_store) -> str:
         # weren't failing on pin-name hallucination in the first place.
         MAX_PINS_TO_ENUMERATE = 24
         real_pins = kg_store.real_pins_for(part_id) if hasattr(kg_store, "real_pins_for") else []
-        kg_desc_by_num = {str(p.get("num")): p.get("description", "") for p in (component.get("pins") or [])}
-        # Only trust the KG's descriptions when its pin count matches the
-        # real symbol's - confirmed necessary (2026-09-22, T013): the KG
-        # sometimes uses its own abstracted pin numbering that skips
-        # unused/NC pins entirely (ACS711xEXLT-15AB: 8 KG pins vs the real
-        # 10-pin QFN package), so matching by number alone attached wrong
-        # descriptions to real pins (e.g. real pin 3 "GND" incorrectly
-        # showing the KG's pin-3 description "Current sense input -").
-        # Pin NAMES stay authoritative either way (from real_pins_for());
-        # this only gates the non-authoritative auxiliary description text.
-        kg_pins = component.get("pins") or []
-        trust_descriptions = len(kg_pins) == len(real_pins)
+        # Match the KG's descriptions to real pins by NAME, not position -
+        # confirmed necessary (2026-09-22, T013), found via a second real
+        # case after the first (count-based) guard: SN74LVC2T45DCUR has
+        # the SAME pin count in both the KG and the real symbol (8 == 8),
+        # but the KG's numbering is internally shuffled starting at pin 5
+        # (KG pin 5="B2"/6="B1"/7="DIR", real symbol pin 5="DIR"/6="B2"/
+        # 7="B1") - a count match alone isn't sufficient proof the
+        # numbering aligns. Matching by name instead is precise regardless
+        # of whether the KG's numbering scheme lines up at all: a
+        # description is only ever attached to the real pin that actually
+        # has that name. Pin NAMES themselves stay authoritative from
+        # real_pins_for() either way - this only gates the non-
+        # authoritative auxiliary description text.
+        def _norm(s):
+            return str(s).strip().lower().lstrip("~").strip("{}")
+        kg_desc_by_name = {_norm(p.get("name", "")): p.get("description", "")
+                            for p in (component.get("pins") or []) if p.get("name")}
         pin_bits = []
         if 0 < len(real_pins) <= MAX_PINS_TO_ENUMERATE:
             for num, name in real_pins:
-                pdesc = kg_desc_by_num.get(str(num), "") if trust_descriptions else ""
+                pdesc = kg_desc_by_name.get(_norm(name), "") if name and name != "~" else ""
                 # Confirmed necessary (2026-09-22, T013): giving only the
                 # description for an unnamed pin ("pin 2 [LED Cathode]")
                 # isn't enough - the model extracted "C" (for Cathode) out
