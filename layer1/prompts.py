@@ -28,6 +28,8 @@ CRITICAL RULES:
 1. Every "part_id" in your output MUST be copied exactly (character for character) from an "id" field above.
 2. Every "pin_id" and "pin_name" you reference MUST be copied exactly from that specific component's "pins" list above. Do not invent a pin that isn't listed, even if it seems like it should exist.
 3. If the allowed vocabulary does not contain a component you'd genuinely need for a complete circuit, say so in "assumptions" rather than inventing one.
+4. Use the SMALLEST number of components that forms a genuinely complete, correctly-wired circuit. Do not add a second instance of the same (or a similar, unrelated) component just because it appears in the allowed vocabulary - only repeat a component if the design genuinely needs more than one (e.g. two crystal load capacitors). Every component you DO include must have every one of its required pins connected in "nets" before you finish. A smaller design where every pin is wired is correct; a larger design with unconnected pins is not - components and nets are both capped at 8 entries, so budget them for the parts that actually need to be there.
+5. Give each ref a designator prefix matching its real component type (a resistor is "R", a capacitor "C", an IC/module is "U", a diode/MOSFET/transistor is "D"/"Q") - never reuse "R"/"C"/"D" for an unrelated IC or module.
 
 {CANDIDATE_SCHEMA_DESCRIPTION}"""
 
