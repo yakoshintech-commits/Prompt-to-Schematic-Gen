@@ -84,6 +84,18 @@ def verify_candidate(candidate: dict, kg_store) -> dict:
     passed, errors, warnings = validate_complex_task(snapshot, task_id=None, kg_store=kg_store)
 
     candidate["verification_status"] = "passed" if passed else "failed_checks"
-    candidate["verification_errors"] = [str(e) for e in errors]
-    candidate["verification_warnings"] = [str(w) for w in warnings]
+    # to_feedback(), not str(e) - confirmed necessary (2026-09-22, T013
+    # Layer1 investigation): str(e) is VerificationError.__str__, which
+    # returns ONLY the bare message ("Q1: gate net appears floating (G on
+    # VCC)"). Every phase2_checks.py error already carries a real, specific
+    # suggestion field ("Connect a gate driver to this net.") that
+    # to_feedback() includes but str() silently drops - so the retry loop
+    # (generate_candidates.py, which joins exactly this list into the
+    # feedback prompt) was never seeing the actionable half of the error at
+    # all. Matches the observed pattern exactly: all 30 T013 Layer1
+    # failures had attempts=3 with zero improvement across retries, i.e.
+    # the model kept resubmitting the same broken structure because it was
+    # only ever told WHAT was wrong, never HOW to fix it.
+    candidate["verification_errors"] = [e.to_feedback() for e in errors]
+    candidate["verification_warnings"] = [w.to_feedback() for w in warnings]
     return candidate

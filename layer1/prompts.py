@@ -50,4 +50,4 @@ def build_feedback_prompt(error_text: str) -> str:
 ###
 {error_text}
 ###
-Fix the specific issue above. Every part_id and pin must still come EXACTLY from the allowed vocabulary in the system prompt - do not invent a replacement that isn't in it. Output a corrected candidate as a single JSON object (not an array)."""
+Fix the specific issue above. Every part_id and pin must still come EXACTLY from the allowed vocabulary in the system prompt - do not invent a replacement that isn't in it. If the fix requires connecting a pin to another component (e.g. a suggestion to add a driver or pull resistor), that component's ref MUST also appear in "components" with its own part_id - do not reference a ref in "nets" that isn't listed in "components". Output a corrected candidate as a single JSON object (not an array)."""
