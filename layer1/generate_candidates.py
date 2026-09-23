@@ -323,7 +323,7 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
 _DIVERSITY_TEMPERATURE = 0.8
 
 
-def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 4, max_attempts: int = 3) -> list[dict]:
+def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 3, max_attempts: int = 3) -> list[dict]:
     """
     Generate n architecturally-distinct candidate SLOTS, each with its own
     verify-and-retry budget (up to max_attempts). Retrieval is computed once

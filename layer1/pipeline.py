@@ -32,13 +32,21 @@ def _score_candidate(candidate: dict, weights: dict) -> float:
     )
 
 
-def run_layer1(vague_prompt: str, kg_store, n: int = 4, weights: dict | None = None, max_attempts: int = 3) -> dict:
+def run_layer1(vague_prompt: str, kg_store, n: int = 3, weights: dict | None = None, max_attempts: int = 3) -> dict:
     """
     Runs the full Layer 1 pipeline: generate-with-retry -> score -> rank.
     Returns {"candidates": [...], "ranked": [...]} - the ranked list always
     puts verification-passed candidates above failed_checks/rejected ones,
     regardless of score; within each group, higher score ranks first. Does
     not auto-pick a winner - that's the Sponsor's / a future UI's call.
+
+    n=3 default per T029 (2026-09-23): this is the actual value validated
+    against the full 133-part KG (104/133 at n=1 -> 116/133 at n=3), not a
+    guess - generate_verified_candidates's slot-0/diverse-slot temperature
+    split only has real evidence behind it at this specific n. Cheap here
+    (Layer 1's own compute is seconds per candidate on the local model);
+    the real cost of raising n lands downstream, in how many more
+    candidates then reach SchGen's much more expensive generation stage.
     """
     if weights is None:
         weights = DEFAULT_WEIGHTS
