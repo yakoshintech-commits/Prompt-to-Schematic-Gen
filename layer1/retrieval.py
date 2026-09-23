@@ -20,6 +20,26 @@ _STOPWORDS = {
 }
 
 
+# T008: no stemming meant "charging" in a vague prompt never matched
+# "charger" in a component's note text - two words sharing a root but not
+# a literal spelling. Deliberately narrow, not a full Porter stemmer (no
+# stemming library is available in this environment, and importing one for
+# 3 suffix rules would be its own risk): only strips the specific suffix
+# families that actually caused a real observed mismatch (-ing, -er/-ers,
+# -ed), and only when the result is long enough to still be a real word
+# stem (avoids mangling short real words like "bus" or "is"). Only applied
+# to the note-field whole-word comparison, not id/category/subcategory
+# substring matching, which was already working correctly and untouched.
+_STEM_SUFFIXES = ("ing", "ers", "er", "ed")
+
+
+def _stem(word: str) -> str:
+    for suffix in _STEM_SUFFIXES:
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            return word[: -len(suffix)]
+    return word
+
+
 def retrieve_relevant_components(vague_prompt: str, kg_store, top_k: int = 15) -> list[dict]:
     """
     Rank kg_store's components by keyword overlap against the vague prompt,
@@ -48,8 +68,9 @@ def retrieve_relevant_components(vague_prompt: str, kg_store, top_k: int = 15) -
             str(comp.get(field, "")) for field in ("id", "category", "subcategory")
         ).lower()
         note_words = set(re.findall(r"[a-z0-9]+", str(comp.get("note", "")).lower()))
+        note_stems = {_stem(w) for w in note_words}
         score = sum(1 for kw in keywords if kw in id_fields_text)
-        score += sum(1 for kw in keywords if kw in note_words)
+        score += sum(1 for kw in keywords if kw in note_words or _stem(kw) in note_stems)
         if score > 0:
             scored.append((score, comp))
 
