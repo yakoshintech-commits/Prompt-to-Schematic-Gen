@@ -181,8 +181,21 @@ def _parse_candidate_json(raw: str) -> dict:
         ) from e
 
 
-def _call_model(messages: list[dict], format_schema: dict | None = None) -> str:
+def _call_model(messages: list[dict], format_schema: dict | None = None,
+                 temperature: float = 0, seed: int | None = None) -> str:
     check_headroom_or_raise()
+    # temperature=0 (greedy) is fully deterministic here - confirmed
+    # empirically (2026-09-23): 3 repeated calls with identical messages
+    # returned byte-identical output. That matters for multi-candidate
+    # sampling (generate_verified_candidates' n>1): calling this n times
+    # with temperature=0 does NOT produce n different candidates, it just
+    # repeats the same deterministic generate-and-retry chain n times for
+    # zero benefit - real diversity requires temperature>0 with a distinct
+    # seed per slot (also confirmed empirically: 4 calls at temp=0.8 with
+    # distinct seeds returned 4 distinct, still schema-valid candidates).
+    options = {"temperature": temperature, "num_predict": 1500}
+    if seed is not None:
+        options["seed"] = seed
     payload = {
         "model": MODEL_NAME,
         "messages": messages,
@@ -191,7 +204,7 @@ def _call_model(messages: list[dict], format_schema: dict | None = None) -> str:
         # a real candidate's JSON is well under this; see
         # build_candidate_schema's docstring for the runaway-generation
         # failure this guards against.
-        "options": {"temperature": 0, "num_predict": 1500},
+        "options": options,
     }
     if format_schema is not None:
         payload["format"] = format_schema
@@ -234,7 +247,7 @@ def generate_candidates(vague_prompt: str, kg_store, n: int = 4) -> list[dict]:
 
 
 def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, prev_response: str | None,
-                   format_schema: dict | None = None) -> tuple[dict, str]:
+                   format_schema: dict | None = None, temperature: float = 0, seed: int | None = None) -> tuple[dict, str]:
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
@@ -246,7 +259,7 @@ def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, pr
         messages.append({"role": "assistant", "content": prev_response})
         messages.append({"role": "user", "content": build_feedback_prompt(feedback)})
 
-    raw = _call_model(messages, format_schema=format_schema)
+    raw = _call_model(messages, format_schema=format_schema, temperature=temperature, seed=seed)
     parsed = _parse_candidate_json(raw)
     if isinstance(parsed, list):
         parsed = parsed[0] if parsed else {}
@@ -256,7 +269,8 @@ def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, pr
 
 
 def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: str, max_attempts: int = 3,
-                                     allowed_components: list[dict] | None = None) -> dict:
+                                     allowed_components: list[dict] | None = None,
+                                     temperature: float = 0, seed: int | None = None) -> dict:
     """
     Generate ONE candidate, verify it, and on failure feed the real error
     back for another attempt (up to max_attempts) before giving up and
@@ -264,6 +278,14 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
     verification_status/errors). Mirrors the verify-and-retry pattern
     already proven for SchGen this session - Layer 1's own generation step
     needed the same thing, not just Step 3/4's ability to detect failure.
+
+    temperature/seed are held constant across every attempt within THIS
+    slot's retry chain - confirmed necessary (2026-09-23): temperature=0
+    is fully deterministic, so a slot's own attempt-2/3 already diverges
+    naturally from attempt-1 via the real feedback text added to the
+    conversation; there's no need to also vary temperature mid-chain, and
+    keeping it fixed per-slot is what makes each slot's overall trajectory
+    reproducible for testing/debugging while still differing SLOT to SLOT.
     """
     from verify_candidate import verify_candidate  # local import: avoids a cycle at module load time
 
@@ -276,7 +298,8 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
     candidate = {}
 
     for attempt in range(1, max_attempts + 1):
-        candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response, format_schema=format_schema)
+        candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response,
+                                        format_schema=format_schema, temperature=temperature, seed=seed)
         verify_candidate(candidate, kg_store)
         candidate["_attempts"] = attempt
 
@@ -289,6 +312,17 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
     return candidate
 
 
+# Applied to every candidate SLOT after the first when generate_verified_
+# candidates(n>1) samples for diversity - confirmed necessary (2026-09-23):
+# temperature=0 is fully deterministic (byte-identical output across
+# repeated identical calls), so without this, additional slots would just
+# re-run the exact same deterministic chain n times for zero benefit.
+# 0.8 is not tuned against a held-out set - a standard "meaningfully
+# diverse but not incoherent" value, chosen because this needed a real
+# value to test with, not because it's been swept.
+_DIVERSITY_TEMPERATURE = 0.8
+
+
 def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 4, max_attempts: int = 3) -> list[dict]:
     """
     Generate n architecturally-distinct candidate SLOTS, each with its own
@@ -297,6 +331,14 @@ def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 4, max_at
     vague_prompt. Unlike generate_candidates (one shot, N candidates in one
     call), this actually tries to get each slot to a real pass, not just to
     a plausible-looking first draft.
+
+    Slot 0 always uses temperature=0 (identical to this function's
+    long-standing behavior at n=1 - zero regression risk to any
+    already-tested single-candidate result). Slots 1..n-1 use
+    _DIVERSITY_TEMPERATURE with a distinct, fixed seed per slot, so
+    multiple slots have a real chance of exploring different completions
+    instead of repeating the same deterministic chain - see _call_model's
+    docstring comment for the empirical confirmation this was necessary.
     """
     allowed_components = retrieve_relevant_components(vague_prompt, kg_store, top_k=15)
     allowed_json = json.dumps(allowed_components, indent=2)
@@ -305,6 +347,8 @@ def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 4, max_at
         generate_one_verified_candidate(
             vague_prompt, kg_store, allowed_json, max_attempts=max_attempts,
             allowed_components=allowed_components,
+            temperature=(0 if i == 0 else _DIVERSITY_TEMPERATURE),
+            seed=(None if i == 0 else i),
         )
-        for _ in range(n)
+        for i in range(n)
     ]
