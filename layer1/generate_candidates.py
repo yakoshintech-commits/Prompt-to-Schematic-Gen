@@ -260,7 +260,23 @@ def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, pr
         messages.append({"role": "user", "content": build_feedback_prompt(feedback)})
 
     raw = _call_model(messages, format_schema=format_schema, temperature=temperature, seed=seed)
-    parsed = _parse_candidate_json(raw)
+    try:
+        parsed = _parse_candidate_json(raw)
+    except ValueError as e:
+        # Confirmed a real, recurring bug (2026-09-23): a malformed-JSON
+        # attempt used to raise straight out of this function, uncaught by
+        # generate_one_verified_candidate's retry loop - which meant a
+        # parse failure on ANY attempt (not just the first) killed that
+        # candidate immediately, silently skipping whatever attempts were
+        # left, and (worse) crashed the entire caller including sibling
+        # candidate slots in generate_verified_candidates' n>1 case, since
+        # it's an uncaught exception inside a plain list comprehension.
+        # Same fix shape as every other failure mode already handled here:
+        # surface the real error as feedback and let the retry loop run
+        # its full course instead of aborting early.
+        return {"verification_status": "rejected",
+                "verification_errors": [str(e)],
+                "verification_warnings": []}, raw
     if isinstance(parsed, list):
         parsed = parsed[0] if parsed else {}
     if format_schema is not None:
@@ -300,7 +316,14 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
     for attempt in range(1, max_attempts + 1):
         candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response,
                                         format_schema=format_schema, temperature=temperature, seed=seed)
-        verify_candidate(candidate, kg_store)
+        # A malformed-JSON attempt (see _generate_one) already carries a
+        # real verification_status/verification_errors of its own and has
+        # no "components"/"nets" keys at all - calling verify_candidate on
+        # it would silently pass an empty, un-checked snapshot (nothing to
+        # verify != nothing wrong) instead of surfacing the real parse
+        # failure. Only run real verification on an actual parsed candidate.
+        if "components" in candidate or "nets" in candidate:
+            verify_candidate(candidate, kg_store)
         candidate["_attempts"] = attempt
 
         if candidate.get("verification_status") == "passed":
