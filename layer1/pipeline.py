@@ -32,7 +32,7 @@ def _score_candidate(candidate: dict, weights: dict) -> float:
     )
 
 
-def run_layer1(vague_prompt: str, kg_store, n: int = 3, weights: dict | None = None, max_attempts: int = 3) -> dict:
+def run_layer1(vague_prompt: str, kg_store, n: int = 3, weights: dict | None = None, max_attempts: int = 6) -> dict:
     """
     Runs the full Layer 1 pipeline: generate-with-retry -> score -> rank.
     Returns {"candidates": [...], "ranked": [...]} - the ranked list always
@@ -47,6 +47,16 @@ def run_layer1(vague_prompt: str, kg_store, n: int = 3, weights: dict | None = N
     (Layer 1's own compute is seconds per candidate on the local model);
     the real cost of raising n lands downstream, in how many more
     candidates then reach SchGen's much more expensive generation stage.
+
+    max_attempts=6 default per T031 (2026-09-24): raised from 3, the
+    original value, after confirming a real (not assumed) gain on the
+    T030 failure set - 4 more candidates converged with the extra budget,
+    each audited individually and confirmed genuine (no interface-check
+    violations, fully self-consistent wiring), not another instance of
+    the checker-gaming risk found with `n`. Structurally lower-risk than
+    raising `n` was: a slot's retry loop returns the moment it passes, so
+    an already-<=3-attempt-passing candidate is completely unaffected by
+    this change - there is no mechanism for it to make anything worse.
     """
     if weights is None:
         weights = DEFAULT_WEIGHTS

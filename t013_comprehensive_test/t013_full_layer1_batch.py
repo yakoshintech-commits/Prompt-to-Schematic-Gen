@@ -26,10 +26,9 @@ for i, (part_id, comp) in enumerate(items):
 
     t0 = time.time()
     try:
-        # n=3 (matches run_layer1's own validated default per T029) -
-        # every earlier T013 run used n=1, which left the pipeline's real
-        # multi-candidate sampling capability completely unexercised.
-        result = run_layer1(prompt, kg, n=3, max_attempts=3)
+        # n=3, max_attempts=6 (match run_layer1's own validated defaults
+        # per T029/T031) - every earlier T013 run used n=1/max_attempts=3.
+        result = run_layer1(prompt, kg, n=3, max_attempts=6)
         candidate = result["ranked"][0]
         status = candidate.get("verification_status")
         parts = [c["part_id"] for c in candidate.get("components", [])]
