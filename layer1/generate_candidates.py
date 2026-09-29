@@ -313,12 +313,25 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
     needed the same thing, not just Step 3/4's ability to detect failure.
 
     temperature/seed are held constant across every attempt within THIS
-    slot's retry chain - confirmed necessary (2026-09-23): temperature=0
+    slot's retry chain UNLESS a deterministic fixed point is detected (see
+    below) - the original assumption here (2026-09-23) was that temperature=0
     is fully deterministic, so a slot's own attempt-2/3 already diverges
     naturally from attempt-1 via the real feedback text added to the
-    conversation; there's no need to also vary temperature mid-chain, and
-    keeping it fixed per-slot is what makes each slot's overall trajectory
-    reproducible for testing/debugging while still differing SLOT to SLOT.
+    conversation. T044 found this assumption doesn't universally hold:
+    verified directly (attempt-by-attempt logging) that some candidates
+    (e.g. ATmega32A-P's "AVCC missing net", MCP73871's "PROG1 unconnected")
+    reproduce the EXACT SAME verification error, verbatim, across all 6
+    attempts - a genuine deterministic fixed point, not "dilution" (this
+    loop already only ever replays the single most recent attempt, never
+    accumulates full history, so there was nothing to dilute). Once attempt
+    N's error text matches attempt N-1's exactly, every message sent to the
+    model from then on is character-for-character identical, so at
+    temperature=0 every remaining attempt is mathematically guaranteed to
+    reproduce the same wrong output - wasting the rest of max_attempts on
+    pure repeats. Escalate to the same nonzero-temperature diversity
+    mechanism already proven to work for cross-slot diversity (n>1
+    sampling) but applied WITHIN this slot's own retry chain, only once
+    stuck, so slots that never hit the trap are completely unaffected.
     """
     from verify_candidate import verify_candidate  # local import: avoids a cycle at module load time
 
@@ -328,11 +341,15 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
 
     feedback = None
     prev_response = None
+    prev_feedback = None
     candidate = {}
+    stuck = False
 
     for attempt in range(1, max_attempts + 1):
+        attempt_temperature = _DIVERSITY_TEMPERATURE if stuck else temperature
+        attempt_seed = attempt if stuck else seed
         candidate, raw = _generate_one(system_prompt, user_prompt, feedback, prev_response,
-                                        format_schema=format_schema, temperature=temperature, seed=seed)
+                                        format_schema=format_schema, temperature=attempt_temperature, seed=attempt_seed)
         # A malformed-JSON attempt (see _generate_one) already carries a
         # real verification_status/verification_errors of its own and has
         # no "components"/"nets" keys at all - calling verify_candidate on
@@ -347,6 +364,9 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
             return candidate
 
         feedback = "\n".join(candidate.get("verification_errors") or ["Unknown verification failure."])
+        if feedback == prev_feedback:
+            stuck = True
+        prev_feedback = feedback
         prev_response = raw
 
     return candidate
