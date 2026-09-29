@@ -45,7 +45,7 @@ def check_headroom_or_raise(model_name: str = MODEL_NAME):
 MAX_SCHEMA_PIN_CHOICES = 120  # see build_candidate_schema's docstring
 
 
-def build_candidate_schema(allowed_components: list[dict]) -> dict:
+def build_candidate_schema(allowed_components: list[dict], exact_component_count: int | None = None) -> dict:
     """
     Dynamic per-request JSON schema (Ollama's `format` param, converted
     internally to a constrained grammar) built from the REAL retrieved
@@ -105,7 +105,23 @@ def build_candidate_schema(allowed_components: list[dict]) -> dict:
             "assumptions": {"type": "string"},
             "components": {
                 "type": "array",
-                "maxItems": 8,  # unbounded arrays + grammar-constrained enums can runaway-loop, see below
+                # T042: when the caller already knows the EXACT set of needed
+                # components (the two-stage select-then-synthesize path, where
+                # allowed_components has already been filtered to exactly what
+                # a separate selection call decided is needed), force the
+                # array to that exact length. Confirmed empirically this was
+                # otherwise the root cause of a real failure class: with only
+                # a generous maxItems=8 ceiling, a schema built from a single
+                # allowed component still let the model emit up to 8 entries,
+                # and it did - inventing extra fake refs (R1, R2, VCC1...) all
+                # reusing that one real part_id, since the schema never forbade
+                # it. Left as maxItems=8 (unconstrained minItems) for the
+                # original single-stage caller, where allowed_components is
+                # still the broad top-15 retrieval list a real design is
+                # meant to freely sub-select from - forcing exact count there
+                # would be wrong, not a fix.
+                **({"minItems": exact_component_count, "maxItems": exact_component_count}
+                   if exact_component_count is not None else {"maxItems": 8}),
                 "items": {
                     "type": "object",
                     "properties": {
@@ -286,7 +302,8 @@ def _generate_one(system_prompt: str, user_prompt: str, feedback: str | None, pr
 
 def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: str, max_attempts: int = 3,
                                      allowed_components: list[dict] | None = None,
-                                     temperature: float = 0, seed: int | None = None) -> dict:
+                                     temperature: float = 0, seed: int | None = None,
+                                     exact_component_count: int | None = None) -> dict:
     """
     Generate ONE candidate, verify it, and on failure feed the real error
     back for another attempt (up to max_attempts) before giving up and
@@ -307,7 +324,7 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
 
     system_prompt = build_system_prompt(allowed_json)
     user_prompt = build_user_prompt(vague_prompt)
-    format_schema = build_candidate_schema(allowed_components) if allowed_components else None
+    format_schema = build_candidate_schema(allowed_components, exact_component_count) if allowed_components else None
 
     feedback = None
     prev_response = None
