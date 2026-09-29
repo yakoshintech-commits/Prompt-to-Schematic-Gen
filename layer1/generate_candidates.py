@@ -383,6 +383,124 @@ def generate_one_verified_candidate(vague_prompt: str, kg_store, allowed_json: s
 _DIVERSITY_TEMPERATURE = 0.8
 
 
+def select_needed_components(vague_prompt: str, retrieved: list[dict],
+                              prior_selection: list[dict] | None = None,
+                              synthesis_error: str | None = None,
+                              temperature: float = 0, seed: int | None = None) -> tuple[list[dict], list[dict]]:
+    """
+    T042/T047: stage 1 of the two-stage select-then-synthesize architecture.
+    Decides ONLY which real components (from the retrieved vocabulary) are
+    actually needed, before any wiring is attempted - isolates the exact
+    judgment call behind the companion-padding and companion-omission
+    failure classes from the harder job of synthesizing correct wiring.
+
+    prior_selection/synthesis_error: when set, this is a RE-selection call -
+    synthesis already exhausted its retry budget with prior_selection's
+    vocabulary and failed; the verifier's own real, specific error is fed
+    back (replaying prior_selection as an assistant turn, the failure as a
+    genuine user reply - the same multi-turn correction shape proven
+    elsewhere in this pipeline) so selection can reconsider with concrete
+    evidence of what's missing, not just the original static rule text
+    again. Confirmed necessary, not optional (T047): the retry loop only
+    ever retries synthesis, and synthesis is structurally incapable of
+    adding a component selection never chose (exact_component_count locks
+    the schema to exactly what was selected) - no amount of synthesis-only
+    retrying can ever fix a genuinely missing companion.
+    """
+    ids = [c["id"] for c in retrieved]
+    system_prompt = f"""You are deciding which real components are needed for a circuit, NOT designing the wiring yet.
+
+Available real components (the complete allowed vocabulary):
+{json.dumps(retrieved, indent=2)}
+
+Decide EXACTLY which of these components are needed to build a complete, correct, minimal circuit for the request below.
+
+RULES:
+1. Always include the component the request is fundamentally about.
+2. Include a companion component ONLY if a real pin on an included component genuinely cannot be given a valid connection without it (e.g. a current-set pin needing an external resistor, a control pin needing a pull-up/pull-down, a signal pin needing a load to drive). If a pin can validly connect to a generic ground/power rail instead, do NOT add a companion for it.
+3. Do NOT include a component "for completeness" or because it seems generally related - every inclusion must be justified by a specific real pin's real requirement.
+4. Do NOT include more than one component of the same role unless the request genuinely needs two (e.g. two independent outputs).
+
+Output STRICT JSON only: {{"selected": [{{"part_id": "<EXACT id from the list above>", "reason": "<one sentence: which specific pin/requirement makes this necessary>"}}]}}"""
+    user_prompt = f"Request: {vague_prompt}"
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+
+    if prior_selection is not None and synthesis_error:
+        messages.append({"role": "assistant", "content": json.dumps({"selected": prior_selection})})
+        messages.append({"role": "user", "content": f"""That selection was tried, and the actual circuit verifier - a real, deterministic tool, not a guess - rejected the result with this specific error:
+###
+{synthesis_error}
+###
+This error means your selection was missing a real, necessary component. Look at the available components list again and add whichever real component resolves this specific error. Output a corrected, complete selection (not just the addition - the full list) as a single JSON object."""})
+
+    schema = {
+        "type": "object",
+        "properties": {"selected": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"part_id": {"type": "string", "enum": ids}, "reason": {"type": "string"}},
+            "required": ["part_id", "reason"]}}},
+        "required": ["selected"],
+    }
+    raw = _call_model(messages, format_schema=schema, temperature=temperature, seed=seed)
+    try:
+        parsed = _parse_candidate_json(raw)
+    except ValueError:
+        # T049: this call had no exception handling at all (json.loads
+        # directly) - confirmed to crash the entire candidate on a
+        # malformed selection response (same class of bug T030 already
+        # fixed for synthesis, missed here). Degrade gracefully instead:
+        # fall back to just the top-ranked retrieved component (normally
+        # the target itself, per retrieve_relevant_components' own keyword-
+        # match ranking) rather than propagate an uncaught JSONDecodeError.
+        fallback = retrieved[:1]
+        return fallback, [{"part_id": c["id"], "reason": "selection response was malformed; defaulted to the top-ranked retrieved component"} for c in fallback]
+    if isinstance(parsed, list):
+        parsed = parsed[0] if parsed else {}
+    selected_ids = {item["part_id"] for item in parsed.get("selected", [])}
+    by_id = {c["id"]: c for c in retrieved}
+    return [by_id[pid] for pid in selected_ids if pid in by_id], parsed.get("selected", [])
+
+
+def generate_one_verified_candidate_two_stage(vague_prompt: str, kg_store, retrieved: list[dict],
+                                               max_attempts: int = 6,
+                                               temperature: float = 0, seed: int | None = None) -> dict:
+    """
+    Full two-stage pipeline for ONE slot: select needed components, attempt
+    synthesis with that exact vocabulary (exact_component_count locks the
+    schema so the model can't pad with un-selected parts), and on failure,
+    feed the real synthesis error back into ONE re-selection attempt before
+    giving up (T047 - see select_needed_components' docstring for why this
+    step is load-bearing, not optional).
+    """
+    filtered, selection = select_needed_components(vague_prompt, retrieved, temperature=temperature, seed=seed)
+    allowed_json = json.dumps(filtered, indent=2)
+    candidate = generate_one_verified_candidate(
+        vague_prompt, kg_store, allowed_json, max_attempts=max_attempts,
+        allowed_components=filtered, temperature=temperature, seed=seed,
+        exact_component_count=len(filtered),
+    )
+    if candidate.get("verification_status") == "passed":
+        return candidate
+
+    synth_error = "\n".join(candidate.get("verification_errors") or [])
+    if not synth_error:
+        return candidate
+    filtered2, selection2 = select_needed_components(
+        vague_prompt, retrieved, prior_selection=selection, synthesis_error=synth_error,
+        temperature=temperature, seed=seed,
+    )
+    if {c["id"] for c in filtered2} == {c["id"] for c in filtered}:
+        return candidate  # re-selection agreed with itself - no point re-synthesizing the same vocabulary
+
+    allowed_json2 = json.dumps(filtered2, indent=2)
+    candidate2 = generate_one_verified_candidate(
+        vague_prompt, kg_store, allowed_json2, max_attempts=max_attempts,
+        allowed_components=filtered2, temperature=temperature, seed=seed,
+        exact_component_count=len(filtered2),
+    )
+    return candidate2
+
+
 def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 3, max_attempts: int = 6) -> list[dict]:
     """
     Generate n architecturally-distinct candidate SLOTS, each with its own
@@ -399,14 +517,19 @@ def generate_verified_candidates(vague_prompt: str, kg_store, n: int = 3, max_at
     multiple slots have a real chance of exploring different completions
     instead of repeating the same deterministic chain - see _call_model's
     docstring comment for the empirical confirmation this was necessary.
+
+    T042-T048: each slot now runs the two-stage select-then-synthesize
+    pipeline (see generate_one_verified_candidate_two_stage) instead of a
+    single synthesis call against the raw top-15 retrieval - this is the
+    change under full-133 validation; if it nets worse than the prior
+    single-stage approach, revert to calling generate_one_verified_candidate
+    directly with allowed_components=retrieve_relevant_components(...).
     """
     allowed_components = retrieve_relevant_components(vague_prompt, kg_store, top_k=15)
-    allowed_json = json.dumps(allowed_components, indent=2)
 
     return [
-        generate_one_verified_candidate(
-            vague_prompt, kg_store, allowed_json, max_attempts=max_attempts,
-            allowed_components=allowed_components,
+        generate_one_verified_candidate_two_stage(
+            vague_prompt, kg_store, allowed_components, max_attempts=max_attempts,
             temperature=(0 if i == 0 else _DIVERSITY_TEMPERATURE),
             seed=(None if i == 0 else i),
         )
