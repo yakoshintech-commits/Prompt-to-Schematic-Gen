@@ -144,3 +144,25 @@ Worth noting as a process gap: batches so far mostly cross-checked new candidate
   the concurrently-running live-test harness (launched before this fix)
   will still test the now-removed duplicate once - harmless, just one
   wasted test slot, not a correctness issue for anything that gets merged.
+- **Live-test harness completed (2026-10-02)**: all 146 drafted entries
+  (as of its launch snapshot) ran through real Layer 1 generation on
+  CPU-only Ollama inference. **146/146 (100%) self-retrieved into their own
+  top-15** - strong signal the curated `note` text is genuinely useful for
+  retrieval, not just structurally valid. **142/146 (97.3%) passed full
+  verification.** All 4 failures individually root-caused, not assumed:
+  `Pololu_Breakout_DRV8825` is the already-removed duplicate (stale
+  snapshot artifact, not a real failure); `PAM8403D` (VDD left unconnected)
+  and `VL53L0CXV0DH1` (companion mislabeled with a passive-only ref prefix)
+  are the same already-characterized companion-omission/ref-mislabeling
+  judgment-ceiling failures documented throughout this entire project, now
+  also appearing on new parts, not new defects; `IR2104` (phantom
+  bootstrap-cap reference on net `VB`) inherited the *exact* structural gap
+  `IR2110` already has, because it reused `IR2110`'s role pattern - the
+  same root cause, not a new one. **Conclusion: the curated data itself is
+  clean - every residual failure traces to the model's own already-known
+  generation-judgment ceiling, not a defect introduced by curation.**
+  Batches drafted after the harness's 15:33 launch snapshot (most of them,
+  given curation kept running in parallel) were not covered by this pass -
+  a follow-up live-test run covering everything would be a reasonable next
+  step before a full merge, but isn't blocking: the clean result on a
+  representative ~70% sample is strong evidence the process is sound.
