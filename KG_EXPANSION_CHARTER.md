@@ -104,3 +104,13 @@ regression check before the next batch starts.
   doesn't mean "selected" for this exact failure class. Adding either would
   be padding, not a fix - noted here so a future pass doesn't re-attempt
   the same already-ruled-out idea.
+- **Fixed a real duplicate caught by batch 24's fork and verified directly**:
+  batch 17's `Pololu_Breakout_DRV8825` is the same real Pololu DRV8825
+  breakout board already curated in the live KG as `POLOLU_DRV8825` - but
+  with completely conflicting pin numbering between the two (verified by
+  diffing both entries' real pin data). Removed the batch 17 duplicate
+  entirely rather than keep two versions of the same board with different
+  pinouts. The live KG's already-curated version is authoritative. Note:
+  the concurrently-running live-test harness (launched before this fix)
+  will still test the now-removed duplicate once - harmless, just one
+  wasted test slot, not a correctness issue for anything that gets merged.
