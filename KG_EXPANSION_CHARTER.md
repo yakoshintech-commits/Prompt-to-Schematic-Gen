@@ -58,7 +58,10 @@ regression check before the next batch starts.
 |---|---|---|---|
 | 1 | `USB_A`, `USB_B`, `Conn_01x02`, `Conn_01x03`, `Conn_01x04`, `Transformer_1P_1S`, `Transformer_1P_2S`, `SW_DPST` | drafted, staged (not merged) | Connectors/passives, clean named pins, confirmed non-redundant vs. live KG |
 | 2 | `BME280`, `SHT31-DIS`, `LM35-D`, `PCF8574`, `DS1307+`, `PCA9685PW` | drafted, staged (not merged) | Common ICs (env. sensors, I2C expander, RTC, PWM driver), `i2c_sda`/`i2c_scl` roles confirmed against existing convention |
-| 3+ | TBD | pending | Continue in background while GPU is busy with validation |
+| 3 | `L298N`, `DRV8833PW`, `ULN2003A`, `74HC595`, `74HC165` | drafted, staged (not merged) | Motor drivers + first `transistor_array`/`shift_register` subcategory entries (both genuinely new to the live KG) |
+| 4 | `MAX232I`, `SP3485EN`, `MCP2515-xSO`, `ENC28J60x-SO`, `nRF24L01P` | drafted, staged (not merged) | Communication interfaces (RS232/RS485/CAN controller/2nd Ethernet chip/RF transceiver) - pulled the FULL existing `pin_roles` vocabulary from the live KG first (30 distinct roles, incl. `spi_*`, `rs485_*`, `can_*`, `eth_*`, `xtal_*`) rather than approximating; exact matches used throughout |
+| 5 | `MPU-6050`, `ACS712xLCTR-20A`, `MCP4725xxx-xCH`, `MCP3008`, `TCA9548AMRGER`, `MCP23017_SO` | drafted, staged (not merged) | Motion sensor, Hall-effect current sensor, DAC, SPI ADC, I2C multiplexer, 16-bit I2C I/O expander - all genuinely new subcategories or complementary to existing (non-redundant) parts |
+| 6+ | TBD | pending | Continue in background while GPU is busy with validation |
 
 ## Open items
 - Merge batches 1-2 into the live KG once the current full-pipeline
