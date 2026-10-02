@@ -68,7 +68,9 @@ regression check before the next batch starts.
 | 10 | `IRLZ44N`, `BSS84`, `ADS1015IDGS`, `BQ24074RGT` | drafted, staged (not merged) | N/P-channel power MOSFETs (logic-level and small-signal), I2C 12-bit 4-channel ADC, USB Li-Ion battery charger with power-path management |
 | 11 | `BC337`, `2N3904`, `BAV99`, `MBR0520LT`, `LM317L_TO92`, `AMS1117-1.8`, `DS18S20` | drafted, staged (not merged) | NPN BJTs, dual switching diode, Schottky diode, adjustable + fixed LDOs, 1-Wire temp sensor. Checked `NE555P` first and correctly skipped it - redundant with already-curated `NE555D` (same part, different package only). `74HC00` also checked and skipped - mostly unnamed pins with no natural fallback, defer rule applies |
 | 12 | `AM2302`, `PAM8403D`, `ADXL343`, `HX711`, `MAX98357A` | drafted, staged (not merged) | DHT22 temp/humidity module, Class-D stereo audio amp, I2C/SPI accelerometer, 24-bit load-cell ADC, I2S Class-D audio DAC/amp |
-| 13+ | TBD | pending | Continue in background while GPU is busy with validation |
+| 13 | `DS3231MZ`, `BZX84Cxx`, `TIP120`, `IRF9540N`, `MCP6001U`, `LM324`, `LP2950-3.3_TO92`, `TSL25911FN`, `INA3221` | drafted, staged (not merged) | Accurate RTC alternative, Zener diode, Darlington power BJT, P-channel power MOSFET, single + quad op-amps (reused exact `LM358` op-amp pin_role pattern), micropower LDO, I2C light sensor, triple-channel I2C power monitor. Checked and skipped `CAT24C256` (redundant with already-drafted `24LC256`), `BAT54C`/`BAT54A` (all-unnamed 3-pin dual-diode - real distinguishing roles exist, defer rule applies), `LM555xN` (redundant with already-curated `NE555D`) |
+| 14 | `FT232RL`, `TSOP341xx`, `LED_RGBA`, `VL53L0CXV0DH1` | drafted, staged (not merged) | USB-UART bridge (2nd option alongside CP2102-family already in the pool, genuinely common/distinct part), IR receiver module, RGB LED, I2C time-of-flight distance sensor |
+| 15+ | TBD | pending | Continue in background while GPU is busy with validation |
 
 ## Open items
 - Merge batches 1-2 into the live KG once the current full-pipeline
