@@ -61,15 +61,28 @@ regression check before the next batch starts.
 | 3 | `L298N`, `DRV8833PW`, `ULN2003A`, `74HC595`, `74HC165` | drafted, staged (not merged) | Motor drivers + first `transistor_array`/`shift_register` subcategory entries (both genuinely new to the live KG) |
 | 4 | `MAX232I`, `SP3485EN`, `MCP2515-xSO`, `ENC28J60x-SO`, `nRF24L01P` | drafted, staged (not merged) | Communication interfaces (RS232/RS485/CAN controller/2nd Ethernet chip/RF transceiver) - pulled the FULL existing `pin_roles` vocabulary from the live KG first (30 distinct roles, incl. `spi_*`, `rs485_*`, `can_*`, `eth_*`, `xtal_*`) rather than approximating; exact matches used throughout |
 | 5 | `MPU-6050`, `ACS712xLCTR-20A`, `MCP4725xxx-xCH`, `MCP3008`, `TCA9548AMRGER`, `MCP23017_SO` | drafted, staged (not merged) | Motion sensor, Hall-effect current sensor, DAC, SPI ADC, I2C multiplexer, 16-bit I2C I/O expander - all genuinely new subcategories or complementary to existing (non-redundant) parts |
-| 6+ | TBD | pending | Continue in background while GPU is busy with validation |
+| 6 | `LM2596S-5`, `XL4015`, `LM7805_TO220`, `TDA2030`, `WS2811`, `Crystal` | drafted, staged (not merged) | Buck/linear regulators, audio amp, LED driver, bare 2-pin crystal - `buck_*`/`supply_vdd`/`supply_gnd`/`out`/`xtal_in`/`xtal_out` roles matched exactly against existing LDO/buck entries (`AMS1117-3.3`, `TPS54302`, etc.) |
+| 7+ | TBD | pending | Continue in background while GPU is busy with validation |
 
 ## Open items
 - Merge batches 1-2 into the live KG once the current full-pipeline
   validation (pin-number-preference fix) completes and the GPU is free.
-- Live-test each of the 14 drafted parts individually before merging.
+- Live-test each of the 20 drafted parts individually before merging.
 - Run a full regression validation after the merge.
 - Continue drafting further batches in parallel (CPU-only), prioritizing:
   genuine gaps in current coverage, parts that could close one of Layer 1's
   6 still-open companion-omission failures (the highest-leverage kind of
   addition - closes a known gap, not just adds breadth), then common
   real-world parts by category.
+- **Checked Layer 1's known gaps explicitly (batch 6 pass), found neither is
+  fixable by adding more KG data**: `IR2110`'s bootstrap-capacitor gap is a
+  retrieval-ranking issue, not missing data - a generic `C` capacitor
+  already exists in the live KG (confirmed via direct lookup), it simply
+  doesn't surface in `IR2110`'s retrieved top-15 (already documented, T048).
+  `MAX31865xAP` would need a real MCU/SPI-host in context - found clean
+  candidates (`ATmega3208-X`, `ATmega4808-X`) but did NOT add either: its
+  prompt text has no MCU-related keywords, so retrieval wouldn't surface
+  it regardless of KG content, and T038 already proved "visible in context"
+  doesn't mean "selected" for this exact failure class. Adding either would
+  be padding, not a fix - noted here so a future pass doesn't re-attempt
+  the same already-ruled-out idea.
