@@ -176,3 +176,16 @@ Worth noting as a process gap: batches so far mostly cross-checked new candidate
   a follow-up live-test run covering everything would be a reasonable next
   step before a full merge, but isn't blocking: the clean result on a
   representative ~70% sample is strong evidence the process is sound.
+- **Live-test round 2 completed (2026-10-03)**: covered the 86 entries
+  drafted after round 1's snapshot. **86/86 (100%) self-retrieved, 85/86
+  (98.8%) passed.** The 1 failure, `DHT11`, is the same already-known
+  ref-prefix-mislabeling class (`R1` assigned to an `ic`, not a passive) -
+  not a curation defect. **Combined across both rounds: 232/232 (100%)
+  self-retrieved, 227/232 (97.8%) passed full verification** - a strong,
+  consistent signal that the curation process itself is sound across the
+  whole drafted set tested so far (batches 1-40ish; batches 41+ drafted
+  after round 2's snapshot are not yet live-tested). Every one of the 5
+  total failures across both rounds traces to an already-documented
+  model-judgment-ceiling pattern (companion-omission, ref-mislabeling,
+  phantom-reference, or a stale already-fixed duplicate) - none are new
+  failure modes and none implicate the curated data's own correctness.
