@@ -189,3 +189,26 @@ Worth noting as a process gap: batches so far mostly cross-checked new candidate
   model-judgment-ceiling pattern (companion-omission, ref-mislabeling,
   phantom-reference, or a stale already-fixed duplicate) - none are new
   failure modes and none implicate the curated data's own correctness.
+- **Companion-requirements audit completed (2026-10-03)**: the original
+  133-part KG has a convention of flagging real companion-part needs
+  directly in a part's `note` (e.g. `W5500`'s 4 simultaneous demands,
+  `IR2110`'s bootstrap cap, `LM2575-5.0BU`'s inductor/diode/caps) - the
+  drafting forks that created the 274 new entries were never told this
+  convention existed, so 270/274 had zero companion-requirement language
+  even where the real part genuinely needs one. Audited all 274 entries by
+  hand against real domain/datasheet knowledge: **21 got note updates, 22
+  got a new structured `requires_companions` field**
+  (`{category, subcategory, value_hint, reason}` - the selection-time-
+  checkable counterpart to the free-text note, meant to be read by the
+  `IR2110` auto-injection fix discussed with the user but not yet built).
+  Full list and reasoning in `companion_audit_summary.md` (scratchpad).
+  Most significant find: **`UC3842_DIP8`** needs 3 simultaneous companions
+  (inductor, external power MOSFET, catch diode) - a harder real case than
+  `W5500`'s 4, found because it's a bare PWM *controller*, not a self-
+  contained regulator module. Deliberately did NOT flag universal best-
+  practice items (generic decoupling caps, LED resistors, BJT base
+  resistors) that the original 133's own convention never flagged either -
+  matching the established bar, not inventing a stricter one. Honest gap:
+  this was a single manual review pass, not a formal/automated check; the
+  253 untouched entries were individually judged needless, not machine-
+  verified.
